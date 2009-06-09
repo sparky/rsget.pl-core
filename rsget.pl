@@ -13,12 +13,12 @@
 - OdSiebie: there is a captcha now
 
 =item Status:
-- RS: 2009-06-07 OK
+- RS: 2009-06-09 OK
 - NL: 2009-06-07 OK, captcha works
 - OS: not working, captcha not supported
-- MU: 2009-06-08 OK, captcha works, requires db.png
+- MU: 2009-06-09 OK, captcha works, requires mu_font_db.png
 - UT: 2009-06-07 OK
-- HF: 2009-06-07 OK
+- HF: 2009-06-08 OK
 - FF: 2009-06-07 OK
 - DF: 2009-06-07 OK
 
@@ -1201,7 +1201,7 @@ my @db;
 sub read_db()
 {
 	my $dbf = new Image::Magick;
-	$dbf->Read( $main::data_path . "/MU-captcha/db.png" );
+	$dbf->Read( $main::data_path . "/mu_font_db.png" );
 	foreach my $pos ( 0..3 ) {
 		my @list = sort keys %size;
 		@list = (1..9) if $pos == 3;
