@@ -13,13 +13,13 @@
 - OdSiebie: there is a captcha now
 
 =item Status:
-- RS: 2009-06-09 OK
+- RS: 2009-06-11 OK
 - NL: 2009-06-07 OK, captcha works
 - OS: not working, captcha not supported
 - MU: 2009-06-09 OK, captcha works, requires mu_font_db.png
 - UT: 2009-06-07 OK
 - HF: 2009-06-08 OK
-- FF: 2009-06-07 OK
+- FF: 2009-06-11 OK
 - DF: 2009-06-07 OK
 
 =item Wishlist:
@@ -1478,8 +1478,14 @@ sub stage3
 	} else {
 		return $self->problem( "file url", $body );
 	}
+	my $wait;
+	if ( $body =~ m#<p id="countdown">(\d+)</p># ) {
+		$wait = 0+$1;
+	} else {
+		return $self->problem( "countdown", $body );
+	}
 	
-	$self->wait( 30, \&stage4, "starting in" );
+	$self->wait( $wait, \&stage4, "starting in" );
 }
 
 sub stage4
