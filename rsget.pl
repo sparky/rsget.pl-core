@@ -140,14 +140,15 @@ sub file_init
 	{
 		my $fn = $self->{file_name};
 		if ( -r $fn ) {
+			my $fn_old = $fn;
 			my $ext = "";
-			$ext = $1 if $fn =~ s/(\..{3,5})$//;
+			$ext = $1 if $fn_old =~ s/(\..{3,5})$//;
 			my $i = 1;
-			while ( -r "$fn-$i$ext" ) {
+			while ( -r "$fn_old-$i$ext" ) {
 				$i++;
 			}
-			$fn .= "-$i$ext";
-			$self->{file_name} = $fn;
+			$fn_old .= "-$i$ext";
+			rename $fn, $fn_old;
 		}
 		my $net = $self->{obj}->{net};
 		$self->{obj}->{netname} =~ s/] .*/] $fn: /;
