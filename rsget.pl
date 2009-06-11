@@ -1622,6 +1622,10 @@ sub readlist
 		if ( $line =~ /^\s*(#.*)?$/ ) {
 			push @newlist, $line;
 			next;
+		} elsif ( $line =~ /^__END__\s*$/ ) {
+			push @newlist, $line;
+			push @newlist, <$list>;
+			last;
 		}
 		my $uri = undef;
 		my $getter = undef;
