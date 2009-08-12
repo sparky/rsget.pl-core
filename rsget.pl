@@ -559,6 +559,19 @@ sub finish
 	$checklist = 1;
 }
 
+sub finish_links
+{
+	my $self = shift;
+
+	$gotlist{ $self->{url} } = [@_];
+
+	my $net = $self->{net};
+	my $id = $self->{id};
+	delete $running{ $net }->{ $id };
+
+	$checklist = 1;
+}
+
 sub error
 {
 	my $self = shift;
@@ -1377,6 +1390,8 @@ sub stage2
 	}
 	if ( $body =~ /You are currently downloading/ ) {
 		return $self->multi();
+	} elsif ( $body =~ /This file is either removed/ ) {
+		return $self->error( "file not found" );
 	} elsif ( $body =~ /starthtimer[\s\S]*?timerend=d\.getTime\(\)\+(\d+);/m and $1 > 0 ) {
 		return $self->wait( 1 + int ( $1 / 1000 ), \&stage1, "free limit reached, waiting" );
 	}
@@ -1604,6 +1619,249 @@ $getters{DF} = {
 };
 
 # }}}
+package Get::TurboUpload; # {{{
+
+BEGIN {
+	our @ISA;
+	@ISA = qw(Get);
+}
+
+sub new
+{
+	my $proto = shift;
+	my $class = ref $proto || $proto;
+	my $url = shift;
+	Get::makenew( "TU", $class, $url );
+}
+
+sub stage1
+{
+	my $self = shift;
+	delete $self->{referer};
+
+	$self->print("starting...");
+	$self->curl( $self->{url}, \&stage2 );
+}
+
+sub stage2
+{
+	my ($self, $body, $url) = @_;
+	$self->print("starting......");
+	$self->{referer} = $url;
+
+	my @body = split /\n+/, $body;
+	do {
+		$_ = shift @body;
+	} until ( /<Form method="POST" action=''>/ );
+	my %opts;
+	for (;;) {
+		$_ = shift @body;
+		/<input type="hidden" name="(.*?)" value="(.*?)">/ or last;
+		$opts{$1} = $2;
+	}
+
+	$opts{method_free} = "Free%20Download";
+	my $post = join "&", map { "$_=$opts{$_}" } keys %opts;
+
+	$self->curl( $url, \&stage3, post => $post );
+}
+
+sub stage3
+{
+	my ($self, $body, $url) = @_;
+	$self->{referer} = $url;
+	$self->print("starting.........");
+
+	$self->{file_url} = $url;
+
+	my $wait;
+	if ( $body =~ /You have to wait (\d+) hours?/ ) {
+		$wait = 600;
+	} elsif ( $body =~ /You have to wait (\d+) minutes?(, (\d+) second)?/ ) {
+		$wait = 60 * $1 + ( defined $2 ? $3 : 0 );
+		$wait = 600 if $wait > 600;
+	} elsif ( $body =~ /You have to wait (\d+) seconds?/ ) {
+		$wait = $1;
+	}
+	if ( defined $wait ) {
+		return $self->wait( $wait, \&stage1, "free limit reached, waiting" );
+	}
+
+	$body =~ m#Enter code below:[\S\s]*?<div.*?>(.*?)</div>#o;
+
+	my %c = map /<span.*?padding-left:\s*?(\d+)px;.*?>(\d)</g, $1;
+	my @c = map { $c{$_} } sort { $a <=> $b } keys %c;
+	my $captcha = join "", @c;
+
+	my @body = split /\n+/, $body;
+	do {
+		$_ = shift @body;
+	} until ( /<Form name="F1" method="POST" action=""/ );
+	my %opts;
+	for (;;) {
+		$_ = shift @body;
+		/<input type="hidden" name="(.*?)" value="(.*?)">/ or last;
+		$opts{$1} = $2;
+	}
+	$opts{code} = $captcha;
+	$opts{btn_download} = "Download%20File";
+
+	$self->{dl_post} = join "&", map { "$_=$opts{$_}" } keys %opts;
+
+	$self->wait( 60, \&stage4, "starting download in" );
+}
+
+sub stage4
+{
+	my $self = shift;
+	$self->print("downloading");
+
+	$self->download( post => $self->{dl_post} );
+}
+
+$getters{TU} = {
+	uri => qr{(www\.)?turboupload\.com/.*?},
+	add => sub { Get::TurboUpload->new( @_ ) },
+};
+
+# }}}
+package Get::StorageTo; # {{{
+
+BEGIN {
+	our @ISA;
+	@ISA = qw(Get);
+}
+
+sub new
+{
+	my $proto = shift;
+	my $class = ref $proto || $proto;
+	my $url = shift;
+	Get::makenew( "ST", $class, $url );
+}
+
+sub stage1
+{
+	my $self = shift;
+	delete $self->{referer};
+
+	$self->print("starting...");
+	$self->curl( $self->{url}, \&stage2 );
+}
+
+sub stage2
+{
+	my ($self, $body, $url) = @_;
+	$self->print("starting......");
+	$self->{referer} = $url;
+
+	my $code;
+	if ( $body =~ /onclick='javascript:startcountdown\("(.*?)", "(.*?)"\);'/ ) {
+		$code = $2;
+	}
+
+	$self->curl( "/getlink/$code/", \&stage3 );
+}
+
+sub stage3
+{
+	my ($self, $body, $url) = @_;
+	$self->print("starting.........");
+
+	$_ = $body;
+	s/^.*?{\s+//;
+	s/\s+}.*?$//;
+
+	if ( /'link'\s*:\s*'(.*?)'/ ) {
+		$self->{file_url} = $1;
+	} elsif ( /'countdown'\s*:\s*(\d+)/ ) {
+		my $wait = $1;
+		$wait = 600 if $wait > 600;
+		return $self->wait( $1, \&stage1, "free limit reached, waiting" );
+	}
+
+	$self->wait( 60, \&stage4, "starting download in" );
+}
+
+sub stage4
+{
+	my $self = shift;
+	$self->print("downloading");
+
+	$self->download();
+}
+
+$getters{ST} = {
+	uri => qr{(www\.)?storage\.to/.*?},
+	add => sub { Get::StorageTo->new( @_ ) },
+};
+
+# }}}
+package Link::RaidRush; # {{{
+
+BEGIN {
+	our @ISA;
+	@ISA = qw(Get);
+}
+
+sub new
+{
+	my $proto = shift;
+	my $class = ref $proto || $proto;
+	my $url = shift;
+	Get::makenew( "LINK: save.raidrush.ws", $class, $url );
+}
+
+sub stage1
+{
+	my $self = shift;
+	delete $self->{referer};
+
+	$self->print("starting...");
+	$self->curl( $self->{url}, \&stage2 );
+}
+
+sub stage2
+{
+	my ($self, $body, $url) = @_;
+	$self->print("starting......");
+	$self->{referer} = $url;
+
+	my @list;
+	foreach ( split /\n+/, $body ) {
+		if ( /onclick="get\('(.*?)','FREE','(.*?)'\)/ ) {
+			push @list, "/404.php.php?id=$1&key=$2";
+		}
+	}
+	$self->{list} = [@list];
+	$self->{list_done} = [];
+
+	$self->curl( shift @{$self->{list}}, \&stage3 );
+}
+
+sub stage3
+{
+	my ($self, $body, $url) = @_;
+	$self->{referer} = $url;
+
+	push @{$self->{list_done}}, "http://" . $body;
+	$self->print( scalar @{$self->{list_done}});
+
+	if ( scalar @{$self->{list}} ) {
+		return $self->curl( shift @{$self->{list}}, \&stage3 );
+	}
+
+	$self->print( "Links: " . scalar @{$self->{list_done}} );
+
+	return $self->finish_links( @{$self->{list_done}} );
+}
+
+$getters{"save.raidrush.ws"} = {
+	uri => qr{save\.raidrush\.ws/.*?},
+	add => sub { Link::RaidRush->new( @_ ) },
+};
+
+# }}}
 package main; # {{{
 
 my $get_list = 'get.list';
@@ -1649,7 +1907,15 @@ sub readlist
 		if ( $getter ) {
 			( my $only_uri = $uri ) =~ s/\s+.*//;
 			if ( exists $gotlist{$only_uri} ) {
-				push @newlist, "# " . $gotlist{$only_uri} . ":\n# " . $line;
+				my $status = $gotlist{$only_uri};
+				if ( ref $status and ref $status eq "ARRAY" ) {
+					chomp $line;
+					push @newlist, "# Link $line:\n"
+						. (join "\n", @$status) . "\n";
+					$checklist = 2;
+				} else {
+					push @newlist, "# $status:\n# " . $line;
+				}
 				push @updated, $only_uri;
 			} else {
 				push @newlist, $uri . "\n";
@@ -1669,7 +1935,7 @@ sub readlist
 		delete $gotlist{ $_ } foreach @updated;
 	}
 
-	$checklist = 0;
+	$checklist = $checklist == 2 ? 1 : 0;
 	$listmtime = (stat $get_list)[9];
 }
 
