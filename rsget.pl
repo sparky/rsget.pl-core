@@ -448,6 +448,7 @@ sub makenew
 				}
 			}
 			$outaddr = $maybe_outaddr;
+			last;
 		}
 		# no IP found ?
 		return {}
@@ -808,7 +809,9 @@ sub stage6
 		return $self->error( "file currently unavailable" );
 	}
 	if ( $body =~ /You could download your next file in.*countdown\(([0-9]+)/ ) {
-		return $self->wait( $1 / 100, \&stage1, "free limit reached, waiting" );
+		my $s = $1 / 100;
+		$s = 10 * 60 if $s > 10 * 60;
+		return $self->wait( $s, \&stage1, "free limit reached, waiting" );
 	}
 	unless ( $body =~ /please wait .*countdown\(([0-9]+),/ ) {
 		return $self->problem( "countdown", $body );
@@ -1374,15 +1377,21 @@ sub stage2
 	}
 	if ( $body =~ /You are currently downloading/ ) {
 		return $self->multi();
-	} elsif ( $body =~ /starthtimer[\s\S]*timerend=d\.getTime\(\)\+(\d+);/m and $1 > 0 ) {
+	} elsif ( $body =~ /starthtimer[\s\S]*?timerend=d\.getTime\(\)\+(\d+);/m and $1 > 0 ) {
 		return $self->wait( 1 + int ( $1 / 1000 ), \&stage1, "free limit reached, waiting" );
+	}
+	my $wait;
+	if ( $body =~ /starttimer[\s\S]*?timerend=d\.getTime\(\)\+(\d+);/m ) {
+		$wait = $1 / 1000;
+	} else {
+		return $self->problem( "starttimer", $body );
 	}
 	my @post;
 	my $link;
 	my @body = split /\n+/, $body;
 	while ( $_ = shift @body ) {
 		if ( not defined $link ) {
-			$link = $1 if /<form action="(.*?)" method=post name=f>/m;
+			$link = $1 if /<form style=".*?" action="(.*?)" method=post name=f>/m;
 		} elsif ( /<input type=hidden name=(.*?) value=(.*?)>/ ) {
 			push @post, "$1=$2";
 		} elsif ( m#</form># ) {
@@ -1395,7 +1404,7 @@ sub stage2
 	$self->{action} = $link;
 	$self->{post} = join "&", @post;
 
-	$self->wait( 30, \&stage3, "starting download in" );
+	$self->wait( $wait, \&stage3, "starting download in" );
 }
 
 sub stage3
@@ -1607,6 +1616,7 @@ while ( my $arg = shift @ARGV ) {
 }
 print "Using '$get_list' file list\n";
 die "Can't read the list\n" unless -r $get_list;
+print "\n";
 
 my $listmtime = 0;
 sub readlist
