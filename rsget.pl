@@ -524,7 +524,7 @@ sub wait
 	my $next_stage = shift;
 	my $msg = shift || "waiting";
 
-	$time = 30 * 60 if $time > 30 * 60;
+	$time = 10 * 60 if $time > 15 * 60;
 
 	$self->{wait_next} = $next_stage;
 	$self->{wait_msg} = $msg . " ";
@@ -824,9 +824,7 @@ sub stage6
 		return $self->error( "file currently unavailable" );
 	}
 	if ( $body =~ /You could download your next file in.*countdown\(([0-9]+)/ ) {
-		my $s = $1 / 100;
-		$s = 10 * 60 if $s > 10 * 60;
-		return $self->wait( $s, \&stage1, "free limit reached, waiting" );
+		return $self->wait( $1 / 100, \&stage1, "free limit reached, waiting" );
 	}
 	unless ( $body =~ /please wait .*countdown\(([0-9]+),/ ) {
 		return $self->problem( "countdown", $body );
@@ -1681,16 +1679,12 @@ sub stage3
 
 	$self->{file_url} = $url;
 
-	my $wait;
-	if ( $body =~ /You have to wait (\d+) hours?/ ) {
-		$wait = 600;
-	} elsif ( $body =~ /You have to wait (\d+) minutes?(, (\d+) second)?/ ) {
-		$wait = 60 * $1 + ( defined $2 ? $3 : 0 );
-		$wait = 600 if $wait > 600;
-	} elsif ( $body =~ /You have to wait (\d+) seconds?/ ) {
-		$wait = $1;
-	}
-	if ( defined $wait ) {
+	if ( $body =~ /You have to wait (.*) till next download/ ) {
+		$_ = $1;
+		my $wait = 0;
+		$wait += 60 * 60 * $1 if /(\d+) hour/;
+		$wait += 60 * $1 if /(\d+) minute/;
+		$wait += $1 if /(\d+) second/;
 		return $self->wait( $wait, \&stage1, "free limit reached, waiting" );
 	}
 
@@ -1779,11 +1773,9 @@ sub stage3
 	s/^.*?{\s+//;
 	s/\s+}.*?$//;
 
-	if ( /'link'\s*:\s*'(.*?)'/ ) {
+	if ( /'link'\s*:\s*'(.*?)'/ and $1 ) {
 		$self->{file_url} = $1;
 	} elsif ( /'countdown'\s*:\s*(\d+)/ ) {
-		my $wait = $1;
-		$wait = 600 if $wait > 600;
 		return $self->wait( $1, \&stage1, "free limit reached, waiting" );
 	}
 
