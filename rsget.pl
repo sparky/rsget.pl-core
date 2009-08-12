@@ -1651,6 +1651,9 @@ sub stage2
 	$self->print("starting......");
 	$self->{referer} = $url;
 
+	if ( $body =~ /File Not Found/ ) {
+		return $self->error( "file not found" );
+	}
 	my @body = split /\n+/, $body;
 	do {
 		return $self->error( "no form" ) unless @body;
