@@ -13,14 +13,16 @@
 - OdSiebie: there is a captcha now
 
 =item Status:
-- RS: 2009-06-11 OK
-- NL: 2009-06-07 OK, captcha works
+- RS: 2009-08-12 OK
+- NL: 2009-08-12 OK, captcha works
 - OS: not working, captcha not supported
-- MU: 2009-06-09 OK, captcha works, requires mu_font_db.png
+- MU: 2009-08-12 OK, captcha works, requires mu_font_db.png
 - UT: 2009-06-07 OK
-- HF: 2009-06-08 OK
-- FF: 2009-06-11 OK
-- DF: 2009-06-07 OK
+- HF: captcha not supported
+- FF: 2009-08-12 OK
+- DF: 2009-08-12 OK
+- TU: 2009-08-12 OK
+- ST: 2009-08-12 OK
 
 =item Wishlist:
 - handle multiple alternatives for same file
@@ -1326,14 +1328,14 @@ sub stage2
 	$self->print("starting......");
 	$self->{referer} = $url;
 
+	if ( $body =~ /Or wait (\d+) minutes/ ) {
+		return $self->wait( $1 * 60, \&stage1, "free limit reached, waiting" );
+	}
 	if ( $url =~ m#/\?view=# ) {
 		if ( $url =~ /fileremoved/) {
 			return $self->error( "file not found" );
 		}
 		return $self->error( "unknown error", $body );
-	}
-	if ( $body =~ /Or wait (\d+) minutes/ ) {
-		return $self->wait( $1 * 60, \&stage1, "free limit reached, waiting" );
 	}
 	($self->{file_url}) = ($body =~ m#<form name="download_form" method="post" action="(.*)">#);
 	my ($wait) = ($body =~ m#var secs = (\d+); // Wartezeit#);
@@ -1651,10 +1653,12 @@ sub stage2
 
 	my @body = split /\n+/, $body;
 	do {
+		return $self->error( "no form" ) unless @body;
 		$_ = shift @body;
 	} until ( /<Form method="POST" action=''>/ );
 	my %opts;
 	for (;;) {
+		return $self->error( "no form" ) unless @body;
 		$_ = shift @body;
 		/<input type="hidden" name="(.*?)" value="(.*?)">/ or last;
 		$opts{$1} = $2;
@@ -1809,7 +1813,7 @@ sub new
 	my $proto = shift;
 	my $class = ref $proto || $proto;
 	my $url = shift;
-	Get::makenew( "LINK: save.raidrush.ws", $class, $url );
+	Get::makenew( "LINK: save.raidrush.ws", $class, $url, slots => 8 );
 }
 
 sub stage1
