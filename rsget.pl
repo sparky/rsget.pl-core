@@ -236,6 +236,11 @@ sub start
 	if ( $opts{post} ) {
 		my $post = $opts{post};
 		$curl->setopt( CURLOPT_POST, 1 );
+		if ( ref $post and ref $post eq "HASH" ) {
+			$post = join "&",
+				map { uri_escape( $_ ) . "=" . uri_escape( $post->{$_} ) }
+				sort keys %$post;
+		}
 		$curl->setopt( CURLOPT_POSTFIELDS, $post );
 	}
 
@@ -807,7 +812,11 @@ sub stage5
 	my $self = shift;
 	$self->print("starting............");
 
-	my $post = "file_id=$self->{file_id}&captcha_check=$self->{captcha}&start=";
+	my $post = {
+		file_id => $self->{file_id},
+		captcha_check => $self->{captcha},
+		start => ''
+	};
 	$self->curl( $self->{action}, \&stage6, post => $post );
 }
 
@@ -1158,7 +1167,11 @@ sub stage3
 		return $self->stage1();
 	}
 
-	my $post = "captchacode=$self->{s2icode}&megavar=$self->{s2mevagar}&captcha=$captcha";
+	my $post = {
+		captchacode => $self->{s2icode},
+		megavar => $self->{s2mevagar},
+		captcha => $captcha
+	};
 
 	$self->curl( "", \&stage4, post => $post );
 }
@@ -1401,14 +1414,14 @@ sub stage2
 	} else {
 		return $self->problem( "starttimer", $body );
 	}
-	my @post;
+	my %post;
 	my $link;
 	my @body = split /\n+/, $body;
 	while ( $_ = shift @body ) {
 		if ( not defined $link ) {
 			$link = $1 if /<form style=".*?" action="(.*?)" method=post name=f>/m;
 		} elsif ( /<input type=hidden name=(.*?) value=(.*?)>/ ) {
-			push @post, "$1=$2";
+			$post{$1} = $2;
 		} elsif ( m#</form># ) {
 			last;
 		}
@@ -1417,7 +1430,7 @@ sub stage2
 		return $self->problem( "link", $body );
 	}
 	$self->{action} = $link;
-	$self->{post} = join "&", @post;
+	$self->{post} = \%post;
 
 	$self->wait( $wait, \&stage3, "starting download in" );
 }
@@ -1665,10 +1678,9 @@ sub stage2
 		$opts{$1} = $2;
 	}
 
-	$opts{method_free} = "Free%20Download";
-	my $post = join "&", map { "$_=$opts{$_}" } keys %opts;
+	$opts{method_free} = "Free Download";
 
-	$self->curl( $url, \&stage3, post => $post );
+	$self->curl( $url, \&stage3, post => \%opts );
 }
 
 sub stage3
@@ -1707,7 +1719,7 @@ sub stage3
 	$opts{code} = $captcha;
 	$opts{btn_download} = "Download%20File";
 
-	$self->{dl_post} = join "&", map { "$_=$opts{$_}" } keys %opts;
+	$self->{dl_post} = \%opts;
 
 	$self->wait( 60, \&stage4, "starting download in" );
 }
@@ -1796,6 +1808,104 @@ $getters{ST} = {
 };
 
 # }}}
+package Get::FlyfileUs; # {{{
+
+BEGIN {
+	our @ISA;
+	@ISA = qw(Get);
+}
+
+sub new
+{
+	my $proto = shift;
+	my $class = ref $proto || $proto;
+	my $url = shift;
+	Get::makenew( "FU", $class, $url );
+}
+
+sub stage1
+{
+	my $self = shift;
+	delete $self->{referer};
+
+	$self->print("starting...");
+	$self->curl( $self->{url}, \&stage2 );
+}
+
+sub stage2
+{
+	my ($self, $body, $url) = @_;
+	$self->print("starting......");
+	$self->{referer} = $url;
+
+	if ( $body =~ /(No such file|No such user)/ ) {
+		return $self->error( "file not found" );
+	}
+	my @body = split /\n+/, $body;
+	do {
+		return $self->error( "no form" ) unless @body;
+		$_ = shift @body;
+	} until ( /<Form method="POST" action=''>/ );
+	my %opts;
+	for (;;) {
+		return $self->error( "no form" ) unless @body;
+		$_ = shift @body;
+		/<input type="hidden" name="(.*?)" value="(.*?)">/ and $opts{$1} = $2;
+		m#</Form># and last;
+	}
+
+	$opts{method_free} = "Free Download";
+
+	$self->curl( $url, \&stage3, post => \%opts );
+}
+
+sub stage3
+{
+	my ($self, $body, $url) = @_;
+	$self->{referer} = $url;
+	$self->print("starting.........");
+
+	if ( $body =~ /You have reached the download-limit/ ) {
+		return $self->wait( 600, \&stage1, "download-limit reached, waiting" );
+	}
+	$self->{file_url} = $url;
+
+	my @body = split /\n+/, $body;
+	do {
+		return $self->error( "no form" ) unless @body;
+		$_ = shift @body;
+	} until ( /<Form name="F1" method="POST" action=""/ );
+	my %opts;
+	for (;;) {
+		return $self->error( "no form" ) unless @body;
+		$_ = shift @body;
+		/<input type="hidden" name="(.*?)" value="(.*?)">/ or last;
+		$opts{$1} = $2;
+	}
+
+	$opts{btn_download} = "Create Download Link";
+
+	$self->{file_html} = \&stage4;
+	$self->download( post => \%opts );
+}
+
+sub stage4
+{
+	my ($self, $body, $url) = @_;
+
+	if ( $body =~ /temporarily unavailable/ ) {
+		return $self->wait( 120, \&stage1, "must wait" );
+	}
+
+	return $self->error( "unknown error" );
+}
+
+$getters{FU} = {
+	uri => qr{(www\.)?flyfile\.us/.*?},
+	add => sub { Get::FlyfileUs->new( @_ ) },
+};
+
+# }}}
 package Link::RaidRush; # {{{
 
 BEGIN {
@@ -1816,14 +1926,13 @@ sub stage1
 	my $self = shift;
 	delete $self->{referer};
 
-	$self->print("starting...");
+	$self->print("resolving");
 	$self->curl( $self->{url}, \&stage2 );
 }
 
 sub stage2
 {
 	my ($self, $body, $url) = @_;
-	$self->print("starting......");
 	$self->{referer} = $url;
 
 	my @list;
@@ -1858,6 +1967,50 @@ sub stage3
 $getters{"save.raidrush.ws"} = {
 	uri => qr{save\.raidrush\.ws/.*?},
 	add => sub { Link::RaidRush->new( @_ ) },
+};
+
+# }}}
+package Link::ProtectLinks; # {{{
+
+BEGIN {
+	our @ISA;
+	@ISA = qw(Get);
+}
+
+sub new
+{
+	my $proto = shift;
+	my $class = ref $proto || $proto;
+	my $url = shift;
+	Get::makenew( "LINK: protectlinks.com", $class, $url, slots => 8 );
+}
+
+sub stage1
+{
+	my $self = shift;
+
+	$_ = $self->{url};
+	m#^(.*?com/)(redirect\.php\?id=)?(\d+)# or return $self->error( "unsupported url " );
+	
+	$self->{referer} = $1 . $3;
+
+	$self->print( "resolving" );
+	$self->curl( $1 . "redirect.php?id=" . $3 , \&stage2 );
+}
+
+sub stage2
+{
+	my ($self, $body, $url) = @_;
+
+	$body =~ m#<iframe name="pagetext".*? src="(.*?)"># or return $self->error( "Can't find link" );
+
+	$self->print( "Link: $1" );
+	return $self->finish_links( $1 );
+}
+
+$getters{"protectlinks.com"} = {
+	uri => qr{(www\.)?protectlinks\.com/.*?},
+	add => sub { Link::ProtectLinks->new( @_ ) },
 };
 
 # }}}
