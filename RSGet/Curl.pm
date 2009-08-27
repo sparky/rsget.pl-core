@@ -155,7 +155,7 @@ sub file_init
 
 			open my $f_out, '+<', $fn;
 			seek $f_out, $start, SEEK_SET;
-			p "Continuing '$fn' at " . bignum( $start ) . $old_msg;
+			$supercurl->{get_obj}->log( "Continuing at " . bignum( $start ) . $old_msg );
 
 
 			hadd $supercurl,
@@ -179,7 +179,7 @@ sub file_init
 		my $fn = $supercurl->{fname};
 		my $old = file_backup( $fn );
 		if ( $old ) {
-			p "'$fn' renamed to '$old'";
+			$supercurl->{get_obj}->log(  "Old renamed to '$old'" );
 			rename $fn, $old;
 		}
 		open my $f_out, '>', $fn;
@@ -232,7 +232,7 @@ sub finish
 
 	if ( $supercurl->{file} ) {
 		close $supercurl->{file};
-		$get_obj->print( donemsg( $supercurl ) );
+		$get_obj->print( "DONE " . donemsg( $supercurl ) );
 	}
 
 	if ( $err ) {
@@ -244,7 +244,8 @@ sub finish
 			RSGet::Dispatch::remove_interface( $if, "Interface $if is dead" );
 			$get_obj->{_abort} = "Interface $if is dead";
 		} elsif ( $error =~ /transfer closed with (\d+) bytes remaining to read/ ) {
-			$get_obj->{_abort} = "PARTIAL, " . bignum( $1 ) . " bytes left";
+			RSGet::Dispatch::mark_used( $get_obj );
+			$get_obj->{_abort} = "PARTIAL " . donemsg( $supercurl );
 		}
 		$get_obj->problem();
 		return undef;
@@ -371,7 +372,7 @@ sub donemsg
 	my $eta = s2string( $time_diff );
 	my $speed = sprintf "%.2f", $size_diff / ( $time_diff * 1024 );
 
-	return "DONE " . bignum( $supercurl->{size_got} ) . "; ${speed}KB/s $eta";
+	return bignum( $supercurl->{size_got} ) . "; ${speed}KB/s $eta";
 }
 
 

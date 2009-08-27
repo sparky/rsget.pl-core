@@ -217,6 +217,12 @@ EOF
 		} elsif ( s/^MULTI\s*\(// ) {
 			p_ret( "multi" );
 			p_line();
+		} elsif ( s/^PRINT\s*\(// ) {
+			pr $space . '$self->print(';
+			p_line();
+		} elsif ( s/^LOG\s*\(// ) {
+			pr $space . '$self->log(';
+			p_line();
 		} elsif ( s/^!\s+// ) {
 			my $line = quotemeta $_;
 			pr $space . 'return $self->problem( "'. $line .'" ) unless ';

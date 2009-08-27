@@ -65,6 +65,11 @@ sub add_text
 		}
 
 		$reread = 2;
+	} elsif ( $type eq "text" ) {
+		foreach ( split /\n/, $text ) {
+			s/\s+$//;
+			push @added_text, $_."\n";
+		}
 	} elsif ( $type eq "comment" ) {
 		foreach ( split /\n/, $text ) {
 			s/\s+$//;

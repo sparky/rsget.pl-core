@@ -69,6 +69,7 @@ sub find_free_if
 		return "";
 	}
 
+	my %by_pos = map { $interfaces[ $_ ] => $_ } (0..$#interfaces);
 	my %by_if = map { $_ => 0 } @interfaces;
 	foreach ( values %$working ) {
 		next unless $_->{_pkg} eq $pkg;
@@ -81,8 +82,8 @@ sub find_free_if
 
 	my $lu = $last_used{$pkg} ||= {};
 	my @min_if = sort {
-		my $_a = $lu->{ $a } || 0;
-		my $_b = $lu->{ $b } || 0;
+		my $_a = $lu->{ $a } || $by_pos{ $a };
+		my $_b = $lu->{ $b } || $by_pos{ $b };
 		$_a <=> $_b
 	} grep { $by_if{ $_ } <= $min } keys %by_if;
 	return $min_if[ 0 ];

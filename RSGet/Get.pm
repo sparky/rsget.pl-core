@@ -55,6 +55,19 @@ sub DESTROY
 	}
 }
 
+sub log
+{
+	my $self = shift;
+	my $text = shift;
+	my $line = $self->{_line};
+	return unless $line;
+
+	my $outifstr = $self->{_outif} ? "[$self->{_outif}]" :  "";
+	my $getter = $getters{ $self->{_pkg} };
+	new RSGet::Line( "[$getter->{short}]$outifstr ", $self->{_name} . ": " . $text );
+}
+
+
 sub print
 {
 	my $self = shift;
