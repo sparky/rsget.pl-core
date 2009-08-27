@@ -6,15 +6,17 @@
 use strict;
 use warnings;
 
-our $data_path = $ENV{PWD};
+our $data_path;
+BEGIN {
+	$data_path = $ENV{PWD};
+	unshift @INC, $data_path;
+}
 
 use Time::HiRes;
-
-unshift @INC, $data_path;
+use RSGet::Line;
 use RSGet::Tools;
 use RSGet::Processor;
 use RSGet::Curl;
-use RSGet::Line;
 use RSGet::FileList;
 use RSGet::Get;
 use RSGet::Dispatch;
