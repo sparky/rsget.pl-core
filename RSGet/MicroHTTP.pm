@@ -52,14 +52,10 @@ sub perform
 	return @ret;
 }
 
-my $actual_client;
-
 sub request
 {
 	my $client = shift;
-	$actual_client = $client;
 	local $SIG{ALRM} = sub {
-		print $actual_client "Close !\n";
 		die "HTTP Frozen !\n";
 	};
 	alarm 5; # XXX: this must be fixed

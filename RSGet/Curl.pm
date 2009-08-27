@@ -237,7 +237,7 @@ sub finish
 
 	if ( $err ) {
 		my $error = $curl->errbuf;
-		warn "error($err): $error\n";
+		#warn "error($err): $error\n";
 		$get_obj->print( "error($err): $error" );
 		if ( $error =~ /Couldn't bind to '(.*)'/ ) {
 			my $if = $1;
