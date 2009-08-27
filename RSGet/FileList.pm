@@ -5,9 +5,19 @@ use warnings;
 use URI::Escape;
 use RSGet::Tools;
 our $file = 'get.list';
+my $file_swp = '.get.list.swp';
 our $reread = 1;
 our %uri_options; # options to be saved
 
+sub set_file
+{
+	my $file = shift;
+	die "Can't read '$file'\n" unless -r $file;
+	p "Using '$file' file list\n";
+	my $make_swp = $settings{make_swp} || '.${file}.swp';
+	$file_swp = eval "\"$make_swp\"";
+	p "Using '$file_swp' as file lock\n";
+}
 sub need_update
 {
 	$reread = 1;
@@ -196,7 +206,7 @@ sub readlist
 	}
 	close $list;
 
-	unless ( -e ".${file}.swp" ) {
+	unless ( -e $file_swp ) {
 		open my $newlist, '>', $file . ".tmp";
 		print $newlist @newlist;
 		print $newlist @added_text;

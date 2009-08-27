@@ -24,14 +24,17 @@ $SIG{CHLD} = "IGNORE";
 my $http = undef;
 while ( my $arg = shift @ARGV ) {
 	if ( $arg eq '-i' ) {
-		RSGet::Dispatch::add_interface( shift @ARGV || die "argument missing" );
+		my $ifs = shift @ARGV || die "argument missing";
+		RSGet::Dispatch::add_interface( $ifs );
 	} elsif ( $arg eq '-s' ) {
 		require RSGet::MicroHTTP;
-		$http = new RSGet::MicroHTTP( shift @ARGV || die "port missing" );
-		p "HTTP server " . ( $http ? "started" : "failed" ) ;
+		my $port = shift @ARGV || die "port missing";
+		$http = new RSGet::MicroHTTP( $port );
+		p "HTTP server " . ( $http ? "started on port $port" : "failed" ) ;
 	} elsif ( $arg eq '-o' ) {
 		my $data = shift @ARGV;
 		my $o = eval "{ $data }";
+		die "Can't process settings: $@\n" if $@;
 		if ( $o and ref $o ) {
 			hadd \%settings, %$o;
 		}
@@ -39,8 +42,7 @@ while ( my $arg = shift @ARGV ) {
 		$RSGet::FileList::file = $arg;
 	}
 }
-p "Using '$RSGet::FileList::file' file list\n";
-die "Can't read the list\n" unless -r $RSGet::FileList::file;
+RSGet::FileList::set_file( $RSGet::FileList::file );
 
 if ( keys %settings ) {
 	p "Settings:";
