@@ -20,36 +20,54 @@ use RSGet::Curl;
 use RSGet::FileList;
 use RSGet::Get;
 use RSGet::Dispatch;
+use RSGet::ListManager;
 $SIG{CHLD} = "IGNORE";
+
+%settings = (
+	backup => "copy,move",
+	# backup_suf => "~",
+	logging => 0,
+	list_lock => '.${file}.swp', # vim-like swap file
+	errorlog => 0,
+);
 
 # read options
 my $http = undef;
+my $flist = 'get.list';
 while ( my $arg = shift @ARGV ) {
 	if ( $arg eq '-i' ) {
 		my $ifs = shift @ARGV || die "argument missing";
 		RSGet::Dispatch::add_interface( $ifs );
-	} elsif ( $arg eq '-s' ) {
-		require RSGet::MicroHTTP;
+	} elsif ( $arg eq '-p' ) {
+		require RSGet::HTTPServer;
 		my $port = shift @ARGV || die "port missing";
-		$http = new RSGet::MicroHTTP( $port );
+		$http = new RSGet::HTTPServer( $port );
 		p "HTTP server " . ( $http ? "started on port $port" : "failed" ) ;
-	} elsif ( $arg eq '-o' ) {
+	} elsif ( $arg eq '-s' ) {
 		my $data = shift @ARGV;
 		my $o = eval "{ $data }";
 		die "Can't process settings: $@\n" if $@;
 		if ( $o and ref $o ) {
 			hadd \%settings, %$o;
 		}
+	} elsif ( $arg =~ s/^--(.*?)=// ) {
+		$settings{ $1 } = $arg;
+	} elsif ( $arg =~ s/^--(.*)// ) {
+		my $key = $1;
+		my $var = shift @ARGV;
+		die "argument missing" unless defined $var;
+		$settings{ $key } = $var;
 	} else {
-		$RSGet::FileList::file = $arg;
+		$flist = $arg;
 	}
 }
-RSGet::FileList::set_file( $RSGet::FileList::file );
-
 if ( keys %settings ) {
 	p "Settings:";
 	hprint \%settings;
 }
+
+RSGet::FileList::set_file( $flist );
+
 new RSGet::Line();
 
 # add getters
@@ -82,7 +100,7 @@ for (;;) {
 			Time::HiRes::sleep(0.050);
 		}
 	} else {
-			Time::HiRes::sleep(0.250);
+		Time::HiRes::sleep(0.250);
 	}
 	RSGet::Curl::update_status();
 	RSGet::Line::update();
@@ -95,7 +113,10 @@ for (;;) {
 	RSGet::Get::wait_update();
 
 	my $getlist = RSGet::FileList::readlist();
-	RSGet::Dispatch::process( $getlist ) if $getlist;
+	if ( $getlist ) {
+		my $allchk = RSGet::Dispatch::process( $getlist );
+		RSGet::ListManager::autoadd( $getlist );
+	}
 }
 
 
