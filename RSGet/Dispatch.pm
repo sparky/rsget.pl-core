@@ -5,21 +5,13 @@ use warnings;
 use RSGet::Tools;
 
 our %downloading;
-our %downloaded;
 our %checking;
-our %checked; # HASH for valid, SCALAR if error
 our %resolving;
-our %resolved;
 
 my %working = (
 	get => \%downloading,
 	check => \%checking,
 	link => \%resolving,
-);
-my %finished = (
-	get => \%downloaded,
-	check => \%checked,
-	link => \%resolved,
 );
 
 my @interfaces;
@@ -99,27 +91,6 @@ sub mark_used
 	$lu->{$if} = time;
 }
 
-sub is_error
-{
-	my $uri = shift;
-	my $c = $checked{ $uri };
-	return undef unless defined $c;
-	if ( $c and not ref $c ) {
-		return $c;
-	}
-	return 0;
-}
-sub is_ok
-{
-	my $uri = shift;
-	my $c = $checked{ $uri };
-	return undef unless defined $c;
-	if ( $c and ref $c and ref $c eq "HASH" ) {
-		return $c;
-	}
-	return 0;
-}
-
 sub finished
 {
 	my $obj = shift;
@@ -129,12 +100,8 @@ sub finished
 	my $working = $working{ $cmd };
 	delete $working->{ $uri };
 
-	if ( $status ) {
-		my $finished = $finished{ $cmd };
-		$finished->{ $uri } = $status;
-	}
 
-	$RSGet::FileList::reread = 1;
+	RSGet::FileList::update();
 }
 
 sub run
@@ -142,30 +109,38 @@ sub run
 	my ( $cmd, $uri, $getter, $options ) = @_;
 	my $class = $getter->{class};
 	$cmd = "link" if $class eq "Link";
-	#p "run( $cmd, $uri, ... )";
 
-	my $finished = $finished{ $cmd };
-	my $f = $finished->{ $uri };
-	return $f if defined $f;
-	#p "-> not finished";
+	return if $options->{error};
 
 	my $working = $working{ $cmd };
 	my $w = $working->{ $uri };
 	return $w if defined $w;
-	#p "-> not working";
 
 	my $pkg = $getter->{pkg};
 	my $outif = find_free_if( $pkg, $working, ($cmd eq "get" ? ($getter->{slots} || 1) : 5) );
 	return unless defined $outif;
-	#p "-> got if";
 
 	my $obj = RSGet::Get::new( $pkg, $cmd, $uri, $options, $outif );
 	$working->{ $uri } = $obj if $obj;
-	#p "run( $cmd, $uri, ... ) -> $obj" if $obj;
 	
-	$RSGet::FileList::reread = 1;
-
 	return $obj;
+}
+
+sub check
+{
+	my $uri = shift;
+	my $getter = shift;
+	my $options = shift;
+
+	return $options if $options->{error};
+	if ( $getter->{class} eq "Link" ) {
+		return $options if $options->{link1};
+	} else {
+		return $options if $options->{size} or $options->{asize};
+	}
+
+	run( "check", $uri, $getter, $options );
+	return undef;
 }
 
 sub process
@@ -174,50 +149,79 @@ sub process
 
 	my %num_by_pkg;
 	my %all_uris;
+	my $to_dl = 0;
 	foreach my $line ( @$getlist ) {
-		my ( $uris, $options ) = @$line;
+		next unless ref $line;
+		my $uris = $line->{uris};
+		my $cmd = $line->{cmd};
+
+		if ( $cmd eq "STOP" ) {
+			foreach my $uri ( keys %$uris ) {
+				if ( my $obj = $downloading{$uri} ) {
+					$obj->{_abort} = "Stopped";
+				}
+			}
+			next;
+		}
+		next unless $cmd eq "GET";
+
+		$to_dl++;
 		foreach my $uri ( keys %$uris ) {
-			my $getter = $uris->{ $uri };
+			my ( $getter, $opts ) = @{ $uris->{ $uri } };
+			if ( $opts->{error} ) {
+				if ( my $obj = $downloading{$uri} ) {
+					$obj->{_abort} = "Stopped";
+				}
+				next;
+			}
 			$all_uris{ $uri } = 1;
 			my $pkg = $getter->{pkg};
 			$num_by_pkg{ $pkg } ||= 0;
 			$num_by_pkg{ $pkg }++;
 		}
 	}
-	abort_missing( \%all_uris, $_ ) foreach values %working;
+
+	abort_missing( \%all_uris, \%downloading );
 	RSGet::Line::status(
-		'to download' => scalar @$getlist,
+		'to download' => $to_dl,
 		'downloading' => scalar keys %downloading,
 		'resolving links' => scalar keys %resolving,
 		'checking URIs' => scalar keys %checking,
 	);
 
-	my $all_valid = 1;
-	foreach my $line ( @$getlist ) {
-		my ( $uris, $options ) = @$line;
+	my $all_checked = 1;
+	EACH_LINE: foreach my $line ( @$getlist ) {
+		next unless ref $line;
+
+		my ( $cmd, $globals, $uris ) = @$line{ qw(cmd globals uris) };
+		next if $cmd eq "DONE";
+
+		my %pkg_by_uri;
+
 		foreach my $uri ( keys %$uris ) {
-			my $getter = $uris->{ $uri };
-			my $ok = is_ok( $uri );
-			#p "$uri - $ok";
-			if ( not defined $ok ) {
-				run( "check", $uri, $getter, $options );
-				$all_valid = 0;
-			} elsif ( not $ok ) {
-				$all_valid = 0;
-			}
+			my ( $getter, $options ) = @{ $uris->{ $uri } };
+			$pkg_by_uri{ $uri } = $getter->{pkg};
+			my $chk = check( $uri, $getter, { %$options, %$globals } );
+			$all_checked = 0 unless $chk;
 		}
 
-		next unless $all_valid;
+		next unless $all_checked;
+		next unless $cmd eq "GET";
+
+		# is it running already ?
+		foreach my $uri ( keys %$uris ) {
+			next EACH_LINE if $working{get}->{ $uri };
+		}
 
 		foreach my $uri ( sort {
-					my $a_pkg = $uris->{ $a }->{pkg};
-					my $b_pkg = $uris->{ $b }->{pkg};
-					$num_by_pkg{ $a_pkg } <=> $num_by_pkg{ $b_pkg }
+					$num_by_pkg{ $pkg_by_uri{ $a} } <=> $num_by_pkg{ $pkg_by_uri{ $b } }
 				} keys %$uris ) {
-			my $getter = $uris->{ $uri };
-			last if run( "get", $uri, $getter, $options );
+			my ( $getter, $options ) = @{ $uris->{ $uri } };
+			next EACH_LINE if run( "get", $uri, $getter, { %$options, %$globals } );
 		}
 	}
+
+	return $all_checked;
 }
 
 sub abort_missing
@@ -225,24 +229,21 @@ sub abort_missing
 	my $all = shift;
 	my $running = shift;
 	foreach ( keys %$running ) {
-		next if exists $all->{$_};
+		next if $all->{$_};
 		my $obj = $running->{$_};
-		$obj->{_abort} = "Removed from the list!";
+		$obj->{_abort} = "Stopped or removed from the list!";
 	}
 }
 
-sub done
+sub getter
 {
 	my $uri = shift;
-	my $getter = shift;
-
-	my $class = $getter->{class};
-	my $cmd = $class eq "Link" ? "link" : "get";
-
-	my $f = $finished{ $cmd }->{ $uri };
-	return $f if defined $f;
-	return undef;
+	my @g = grep { $uri =~ m/^http:\/\/(:?www\.)?$_->{uri}/ } values %getters;
+	return undef unless @g;
+	return $g[0];
 }
+
+
 
 1;
 

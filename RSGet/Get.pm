@@ -9,7 +9,11 @@ my %cookies;
 sub make_cookie
 {
 	my $c = shift;
+	my $cmd = shift;
 	return () unless $c;
+	unless ( $c =~ s/^!// ) {
+		return if $cmd eq "check";
+	}
 	$cookies{ $c } = 1 unless $cookies{ $c };
 	my $n = $cookies{ $c }++;
 
@@ -31,16 +35,18 @@ sub new
 		_cmd => $cmd,
 		_pkg => $pkg,
 		_outif => $outif,
-		make_cookie( $getter->{cookie} ),
+		make_cookie( $getter->{cookie}, $cmd ),
 	};
 	bless $self, $pkg;
+	$self->bestinfo();
 
-	if ( $cmd eq "get" ) {
+	if ( $settings{logging} > 1 or $cmd eq "get" ) {
 		my $outifstr = $outif ? "[$outif]" :  "";
+
 		hadd $self,
-			_line => new RSGet::Line( "[$getter->{short}]$outifstr " ),
-			_name => $options->{fname} || ($uri =~ m{([^/]+)/*$})[0];
+			_line => new RSGet::Line( "[$getter->{short}]$outifstr " );
 		$self->print( "start" );
+		$self->linedata();
 	}
 
 	$self->start();
@@ -67,6 +73,22 @@ sub log
 	new RSGet::Line( "[$getter->{short}]$outifstr ", $self->{_name} . ": " . $text );
 }
 
+sub search
+{
+	my $self = shift;
+	my %search = @_;
+
+	foreach my $name ( keys %search ) {
+		my $search = $search{$name};
+		if ( m/$search/ ) {
+			$self->{$name} = $1;
+		} else {
+			$self->problem( "Can't find '$name': $search" );
+			return 1;
+		}
+	}
+	return 0;
+}
 
 sub print
 {
@@ -75,6 +97,36 @@ sub print
 	my $line = $self->{_line};
 	return unless $line;
 	$line->print( $self->{_name} . ": " . $text );
+}
+
+sub linedata
+{
+	my $self = shift;
+	my @data = @_;
+	my $line = $self->{_line};
+	return unless $line;
+
+	my %data = (
+		name => $self->{bestname},
+		size => $self->{bestsize},
+		uri => $self->{_uri},
+		@data,
+	);
+
+	$line->linedata( \%data );
+}
+
+sub start
+{
+	my $self = shift;
+
+	foreach ( keys %$self ) {
+		delete $self->{$_} unless /^_/;
+	}
+	delete $self->{_referer};
+	$self->bestinfo();
+
+	return $self->stage0();
 }
 
 sub get
@@ -113,13 +165,13 @@ sub restart
 	my $time = shift || 1;
 	my $msg = shift || "restarting";
 
-	return $self->wait( \&start, $time, $msg );
+	return $self->wait( \&start, $time, $msg, "restart" );
 }
 
 sub multi
 {
 	my $self = shift;
-	return $self->wait( 60 + 240 * rand, \&start, "multi-download not allowed, waiting" );
+	return $self->wait( \&start, -60 - 240 * rand, "multi-download not allowed", "multi" );
 }
 
 sub finish
@@ -133,7 +185,8 @@ sub finish
 	}
 
 	RSGet::Dispatch::mark_used( $self );
-	RSGet::Dispatch::finished( $self, $self->{dlinfo} );
+	RSGet::FileList::save( $self->{_uri}, cmd => "DONE" );
+	RSGet::Dispatch::finished( $self );
 }
 
 sub abort
@@ -147,7 +200,7 @@ sub error
 {
 	my $self = shift;
 	my $msg = shift;
-	if ( $self->{body} ) {
+	if ( $self->{body} and $settings{errorlog} ) {
 		my $n = 0;
 		my $name;
 		do {
@@ -160,15 +213,9 @@ sub error
 		$msg .= "; saved $name";
 	}
 
-	$self->print( $msg );
-	RSGet::Dispatch::finished( $self, $msg );
-}
-
-sub start
-{
-	my $self = shift;
-	$self->clean();
-	return $self->stage0();
+	$self->print( $msg ) || $self->log( $msg );
+	RSGet::FileList::save( $self->{_uri}, options => { error => $msg } );
+	RSGet::Dispatch::finished( $self );
 }
 
 sub problem
@@ -176,72 +223,85 @@ sub problem
 	my $self = shift;
 	my $line = shift;
 	my $msg = $line ? "problem at line: $line" : "unknown problem";
-	if ( ++$self->{_try} < 8 ) {
-		return $self->wait( \&start, 2 ** $self->{_try}, $msg . ", waiting" );
+	my $retry = 8;
+	$retry = 3 if $self->{_cmd} eq "check";
+	if ( ++$self->{_try} < $retry ) {
+		return $self->wait( \&start, -2 ** $self->{_try}, $msg, "problem" );
 	} else {
 		return $self->error( $msg . ", aborting" );
 	}
 }
 
-sub clean
+sub bestinfo
 {
 	my $self = shift;
-	foreach ( keys %$self ) {
-		delete $self->{$_} unless /^_/;
+	my $o = $self->{_opts};
+	my $i = $self->{info};
+
+	my $bestname = $o->{fname}
+		|| $i->{name} || $i->{iname}
+		|| $i->{aname} || $i->{ainame}
+		|| $o->{name} || $o->{iname}
+		|| $o->{aname} || $o->{ainame};
+	unless ( $bestname ) {
+		my $uri = $self->{_uri};
+		$bestname = ($uri =~ m{([^/]+)/*$})[0] || $uri;
 	}
-	delete $self->{_referer};
+	$self->{bestname} = $bestname;
+	$bestname =~ s/\0/(?)/;
+	$self->{_name} = $bestname;
+
+	my $bestsize = $o->{fsize}
+		|| $i->{size} || $i->{asize}
+		|| $o->{size} || $o->{asize}
+		|| "?";
+	$self->{bestsize} = $bestsize;
 }
 
 sub info
 {
 	my $self = shift;
 	my %info = @_;
-	$info{name} = de_ml( $info{name} );
-	$info{kilo} ||= 1024;
+	$info{asize} =~ s/ //g if $info{asize};
+	RSGet::FileList::save( $self->{_uri}, options => \%info );
 
-	$self->{_name} = $self->{_opts}->{fname} || $info{name};
+	$self->{info} = \%info;
+	$self->bestinfo();
+
 	return 0 unless $self->{_cmd} eq "check";
-	#p "info( $self->{_uri} ): $info{name}, $info{size}\n";
-	RSGet::Dispatch::finished( $self, \%info );
+	p "info( $self->{_uri} ): $self->{bestname} ($self->{bestsize})\n"
+		if $settings{logging} > 0;
+	RSGet::Dispatch::finished( $self );
 	return 1;
-}
-
-sub search
-{
-	my $self = shift;
-	my %search = @_;
-
-	foreach my $name ( keys %search ) {
-		my $search = $search{$name};
-		if ( m/$search/ ) {
-			$self->{$name} = $1;
-		} else {
-			$self->problem( "Can't find '$name': $search" );
-			return 1;
-		}
-	}
-	return 0;
 }
 
 sub link
 {
 	my $self = shift;
-	my $links = [ @_ ];
-	RSGet::Dispatch::finished( $self, $links );
+	my %links;
+	my $i = 0;
+	foreach ( @_ ) {
+		$links{ "link" . ++$i } = $_;
+	}
+	RSGet::FileList::save( $self->{_uri}, cmd => "DONE",
+		links => [ @_ ], options => \%links );
+	RSGet::Dispatch::finished( $self );
 	return 1;
 }
 
-sub set_fname
+sub set_finfo
 {
 	my $self = shift;
 	my $fname = shift;
-	$self->{_name} = $fname;
+	my $fsize = shift;
+	my $o = $self->{_opts};
+	$o->{fname} = $fname;
+	$o->{fsize} = $fsize;
+	$self->bestinfo();
 
-	my $opts = $RSGet::FileList::uri_options{ $self->{_uri} } ||= {};
-	hadd $opts,
-		fname => $fname;
-
-	$RSGet::FileList::reread = 1;
+	RSGet::FileList::save( $self->{_uri},
+		globals => { fname => $fname, fsize => $fsize } );
+	RSGet::FileList::update();
 }
 
 my %waiting;
@@ -249,8 +309,11 @@ sub wait
 {
 	my $self = shift;
 	my $next_stage = shift;
-	my $wait = shift() + int rand 10;
+	my $wait = shift;
 	my $msg = shift || "???";
+	my $reason = shift || "wait";
+
+	$self->linedata( wait => $reason );
 
 	my $time = time;
 	delete $self->{wait_until_should};
@@ -260,6 +323,8 @@ sub wait
 		$self->{wait_until_should} = $time + $wait;
 		$wait = $rnd_wait;
 	}
+	$wait = - $wait if $wait < 0;
+	$wait += int rand 10;
 
 	$self->{wait_next} = $next_stage;
 	$self->{wait_msg} = $msg;
@@ -277,6 +342,7 @@ sub wait_finish
 	delete $self->{body};
 	$_ = undef;
 
+	$self->linedata();
 	my $func = $self->{wait_next};
 	&$func( $self );
 }
