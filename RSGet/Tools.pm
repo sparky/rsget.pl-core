@@ -7,7 +7,7 @@ use vars qw(@ISA @EXPORT @EXPORT_OK);
 require Exporter;
 @ISA = qw(Exporter);
 @EXPORT = qw(s2string bignum de_ml hadd hprint p isotime require_prog
-			randomize %getters %settings);
+	dump_to_file randomize %getters %settings);
 @EXPORT_OK = qw();
 
 our %settings;
@@ -91,6 +91,24 @@ sub require_prog
 		return $full if -x $full;
 	}
 	return undef;
+}
+
+sub dump_to_file
+{
+	my $data = shift;
+	my $ext = shift || "txt";
+	my $i = 0;
+	my $file;
+	do {
+		$i++;
+		$file = "dump.$i.$ext";
+	} while ( -e $file );
+
+	open my $f_out, '>', $file;
+	print $f_out $data;
+	close $f_out;
+
+	warn "data dumped to file: $file\n";
 }
 
 1;
