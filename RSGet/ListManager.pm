@@ -287,6 +287,7 @@ sub add_list
 		} while ( exists $all_lists{$id} );
 	}
 	my $list = $all_lists{$id} ||= {};
+	return unless ref $list;
 
 	$list->{comment} ||= [];
 	my $lines = $list->{lines} ||= [];
@@ -373,13 +374,14 @@ sub add_list_update
 	my $lines = $list->{lines};
 	$list->{select_clone} = 1;
 	my @used_save;
-	foreach my $line ( @$lines ) {
+	for ( my $i = 0; $i < scalar @$lines; $i++ ) {
+		my $line = $lines->[$i];
 		next unless ref $line;
 		my $globals = $line->{globals};
 		my $uris = $line->{uris};
 		unless ( keys %$uris ) {
-			$line = "";
-			next;
+			my $l = splice @$lines, $i, 1;
+			redo;
 		}
 
 		foreach my $uri ( keys %$uris ) {
@@ -394,14 +396,16 @@ sub add_list_update
 				hadd $options, %{$save->{options}} if $save->{options};
 
 				if ( my $links = $save->{links} ) {
+					my @new;
 					foreach my $uri ( @$links ) {
 						my $getter = RSGet::Dispatch::getter( $uri );
 						if ( $getter ) {
-							push @$lines, { cmd => "ADD", globals => {}, uris => { $uri => [ $getter, {} ] } };
+							push @new, { cmd => "ADD", globals => {}, uris => { $uri => [ $getter, {} ] } };
 						} else {
-							push @$lines, "# unsupported uri: $uri";
+							push @new, "# unsupported uri: $uri";
 						}
 					}
+					splice @$lines, $i+1, 0, @new;
 				}
 				if ( my $clones = $save->{clones} ) {
 					hadd $uris, %$clones;

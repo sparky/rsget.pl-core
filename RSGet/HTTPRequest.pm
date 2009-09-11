@@ -50,7 +50,7 @@ sub putfile
 		$headers->{Content_Type} = sprintf "text/%s; charset=utf-8", ($1 eq "js" ? "javascript" : "css");
 
 		local $/ = undef;
-		open F_IN, "data/$file";
+		open F_IN, '<', $main::data_path . "/data/" . $file;
 		$_ = <F_IN>;
 		close F_IN;
 
@@ -420,7 +420,7 @@ sub scalar_to_js
 sub f_addform
 {
 	my $id = shift;
-	return '<form action="/add" method="POST"' . ( $id ? '>' : ' target="_blank">' )
+	return '<form action="/add" method="POST"' . ( defined $id ? '>' : ' target="_blank">' )
 		. '<fieldset id="add"><legend>Add links to the list</legend>'
 		. ( $id ? qq#<input type="hidden" name="id" value="$id" /># : '' )
 		. '<textarea cols="100" rows="8" name="links"></textarea>'
@@ -456,6 +456,13 @@ sub f_addlist
 		$r .= '<li class="comment">' . href( $l ) . '</li>';
 	}
 
+	my %cmd_to_color = (
+		DONE => "blue",
+		GET => "green",
+		STOP => "red",
+		ADD => "orange",
+	);
+
 	my $lines = $list->{lines};
 	foreach my $l ( @$lines ) {
 		unless ( ref $l ) {
@@ -463,7 +470,7 @@ sub f_addlist
 			next;
 		}
 
-		$r .= qq#<li class="file green">#;
+		$r .= qq#<li class="file $cmd_to_color{ $l->{cmd} }">#;
 		$r .= qq#<div class="info"><span class="cmd">$l->{cmd}</span></div>#;
 		$r .= '</li>';
 
@@ -491,11 +498,15 @@ sub add
 	$list = RSGet::ListManager::add_list_comment( $post->{comment}, $post->{id} )
 		if $post->{comment};
 
-	$r .= '<fieldset id="f_listask"></fieldset>';
-	$r .= f_addlist( $list );
-	$r .= f_addcomment( $list->{id} );
-	$r .= f_addform( $list->{id} );
-	$r .= qq#<script type="text/javascript">init_add( "$list->{id}" );</script>#;
+	if ( $list ) {
+		$r .= '<fieldset id="f_listask"></fieldset>';
+		$r .= f_addlist( $list );
+		$r .= f_addcomment( $list->{id} );
+		$r .= f_addform( $list->{id} );
+		$r .= qq#<script type="text/javascript">init_add( "$list->{id}" );</script>#;
+	} else {
+		$r .= f_addform( "" );
+	}
 	$r .= xhtml_end();
 
 	return $r;
