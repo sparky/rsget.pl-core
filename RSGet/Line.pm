@@ -6,11 +6,11 @@ use Term::Size;
 
 $| = 1;
 
-my %active;
+our %active;
 my %dead;
-my %status;
-our @active;
 our @dead;
+our $dead_change = 0;
+our %status;
 my $last_line = 0;
 
 my $last_day = -1;
@@ -20,29 +20,33 @@ sub print_dead_lines
 	my $time = sprintf "[%.2d:%.2d:%.2d] ", @l[(2,1,0)];
 
 	my @print;
+	my @newdead;
 
 	if ( $last_day != $l[3] ) {
 		$last_day = $l[3];
 		my $date = sprintf "[Actual date: %d-%.2d-%.2d]", $l[5] + 1900, $l[4] + 1, $l[3];
 		push @print, "\r" . $date . "\033[J\n";
-		push @dead, $date;
+		push @newdead, $date;
 	}
 
 
 	foreach my $key ( sort { $a <=> $b } keys %dead ) {
-		my $line = $dead{$key};
-		my $text = $line->[0] . $line->[1];
+		my $text = $dead{$key};
 		$text = $time . $text if $text =~ /\S/;
 
 		push @print, "\r" . $text . "\033[J\n";
-		push @dead, $text;
+		push @newdead, $text;
 	}
 
 	print @print;
+	if ( @newdead ) {
+		push @dead, @newdead;
+		$dead_change++;
 
-	my $max = 1000;
-	if ( scalar @dead > $max ) {
-		splice @dead, 0, $max - scalar @dead;
+		my $max = 1000;
+		if ( scalar @dead > $max ) {
+			splice @dead, 0, $max - scalar @dead;
+		}
 	}
 
 	%dead = ();
@@ -57,7 +61,6 @@ sub print_status_lines
 	my $date_l = length $date;
 	my $h = $horiz;
 	substr $h, int( (length($horiz) - $date_l ) / 2 ), $date_l, $date;
-	@active = ( " \\$h/ " );
 
 	my @status = ( "rsget.pl -- " );
 	foreach my $name ( sort keys %status ) {
@@ -70,13 +73,13 @@ sub print_status_lines
 			$status[ $#status ] .= $s;
 		}
 	}
+	my @print = ( " \\$h/ " );
 	foreach ( @status ) {
 		my $l = " |" . ( " " x ($columns - 4 - length $_ )) . $_ . "| ";
-		push @active, $l;
+		push @print, $l;
 	}
-	push @active, " /$horiz\\ ";
-	my @print = map { "\r\n$_\033[K" } @active;
-	print @print;
+	push @print, " /$horiz\\ ";
+	print map { "\r\n$_\033[K" } @print;
 	return scalar @print;
 }
 
@@ -93,8 +96,7 @@ sub print_active_lines
 		my $tl = length $line->[0] . $text;
 		substr $text, 4, $tl - $columns + 3, '...'
 			if $tl > $columns;
-		push @print, "\r\n" . $line->[0] . $text . "\033[K";
-		push @active, $line->[0] . $line->[1];
+		push @print, "\r\n\033[K" . $line->[0] . $text;
 	}
 
 	print @print;
@@ -122,10 +124,11 @@ sub new
     my $class = shift;
 	my $head = shift;
 	my $text = shift;
+	my $assoc = shift;
 	$head = "" unless defined $head;
 
 	my $line = "" . ($last_line++);
-	$active{ $line } = [ $head, "" ];
+	$active{ $line } = [ $head, "", $assoc ];
 
 	my $self = \$line;
 	bless $self, $class;
@@ -142,16 +145,26 @@ sub print
 	$text = "" unless defined $text;
 	$text =~ s/\n+$//sg;
 	$text =~ s/\n/ /sg;
+	$text =~ s/\0/***/g;
 	$active{ $line }->[1] = $text;
 
 	return length $text;
 }
 
+sub linedata
+{
+	my $self = shift;
+	my $data = shift;
+	$active{ $$self }->[2] = $data;
+}
+
+
 sub DESTROY
 {
 	my $self = shift;
 	my $line = $$self;
-	$dead{ $line } = $active{ $line };
+	my $l = $active{ $line };
+	$dead{ $line } = $l->[0] . $l->[1];
 	delete $active{ $line };
 }
 
@@ -180,7 +193,7 @@ $SIG{__WARN__} = sub {
 	update();
 };
 
-$SIG{__DIE__} = sub {
+local $SIG{__DIE__} = sub {
 	print_all_lines();
 	print "\n";
 	print "DIED: ", shift, "\n\n";
