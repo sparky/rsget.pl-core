@@ -19,6 +19,9 @@ my $curl_headers = [
 	'Accept-Language: en-us,en;q=0.5',
 	];
 
+# X-Forwarded-For: XX.XX.XXX.XXX
+# Cache-Control: bypass-client=XX.XX.XX.XXX
+
 my %active_curl;
 
 sub new
@@ -84,6 +87,10 @@ sub new
 
 			$supercurl->{fname} = $fn;
 		}
+
+		my $fs = $get_obj->{_opts}->{fsize};
+		$supercurl->{fsize} = $fs if $fs;
+
 		delete $get_obj->{is_html};
 	} else {
 		$get_obj->{is_html} = 1;
@@ -98,7 +105,8 @@ sub new
 sub file_backup
 {
 	my $fn = shift;
-	return undef if $settings{no_backup};
+	my $type = shift;
+	return undef unless $settings{backup} =~ /$type/;
 	return undef unless -r $fn;
 
 	if ( my $s = $settings{backup_suf} ) {
@@ -125,13 +133,13 @@ sub file_init
 		time_start => $time,
 		time_stamp => [ $time, 0, $time, 0, $time, 0 ],
 		size_start => 0,
-		size_got => 0,
-		size_total => 0;
+		size_got => 0;
 
 	{
 		my $mime = $curl->getinfo( CURLINFO_CONTENT_TYPE );
 		if ( $mime =~ m#^text/html# ) {
 			$supercurl->{get_obj}->{is_html} = 1;
+			$supercurl->{size_total} = 0;
 			return;
 		}
 	}
@@ -140,12 +148,28 @@ sub file_init
 		$supercurl->{size_total} = $f_len;
 	}
 
+	my $fname;
+	if ( $supercurl->{head} =~ /^Content-Disposition:\s*attachment;\s*filename\s*=\s*"?(.*?)"?\s*$/im ) {
+		$fname = de_ml( uri_unescape( $1 ) );
+	} else {
+		my $eurl = $curl->getinfo( CURLINFO_EFFECTIVE_URL );
+		$eurl =~ s#^.*/##;
+		$fname = de_ml( uri_unescape( $eurl ) );
+	}
+
 	if ( my $fn = $supercurl->{fname} ) {
+		if ( $fname ne $fn ) {
+			$supercurl->{get_obj}->log( "WARNING: Name mismatch, shoud be '$fname'" );
+		}
+		$fname = $supercurl->{fname};
 		if ( $supercurl->{head} =~ m{^Content-Range:\s*bytes\s*(\d+)-(\d+)(/(\d+))?\s*$}im ) {
 			my ( $start, $stop ) = ( +$1, +$2 );
 			$supercurl->{size_total} = +$4 if $3;
 
-			my $old = file_backup( $fn );
+			$supercurl->{get_obj}->log( "ERROR: Size mismatch: $supercurl->{fsize} != $supercurl->{size_total}" )
+				if $supercurl->{fsize} != $supercurl->{size_total};
+
+			my $old = file_backup( $fn, "copy" );
 			my $old_msg = "";
 			if ( $old ) {
 				rename $fn, $old;
@@ -163,21 +187,19 @@ sub file_init
 				size_start => $start,
 				size_got => $start,
 				time_stamp => [ $time, $start, $time, $start, $time, $start ];
+
+			RSGet::FileList::update(); # to update statistics
 			return;
 		}
-	} elsif ( $supercurl->{head} =~ /^Content-Disposition:\s*attachment;\s*filename\s*=\s*"?(.*?)"?\s*$/im ) {
-		$supercurl->{fname} = de_ml( uri_unescape( $1 ) );
 	} else {
-		my $eurl = $curl->getinfo( CURLINFO_EFFECTIVE_URL );
-		$eurl =~ s#^.*/##;
-		$supercurl->{fname} = de_ml( uri_unescape( $eurl ) );
+		$supercurl->{fname} = $fname;
 	}
 
-	$supercurl->{get_obj}->set_fname( $supercurl->{fname} );
+	$supercurl->{get_obj}->set_finfo( $supercurl->{fname}, $supercurl->{size_total} );
 
 	{
 		my $fn = $supercurl->{fname};
-		my $old = file_backup( $fn );
+		my $old = file_backup( $fn, "move" );
 		if ( $old ) {
 			$supercurl->{get_obj}->log(  "Old renamed to '$old'" );
 			rename $fn, $old;
@@ -235,10 +257,15 @@ sub finish
 		$get_obj->print( "DONE " . donemsg( $supercurl ) );
 	}
 
+	$get_obj->linedata();
+
+	my $eurl = $curl->getinfo( CURLINFO_EFFECTIVE_URL );
+	my $error = $curl->errbuf;
+	$curl = undef; # destroy curl before destroying getter
+
 	if ( $err ) {
-		my $error = $curl->errbuf;
 		#warn "error($err): $error\n";
-		$get_obj->print( "error($err): $error" );
+		$get_obj->print( "ERROR($err): $error" ) if $err ne "aborted";
 		if ( $error =~ /Couldn't bind to '(.*)'/ ) {
 			my $if = $1;
 			RSGet::Dispatch::remove_interface( $if, "Interface $if is dead" );
@@ -246,6 +273,10 @@ sub finish
 		} elsif ( $error =~ /transfer closed with (\d+) bytes remaining to read/ ) {
 			RSGet::Dispatch::mark_used( $get_obj );
 			$get_obj->{_abort} = "PARTIAL " . donemsg( $supercurl );
+		} elsif ( $err eq "aborted" ) {
+
+		} else {
+			$get_obj->log( "ERROR($err): $error" );
 		}
 		$get_obj->problem();
 		return undef;
@@ -263,7 +294,7 @@ sub finish
 		$get_obj->{body} = $supercurl->{body};
 	}
 
-	$get_obj->get_finish( $curl->getinfo( CURLINFO_EFFECTIVE_URL ) );
+	$get_obj->get_finish( $eurl );
 }
 
 sub need_run
@@ -317,8 +348,11 @@ sub update_status
 			@$supercurl{ qw(size_got size_total time_stamp) };
 
 		my $size = bignum( $size_got ) . " / " . bignum( $size_total );
-		$size .= sprintf " [%.2f%%]", $size_got * 100 / $size_total
-			if $size_total > 0;
+		if ( $size_total > 0 ) {
+			my $per = sprintf "%.2f%%", $size_got * 100 / $size_total;
+			$size .= " [$per]";
+			$supercurl->{get_obj}->linedata( prog => $per );
+		}
 
 		if ( $time_stamp->[4] + 30 <= $time ) {
 			@$time_stamp[0..3] = @$time_stamp[2..5];
