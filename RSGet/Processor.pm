@@ -237,14 +237,11 @@ EOF
 	pr @{$parts{perl}};
 	pr "1;";
 
-	my $ret;
-	{
-		local $SIG{__DIE__} = undef;
-		$ret = eval $processed;
-	}
+	my $ret = eval $processed;
 
 	if ( $@ ) {
 		p "Error(s): $@\n";
+		return undef unless $settings{logging} > 0;
 		my $err = $@;
 		return undef unless $err =~ /line \d+/;
 		my @p = split /\n/, $processed;
