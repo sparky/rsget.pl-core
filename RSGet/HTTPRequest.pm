@@ -163,6 +163,7 @@ sub act_info
 	my $name = sgml( $o->{name} );
 	my $size = bignum( $o->{size} );
 	$logo =~ s/ $//;
+	$uri = sgml( $uri );
 
 	my $prog = "";
 	$prog = qq#<div style="width: $o->{prog}"></div># if $o->{prog};

@@ -17,6 +17,7 @@ use POSIX qw(ceil floor);
 sub cmp_range
 {
 	my ($a, $b) = @_;
+	return 0 unless defined $a and defined $b;
 	@$a = reverse @$a if $a->[0] > $a->[1];
 	@$b = reverse @$b if $b->[0] > $b->[1];
 	return -1 if $a->[1] < $b->[0];
@@ -200,9 +201,11 @@ sub check_bad_clones
 	my $globals = shift;
 	my $uris = shift;
 
+	return 0 unless scalar keys %$uris > 1;
 	return 0 unless $globals->{fname};
 	my $sname = simplify_name( $globals->{fname} );
-	my $sizer = size_to_range( $globals->{fsize} );
+	my $sizer = undef;
+	$sizer = size_to_range( $globals->{fsize} ) if $globals->{fsize} > 0;
 
 	my $got_bad = 0;
 	foreach my $uri ( keys %$uris ) {
