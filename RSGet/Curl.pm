@@ -149,7 +149,7 @@ sub file_init
 	}
 
 	my $fname;
-	if ( $supercurl->{head} =~ /^Content-Disposition:\s*attachment;\s*filename\s*=\s*"?(.+?)"?\s*$/i ) {
+	if ( $supercurl->{head} =~ /^Content-Disposition:\s*attachment;\s*filename\s*=\s*"?(.+?)"?;?\s*$/mi ) {
 		$fname = de_ml( uri_unescape( $1 ) );
 	} else {
 		my $eurl = $curl->getinfo( CURLINFO_EFFECTIVE_URL );
@@ -180,7 +180,6 @@ sub file_init
 			open my $f_out, '+<', $fn;
 			seek $f_out, $start, SEEK_SET;
 			$supercurl->{get_obj}->log( "Continuing at " . bignum( $start ) . $old_msg );
-
 
 			hadd $supercurl,
 				file => $f_out,

@@ -23,7 +23,7 @@ sub captcha
 
 	$self->{captcha_md5} = $md5;
 	$self->{captcha_next} = $next_stage;
-	$self->{captcha_until} = time + 100;
+	$self->{captcha_until} = time + 200;
 
 	my $id = 0;
 	++$id while exists $waiting{ $id };

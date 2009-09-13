@@ -112,8 +112,9 @@ sub request
 		print $client $print;
 		close $client;
 
-		# don't exit if we didn't actually fork
-		exit 0 if defined $kid;
+		# make sure no DESTROY blocks are called
+		require POSIX;
+		POSIX::_exit( 0 );
 	};
 
 	close $client;
