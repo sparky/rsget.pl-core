@@ -149,7 +149,7 @@ sub file_init
 	}
 
 	my $fname;
-	if ( $supercurl->{head} =~ /^Content-Disposition:\s*attachment;\s*filename\s*=\s*"?(.*?)"?\s*$/im ) {
+	if ( $supercurl->{head} =~ /^Content-Disposition:\s*attachment;\s*filename\s*=\s*"?(.+?)"?\s*$/i ) {
 		$fname = de_ml( uri_unescape( $1 ) );
 	} else {
 		my $eurl = $curl->getinfo( CURLINFO_EFFECTIVE_URL );

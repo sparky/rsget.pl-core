@@ -71,6 +71,7 @@ sub request
 	}
 	
 	my( $method, $file, $ignore ) = split /\s+/, $request;
+	$file =~ s#^/+##;
 
 	my %post;
 	if ( uc $method eq "POST" and length $post ) {
@@ -81,9 +82,10 @@ sub request
 			s/%(..)/chr hex $1/eg;
 			$post{ $key } = $_;
 		}
+	} elsif ( $file =~ s/\?(.*)// ) {
+		my $get = $1;
+		%post = map /^(.*?)=(.*)/, split /;+/, $get;
 	}
-
-	$file =~ s#^/+##;
 	my $print;
 	if ( my $func = $RSGet::HTTPRequest::handlers{$file} ) {
 		$print = "HTTP/1.1 200 OK\r\n";

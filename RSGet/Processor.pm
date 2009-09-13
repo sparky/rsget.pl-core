@@ -141,7 +141,8 @@ EOF
 		s/^(\s+)//;
 		$space = $1;
 
-		if ( s/^GET\s*\(// ) {
+		if ( s/^(GET|WAIT|CAPTCHA)\s*\(// ) {
+			my $cmd = lc $1;
 			my $next_stage = "stage" . ++$stage;
 			my @skip;
 			push @skip, $_;
@@ -153,15 +154,16 @@ EOF
 				$next_stage = $1;
 				shift @machine;
 			}
-			p_ret( "get", "\\&$next_stage" );
+			p_ret( $cmd, "\\&$next_stage" );
 			foreach ( @skip ) {
 				p_line();
 			}
 			p_subend();
 			p_sub( $next_stage );
-		} elsif ( s/^GET_NEXT\s*\(\s*(.*?)\s*,// ) {
-			my $next_stage = $1;
-			p_ret( "get", "\\&$1" );
+		} elsif ( s/^(GET|WAIT|CAPTCHA)_NEXT\s*\(\s*(.*?)\s*,// ) {
+			my $cmd = lc $1;
+			my $next_stage = $2;
+			p_ret( $cmd, "\\&$2" );
 			p_line();
 		} elsif ( s/^ERROR\s*\(// ) {
 			p_ret( "error" );
@@ -171,28 +173,6 @@ EOF
 			p_line();
 		} elsif ( s/^SEARCH\s*\(// ) {
 			pr $space . 'return if $self->search( ';
-			p_line();
-		} elsif ( s/^WAIT\s*\(// ) {
-			my $next_stage = "stage" . ++$stage;
-			my @skip;
-			push @skip, $_;
-			until ( /;\s*$/ ) {
-				$_ = shift @machine;
-				push @skip, $_;
-			}
-			if ( $machine[0] =~ s/^(stage_.*?):\s*$// ) {
-				$next_stage = $1;
-				shift @machine;
-			}
-			p_ret( "wait", "\\&$next_stage" );
-			foreach ( @skip ) {
-				p_line();
-			}
-			p_subend();
-			p_sub( $next_stage );
-		} elsif ( s/^WAIT_NEXT\s*\(\s*(.*?)\s*,// ) {
-			my $next_stage = $1;
-			p_ret( "wait", "\\&$next_stage" );
 			p_line();
 		} elsif ( s/^RESTART\s*\(\s*// ) {
 			p_ret( "restart" );

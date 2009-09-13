@@ -15,6 +15,7 @@ our %handlers = (
 	"log" => \&log,
 	add => \&add,
 	add_update => \&add_update,
+	captcha => \&captcha,
 );
 
 my %lastid;
@@ -65,6 +66,7 @@ sub main_page
 	my $r = xhtml_start( "main.js" );
 
 	$r .= f_status();
+	$r .= f_notify();
 	$r .= f_active();
 	$r .= f_log( 6 );
 	$r .= f_dllist();
@@ -83,6 +85,8 @@ sub main_update
 	$r .= f_status();
 
 	command( $post->{exec} ) if $post->{exec};
+
+	$r .= f_notify();
 
 	my $data = {};
 	my $nowactive = scalar keys %RSGet::Line::active;
@@ -130,6 +134,25 @@ sub f_status
 	return $r;
 }
 
+sub f_notify
+{
+	my $r = '<fieldset id="f_notify"><legend>notify</legend><ul>';
+	foreach my $md5 ( keys %RSGet::Captcha::needed ) {
+		$r .= qq#<li id="captcha_$md5" class="captcha"><img src="/captcha?md5=$md5" />#;
+		$r .= qq#<iframe id="ic_$md5" name="ic_$md5" src="about:blank" />#;
+		$r .= qq#<form method="post" action="/captcha" target="ic_$md5">#;
+		$r .= qq#<input type="hidden" name="md5" value="$md5" />#;
+		$r .= qq#<input type="text" name="solve" />#;
+		$r .= qq#<input type="submit" name="ok" value="ok" />#;
+		$r .= qq#</form></li>#;
+	}
+
+	$r .= '</ul></fieldset>';
+	return $r;
+}
+
+
+
 sub f_active
 {
 	$lastid{act} = {};
@@ -138,7 +161,6 @@ sub f_active
 		my $line = $RSGet::Line::active{ $key };
 
 		$r .= act_info( $line );
-		#$r .= qq#<li><span>$name</span>$value</li>\n#;
 	}
 
 	$r .= '</ul></fieldset>';
@@ -161,7 +183,7 @@ sub act_info
 	my $uri = $o->{uri};
 	my $uriid = makeid( "act", $uri, $uri );
 	my $name = sgml( $o->{name} );
-	my $size = bignum( $o->{size} );
+	my $size = ($o->{size} =~ /^\d+$/) ? bignum( $o->{size} ) . " bytes" : sgml( $o->{size} );
 	$logo =~ s/ $//;
 	$uri = sgml( $uri );
 
@@ -174,7 +196,7 @@ sub act_info
 	return qq#<li id="$uriid" class="active $color">#
 		. qq#<span class="logo">$logo</span>#
 		. qq#<div class="href"><a href="$uri">$uri</a></div>#
-		. qq#<div class="info"><span class="size">$size bytes</span>$name</div>#
+		. qq#<div class="info"><span class="size">$size</span>$name</div>#
 		. qq#<div class="progress">$prog<span>$line</span></div>#
 		. '</li>';
 }
@@ -240,7 +262,7 @@ sub file_info
 		|| $o->{aname} || $o->{ainame};
 	$bestname = sgml( $bestname || "???" );
 
-	my $bestsize = $o->{size} ? bignum( $o->{size} ) : sgml( $o->{asize} || "?" );
+	my $bestsize = $o->{size} ? bignum( $o->{size} ) . " bytes" : sgml( $o->{asize} || "?" );
 	my $uriid = makeid( $id_type, $uri, $uri );
 
 	my $color = "blue";
@@ -606,6 +628,32 @@ sub add_update
 	$r .= xhtml_end();
 
 	return $r;
+}
+
+sub captcha
+{
+	my ( $file, $post, $headers ) = @_;
+
+	my $ct;
+	my $data;
+	my $md5 = $post->{md5};
+	if ( $post->{solve} ) {
+		delete $RSGet::Captcha::needed{ $md5 };
+		$RSGet::Captcha::solved{ $md5 } = $post->{solve};
+		$headers->{Content_Type} = "text/plain";
+		return $post->{solve};
+	} elsif ( my $n = $RSGet::Captcha::needed{ $md5 } ) {
+		( $ct, $data ) = @$n;
+	} else {
+		$ct = "image/png";
+		local $/ = undef;
+		open F_IN, '<', $main::data_path . "/data/error.png";
+		$data = <F_IN>;
+		close F_IN;
+	}
+
+	$headers->{Content_Type} = $ct;
+	return $data;
 }
 
 1;
