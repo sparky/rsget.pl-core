@@ -75,7 +75,6 @@ sub readlist
 	push @list, @added;
 
 	my @new;
-	my @end;
 
 	my @used_save;
 	my %all_uri;
@@ -83,9 +82,9 @@ sub readlist
 	while ( my $line = shift @list ) {
 		chomp $line;
 		if ( $line =~ /^__END__\s*$/ ) { # end of the list
-			push @end, $line . "\n";
+			push @new, $line . "\n";
 			push @actual, $line;
-			push @end, @list;
+			push @new, @list;
 			push @actual, @list;
 			last;
 		}
