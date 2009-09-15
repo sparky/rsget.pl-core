@@ -19,6 +19,8 @@ use RSGet::Processor;
 use RSGet::Curl;
 use RSGet::FileList;
 use RSGet::Get;
+use RSGet::Wait;
+use RSGet::Captcha;
 use RSGet::Dispatch;
 use RSGet::ListManager;
 $SIG{CHLD} = "IGNORE";
@@ -29,6 +31,8 @@ $SIG{CHLD} = "IGNORE";
 	logging => 0,
 	list_lock => '.${file}.swp', # vim-like swap file
 	errorlog => 0,
+	outdir => '.',
+	workdir => '.',
 );
 
 # read options
@@ -110,7 +114,8 @@ for (;;) {
 	next if $time == $lasttime;
 	$lasttime = $time;
 
-	RSGet::Get::wait_update();
+	RSGet::Wait::wait_update();
+	RSGet::Captcha::captcha_update();
 
 	my $getlist = RSGet::FileList::readlist();
 	if ( $getlist ) {

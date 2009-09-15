@@ -8,6 +8,7 @@ use WWW::Curl::Easy;
 use WWW::Curl::Multi;
 use URI::Escape;
 use File::Copy;
+use File::Path;
 use Fcntl qw(SEEK_SET);
 
 my $curl_multi = new WWW::Curl::Multi;
@@ -80,12 +81,14 @@ sub new
 
 		# if file exists try to continue
 		my $fn = $get_obj->{_opts}->{fname};
-		if ( $fn and -r $fn ) {
+		my $fp = filepath( $settings{workdir}, $get_obj->{_opts}->{dir}, $fn );
+		if ( $fp and -r $fp ) {
 			my $got = (stat(_))[7];
 			#p "File '$fn' already exists, trying to continue at $got";
 			$curl->setopt( CURLOPT_RANGE, "$got-" );
 
 			$supercurl->{fname} = $fn;
+			$supercurl->{filepath} = $fp
 		}
 
 		my $fs = $get_obj->{_opts}->{fsize};
@@ -127,6 +130,7 @@ sub file_init
 {
 	my $supercurl = shift;
 	my $curl = $supercurl->{curl};
+	my $get_obj = $supercurl->{get_obj};
 	my $time = time;
 
 	hadd $supercurl,
@@ -138,7 +142,7 @@ sub file_init
 	{
 		my $mime = $curl->getinfo( CURLINFO_CONTENT_TYPE );
 		if ( $mime =~ m#^text/html# ) {
-			$supercurl->{get_obj}->{is_html} = 1;
+			$get_obj->{is_html} = 1;
 			$supercurl->{size_total} = 0;
 			return;
 		}
@@ -159,27 +163,29 @@ sub file_init
 
 	if ( my $fn = $supercurl->{fname} ) {
 		if ( $fname ne $fn ) {
-			$supercurl->{get_obj}->log( "WARNING: Name mismatch, shoud be '$fname'" );
+			$get_obj->log( "WARNING: Name mismatch, shoud be '$fname'" );
 		}
 		$fname = $supercurl->{fname};
 		if ( $supercurl->{head} =~ m{^Content-Range:\s*bytes\s*(\d+)-(\d+)(/(\d+))?\s*$}im ) {
 			my ( $start, $stop ) = ( +$1, +$2 );
 			$supercurl->{size_total} = +$4 if $3;
 
-			$supercurl->{get_obj}->log( "ERROR: Size mismatch: $supercurl->{fsize} != $supercurl->{size_total}" )
+			$get_obj->log( "ERROR: Size mismatch: $supercurl->{fsize} != $supercurl->{size_total}" )
 				if $supercurl->{fsize} != $supercurl->{size_total};
 
-			my $old = file_backup( $fn, "copy" );
+			my $fp = $supercurl->{filepath};
+			my $old = file_backup( $fp, "copy" );
 			my $old_msg = "";
 			if ( $old ) {
-				rename $fn, $old;
-				copy( $old, $fn ) || die "Cannot create backup file: $!";
+				rename $fp, $old;
+				copy( $old, $fp ) || die "Cannot create backup file: $!";
+				$old =~ s#.*/##;
 				$old_msg = ", backup saved as '$old'";
 			}
 
-			open my $f_out, '+<', $fn;
+			open my $f_out, '+<', $fp;
 			seek $f_out, $start, SEEK_SET;
-			$supercurl->{get_obj}->log( "Continuing at " . bignum( $start ) . $old_msg );
+			$get_obj->log( "Continuing at " . bignum( $start ) . $old_msg );
 
 			hadd $supercurl,
 				file => $f_out,
@@ -194,14 +200,16 @@ sub file_init
 		$supercurl->{fname} = $fname;
 	}
 
-	$supercurl->{get_obj}->set_finfo( $supercurl->{fname}, $supercurl->{size_total} );
+	$get_obj->set_finfo( $supercurl->{fname}, $supercurl->{size_total} );
 
 	{
-		my $fn = $supercurl->{fname};
+		my $fn = $supercurl->{filepath} =
+			filepath( $settings{workdir}, $get_obj->{_opts}->{dir}, $supercurl->{fname} );
 		my $old = file_backup( $fn, "move" );
 		if ( $old ) {
-			$supercurl->{get_obj}->log(  "Old renamed to '$old'" );
 			rename $fn, $old;
+			$old =~ s#.*/##;
+			$get_obj->log( "Old renamed to '$old'" );
 		}
 		open my $f_out, '>', $fn;
 		$supercurl->{file} = $f_out;
@@ -234,8 +242,20 @@ sub body_scalar
 	return length $chunk;
 }
 
+sub filepath
+{
+	my $outdir = shift || '.';
+	my $subdir = shift;
+	my $fname = shift;
 
-
+	$outdir .= '/' . $subdir if $subdir;
+	unless ( -d $outdir ) {
+		unless ( mkpath( $outdir ) ) {
+			$outdir = '.';
+		}
+	}
+	return $outdir . '/' . $fname;
+}
 
 sub finish
 {
@@ -285,6 +305,8 @@ sub finish
 
 	my $func = $get_obj->{after_curl};
 	if ( $supercurl->{file} ) {
+		rename $supercurl->{filepath},
+			filepath( $settings{outdir}, $get_obj->{_opts}->{dir}, $supercurl->{fname} );
 		$get_obj->{dlinfo} = sprintf 'DONE %s %s / %s',
 			$supercurl->{fname},
 			bignum( $supercurl->{size_got} ),
