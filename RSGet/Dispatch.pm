@@ -238,9 +238,13 @@ sub abort_missing
 sub getter
 {
 	my $uri = shift;
-	my @g = grep { $uri =~ m/^http:\/\/(:?www\.)?$_->{uri}/ } values %getters;
-	return undef unless @g;
-	return $g[0];
+	foreach my $getter ( values %getters ) {
+		foreach my $re ( @{ $getter->{uri} } ) {
+			return $getter
+				if $uri =~ m{^http://(?:www\.)?$re};
+		}
+	}
+	return undef;
 }
 
 

@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use RSGet::Tools;
 
-my $options = "name|short|uri|slots|cookie|status";
+my $options = "name|short|slots|cookie|status";
 my $parts = "pre|start|perl";
 
 my $processed = "";
@@ -56,7 +56,9 @@ sub read_file
 
 	open F_IN, '<', $file;
 
-	my %opts;
+	my %opts = (
+		uri => [],
+	);
 	my %parts = (
 		pre => [],
 		start => [],
@@ -85,6 +87,8 @@ sub read_file
 
 		if ( /^($parts)\s*:/ ) {
 			$part = $1;
+		} elsif ( /^uri\s*:\s+(.*)$/ ) {
+			push @{$opts{uri}}, $1;
 		} elsif ( /^($options)\s*:\s+(.*)$/ ) {
 			$opts{$1} = $2;
 		}
@@ -95,7 +99,11 @@ sub read_file
 		p "Can't find 'start:'\n";
 		return undef;
 	}
-	foreach ( qw(name short uri) ) {
+	unless ( @{$opts{uri}} ) {
+		p "Can't find 'uri:'\n";
+		return undef;
+	}
+	foreach ( qw(name short) ) {
 		next if $opts{$_};
 		p "Can't find '$_:'\n";
 		return undef;
@@ -115,7 +123,7 @@ sub read_file
 	$space = "";
 	$is_sub = 0;
 
-	$opts{uri} = eval $opts{uri};
+	$opts{uri} = [ map { eval $_ } @{$opts{uri}} ];
 	$opts{class} = ${class};
 	$opts{pkg} = "${class}::$opts{name}";
 
