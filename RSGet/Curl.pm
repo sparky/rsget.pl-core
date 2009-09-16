@@ -81,14 +81,16 @@ sub new
 
 		# if file exists try to continue
 		my $fn = $get_obj->{_opts}->{fname};
-		my $fp = filepath( $settings{workdir}, $get_obj->{_opts}->{dir}, $fn );
-		if ( $fp and -r $fp ) {
-			my $got = (stat(_))[7];
-			#p "File '$fn' already exists, trying to continue at $got";
-			$curl->setopt( CURLOPT_RANGE, "$got-" );
+		if ( $fn ) {
+			my $fp = filepath( $settings{workdir}, $get_obj->{_opts}->{dir}, $fn );
+			if ( -r $fp ) {
+				my $got = (stat(_))[7];
+				#p "File '$fn' already exists, trying to continue at $got";
+				$curl->setopt( CURLOPT_RANGE, "$got-" );
 
-			$supercurl->{fname} = $fn;
-			$supercurl->{filepath} = $fp
+				$supercurl->{fname} = $fn;
+				$supercurl->{filepath} = $fp
+			}
 		}
 
 		my $fs = $get_obj->{_opts}->{fsize};
