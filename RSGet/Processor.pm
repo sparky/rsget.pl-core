@@ -42,6 +42,12 @@ sub p_ret
 	pr join( ", ", @opts ) . ", " if @opts;
 }
 
+sub p_func
+{
+	my $f = shift;
+	pr $space . "\${self}->$f(";
+}
+
 sub p_line
 {
 	s/\$-{/\$self->{/g;
@@ -205,11 +211,8 @@ EOF
 		} elsif ( s/^MULTI\s*\(// ) {
 			p_ret( "multi" );
 			p_line();
-		} elsif ( s/^PRINT\s*\(// ) {
-			pr $space . '$self->print(';
-			p_line();
-		} elsif ( s/^LOG\s*\(// ) {
-			pr $space . '$self->log(';
+		} elsif ( s/^(PRINT|LOG|COOKIE)\s*\(// ) {
+			p_func( lc $1 );
 			p_line();
 		} elsif ( s/^!\s+// ) {
 			my $line = quotemeta $_;

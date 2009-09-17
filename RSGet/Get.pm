@@ -136,6 +136,20 @@ sub start
 	return $self->stage0();
 }
 
+sub cookie
+{
+	my $self = shift;
+
+	return unless $self->{_cookie};
+	return if -r $self->{_cookie};
+
+	open my $c, ">", $self->{_cookie};
+	foreach my $line ( @_ ) {
+		print $c join( "\t", @$line ), "\n";
+	}
+	close $c;
+}
+
 sub get
 {
 	my $self = shift;
