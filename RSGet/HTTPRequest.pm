@@ -602,7 +602,7 @@ sub add_update
 		$r .= f_msg( "f_addlist", "ERROR: No such add list" );
 	} elsif ( not ref $list ) {
 		$r .= '<fieldset id="f_listask"></fieldset>';
-		$r .= f_msg( "f_addlist", $list );
+		$r .= f_msg( "f_addlist", $list . '; <a href="/">to main page</a>' );
 	} else {
 		if ( $post->{select_clone} ) {
 			my $ask_clone;
