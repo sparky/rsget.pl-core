@@ -37,7 +37,7 @@ $SIG{CHLD} = "IGNORE";
 
 # read options
 my $http = undef;
-my $flist = 'get.list';
+my $flist = undef;
 while ( my $arg = shift @ARGV ) {
 	if ( $arg eq '-i' ) {
 		my $ifs = shift @ARGV || die "argument missing";

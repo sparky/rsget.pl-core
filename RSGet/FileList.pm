@@ -23,8 +23,18 @@ our @added;
 sub set_file
 {
 	$file = shift;
+	unless ( defined $file ) {
+		$file = 'get.list';
+		unless ( -r $file ) {
+			p "Creating empty file list '$file'";
+			open F_OUT, '>', $file;
+			print F_OUT "# empty list\n";
+			close F_OUT;
+		}
+	} else {
+		p "Using '$file' file list\n";
+	}
 	die "Can't read '$file'\n" unless -r $file;
-	p "Using '$file' file list\n";
 	my $make_swp = $settings{list_lock};
 	$file_swp = eval "\"$make_swp\"";
 	p "Using '$file_swp' as file lock\n";
