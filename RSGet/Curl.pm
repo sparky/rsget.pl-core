@@ -57,7 +57,13 @@ sub new
 	$curl->setopt( CURLOPT_WRITEHEADER, \$supercurl->{head} );
 	$curl->setopt( CURLOPT_MAXREDIRS, 10 );
 	$curl->setopt( CURLOPT_FOLLOWLOCATION, 1 );
-	$curl->setopt( CURLOPT_HTTPHEADER, $curl_headers );
+	if ( $opts{headers} ) {
+		my @h = @$curl_headers;
+		push @h, @{ $opts{headers} };
+		$curl->setopt( CURLOPT_HTTPHEADER, \@h );
+	} else {
+		$curl->setopt( CURLOPT_HTTPHEADER, $curl_headers );
+	}
 	$curl->setopt( CURLOPT_URL, $uri );
 	$curl->setopt( CURLOPT_REFERER, $get_obj->{_referer} )
 		if defined $get_obj->{_referer};
@@ -73,6 +79,7 @@ sub new
 				sort keys %$post;
 		}
 		$curl->setopt( CURLOPT_POSTFIELDS, $post );
+		$curl->setopt( CURLOPT_POSTFIELDSIZE, length $post );
 	}
 
 	if ( $opts{save} ) {
