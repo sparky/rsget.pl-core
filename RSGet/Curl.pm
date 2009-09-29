@@ -10,6 +10,7 @@ use URI::Escape;
 use File::Copy;
 use File::Path;
 use Fcntl qw(SEEK_SET);
+set_rev qq$Id$;
 
 my $curl_multi = new WWW::Curl::Multi;
 

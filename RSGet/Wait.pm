@@ -3,6 +3,7 @@ package RSGet::Wait;
 use strict;
 use warnings;
 use RSGet::Tools;
+set_rev qq$Id$;
 
 my %waiting;
 sub wait

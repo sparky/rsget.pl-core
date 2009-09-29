@@ -6,6 +6,7 @@ use RSGet::Tools;
 use RSGet::Captcha;
 use RSGet::Wait;
 use URI;
+set_rev qq$Id$;
 
 BEGIN {
 	our @ISA;

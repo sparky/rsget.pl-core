@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use Digest::MD5 qw(md5_hex);
 use RSGet::Tools;
+set_rev qq$Id$;
 
 our %needed;
 our %solved;

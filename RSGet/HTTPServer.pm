@@ -5,6 +5,7 @@ use warnings;
 use IO::Socket;
 use RSGet::Tools;
 use RSGet::HTTPRequest;
+set_rev qq$Id$;
 
 sub new
 {

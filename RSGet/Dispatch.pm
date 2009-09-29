@@ -3,6 +3,7 @@ package RSGet::Dispatch;
 use strict;
 use warnings;
 use RSGet::Tools;
+set_rev qq$Id$;
 
 our %downloading;
 our %checking;

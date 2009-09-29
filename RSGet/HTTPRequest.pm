@@ -6,6 +6,7 @@ use IO::Socket;
 use RSGet::Line;
 use RSGet::Tools;
 use RSGet::ListManager;
+set_rev qq$Id$;
 
 our %handlers = (
 	"main.js" => \&putfile,

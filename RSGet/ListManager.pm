@@ -8,6 +8,7 @@ use RSGet::FileList;
 use RSGet::Dispatch;
 use URI::Escape;
 use POSIX qw(ceil floor);
+set_rev qq$Id$;
 
 # {{{ Comparators
 

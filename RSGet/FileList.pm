@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use URI::Escape;
 use RSGet::Tools;
+set_rev qq$Id$;
 
 my $file;
 my $file_swp;

@@ -1,8 +1,10 @@
 package RSGet::Line;
+
 use strict;
 use warnings;
 use RSGet::Tools;
 use Term::Size;
+set_rev qq$Id$;
 
 $| = 1;
 

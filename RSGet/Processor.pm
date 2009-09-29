@@ -3,6 +3,7 @@ package RSGet::Processor;
 use strict;
 use warnings;
 use RSGet::Tools;
+set_rev qq$Id$;
 
 my $options = "name|short|slots|cookie|status";
 my $parts = "pre|start|perl";
