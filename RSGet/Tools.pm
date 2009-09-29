@@ -6,12 +6,23 @@ use vars qw(@ISA @EXPORT @EXPORT_OK);
 
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT = qw(s2string bignum de_ml hadd hprint p isotime require_prog
+@EXPORT = qw(set_rev s2string bignum de_ml hadd hprint p isotime require_prog
 	dump_to_file randomize %getters %settings);
 @EXPORT_OK = qw();
 
 our %settings;
 our %getters;
+our %revisions;
+
+sub set_rev($)
+{
+	my @id = split /\s+/, shift;
+	my $pm = $id[1];
+	my $rev = $id[2];
+	$pm =~ s/\.pm$//;
+	$revisions{ $pm } = 0 | $rev;
+}
+set_rev qq$Id$;
 
 sub s2string($)
 {
@@ -55,8 +66,15 @@ sub p($)
 sub hprint(%)
 {
 	my $h = shift;
-	foreach ( keys %$h ) {
-		p "$_ => $h->{$_}";
+	foreach my $k ( keys %$h ) {
+		my $v = $h->{ $k };
+		if ( not defined $v ) {
+			$v = "undef";
+		} elsif ( $v =~ /^\d+$/ ) {
+		} else {
+			$v = '"' . $v . '"';
+		}
+		p "$k => $v";
 	}
 }
 
