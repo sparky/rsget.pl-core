@@ -52,7 +52,7 @@ sub putfile
 		$headers->{Content_Type} = sprintf "text/%s; charset=utf-8", ($1 eq "js" ? "javascript" : "css");
 
 		local $/ = undef;
-		open F_IN, '<', $main::data_path . "/data/" . $file;
+		open F_IN, '<', data_file( $file );
 		$_ = <F_IN>;
 		close F_IN;
 
@@ -648,7 +648,7 @@ sub captcha
 	} else {
 		$ct = "image/png";
 		local $/ = undef;
-		open F_IN, '<', $main::data_path . "/data/error.png";
+		open F_IN, '<', data_file( "error.png" );
 		$data = <F_IN>;
 		close F_IN;
 	}

@@ -7,7 +7,7 @@ use vars qw(@ISA @EXPORT @EXPORT_OK);
 require Exporter;
 @ISA = qw(Exporter);
 @EXPORT = qw(set_rev s2string bignum de_ml hadd hprint p isotime require_prog
-	dump_to_file randomize %getters %settings);
+	data_file dump_to_file randomize %getters %settings);
 @EXPORT_OK = qw();
 
 our %settings;
@@ -108,6 +108,16 @@ sub require_prog
 		my $full = "$dir/$prog";
 		return $full if -x $full;
 	}
+	return undef;
+}
+
+sub data_file
+{
+	my $file = shift;
+	my $f = "$main::configdir/data/$file";
+	return $f if -r $f;
+	$f = "$main::data_path/data/$file";
+	return $f if -r $f;
 	return undef;
 }
 
