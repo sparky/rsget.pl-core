@@ -28,7 +28,7 @@ sub update
 		}
 		close SVN;
 		unless ( $last =~ /Checked out revision \d+/ ) {
-			warn "Uppdate failed ?\n";
+			warn "Update failed ?\n";
 		}
 	}
 	chdir $start_dir;
