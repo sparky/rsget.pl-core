@@ -100,7 +100,7 @@ while ( my $arg = shift @ARGV ) {
 
 if ( $settings{auto_update} ) {
 	if ( RSGet::AutoUpdate::update() ) {
-		warn "Update successfull, restarting\n";
+		warn "Update successful, restarting\n";
 		exec $0, @save_ARGV, "--auto_update", 0;
 	}
 }
