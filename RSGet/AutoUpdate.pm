@@ -27,15 +27,17 @@ sub update
 	mkdir $svn_dir unless -d $svn_dir;
 	chdir $svn_dir or die "Can't chdir to '$svn_dir'\n";
 
-	warn "Updating from SVN\n";
+	print "Updating from SVN:\n";
 	my $svn_uri = setting("svn_uri");
 	my $updated = 0;
 	foreach my $dir ( qw(data RSGet Get Link) ) {
 		my $last;
+		print "  $dir:\n";
 		open SVN, "-|", "svn", "co", "$svn_uri/$dir";
 		while ( <SVN> ) {
+			print "    " . $_;
 			chomp;
-			$updated++ if /^.{4}\s+$dir/;
+			$updated++;
 			$last = $_;
 		}
 		close SVN;
@@ -45,6 +47,8 @@ sub update
 	}
 	chdir $start_dir;
 
+	$updated -= 4;
+	return undef unless $updated >= 0;
 	return $updated;
 }
 

@@ -16,9 +16,9 @@ def_settings(
 	backup => [ "Make backups if downloaded file exists.",
 	"copy,move", qr/copy,move|copy|move|no/ ],
 	backup_suf => [ "Rename backup files with specified suffix. " .
-		"If none defined file extension won't be changed",
+		"If none defined -N will be added to file name, without disrupting file extension.",
 		undef, qr/.+/ ],
-	outdir => [ "Output directory; where finished files are moved.", '.', undef ],
+	outdir => [ "Output directory; where finished files are moved to.", '.', undef ],
 	workdir => [ "Work directory; where unfinished files are stored.", '.', undef ],
 );
 

@@ -196,7 +196,7 @@ sub init
 		update();
 	};
 
-	local $SIG{__DIE__} = sub {
+	$SIG{__DIE__} = sub {
 		print_all_lines();
 		print "\n";
 		print "DIED: ", shift, "\n\n";

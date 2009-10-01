@@ -25,7 +25,7 @@ my $help;
 my @ifs;
 parse_args();
 
-if ( $settings{use_svn}->[0] =~ /^(yes|update)$/ and -d "$cdir/RSGet") {
+if ( $settings{use_svn}->[0] =~ /^(yes|update)$/ ) {
 	$local_path = $cdir;
 	unshift @INC, $local_path;
 

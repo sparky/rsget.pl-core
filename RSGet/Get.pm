@@ -8,7 +8,7 @@ use RSGet::Wait;
 use URI;
 set_rev qq$Id$;
 def_settings(
-	errorlog => [ "Save errors", 0, qr/\d/ ],
+	errorlog => [ "Save errors.", 0, qr/\d/ ],
 );
 
 BEGIN {

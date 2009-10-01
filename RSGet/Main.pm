@@ -20,9 +20,9 @@ use Time::HiRes;
 set_rev qq$Id$;
 
 def_settings(
-	interfaces => [ "Specify output interfaces or IP addresses", undef, qr/\d+/ ],
-	http_port => [ "Start HTTP server on specified port.", 0, qr/\d+/ ],
-	verbose => [ "Verbosity level", 0, qr/\d+/ ],
+	interfaces => [ "Specify output interfaces or IP addresses.", undef, qr/\d+/ ],
+	http_port => [ "Start HTTP server on specified port.", undef, qr/\d+/ ],
+	verbose => [ "Verbosity level.", 0, qr/\d+/ ],
 );
 
 my $http = undef;
@@ -61,7 +61,34 @@ sub print_help
 {
 	require Term::Size;
 	my ( $columns, $rows ) = Term::Size::chars;
-	warn "No help yet\n";
+	print "Usage: $0 [OPTIONS] [LIST FILE]\n";
+	print "Downloads files from services like RapidShare.\n\n";
+	print "Arguments are always mandatory.\n";
+	$columns = 80 if $columns < 40;
+	my $optlen = 20;
+	my $textlen = $columns - $optlen - 1;
+	foreach my $s ( sort keys %main::def_settings ) {
+		my $option = "  --$s=VAL";
+		my $l = length $option;
+		if ( $l > $optlen ) {
+			print $option . "\n" . " " x $optlen;
+		} else {
+			print $option . " " x ( $optlen - $l );
+		}
+		my @text = split /\s+/, $main::def_settings{ $s }->[0];
+		my $defval = $main::def_settings{ $s }->[1];
+		push @text, "Default:", $defval if defined $defval;
+		my $line = "";
+		foreach my $word ( @text ) {
+			if ( length( $word ) + length( $line ) > $textlen - 4 ) {
+				print $line . "\n" . " " x ($optlen + 2);
+				$line = "";
+			}
+			$line .= " " . $word;
+		}
+		print $line . "\n";
+	}
+	print "\n";
 
 	exit 0;
 }
@@ -96,7 +123,7 @@ sub maybe_start_http
 	return unless $port;
 
 	require RSGet::HTTPServer;
-	$http = new RSGet::HTTPServer( setting("http_port") );
+	$http = new RSGet::HTTPServer( $port );
 	if ( $http ) {
 		p "HTTP server started on port $port";
 	} else {

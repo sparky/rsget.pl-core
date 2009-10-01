@@ -229,7 +229,12 @@ EOF
 	pr @{$parts{perl}};
 	pr "1;";
 
-	my $ret = eval $processed;
+	my $ret;
+	{
+		local $SIG{__DIE__};
+		delete $SIG{__DIE__};
+		$ret = eval $processed;
+	}
 
 	if ( $@ ) {
 		p "Error(s): $@\n";
