@@ -6,8 +6,6 @@ use RSGet::Tools;
 use Term::Size;
 set_rev qq$Id$;
 
-$| = 1;
-
 our %active;
 my %dead;
 our @dead;
@@ -30,7 +28,6 @@ sub print_dead_lines
 		push @print, "\r" . $date . "\033[J\n";
 		push @newdead, $date;
 	}
-
 
 	foreach my $key ( sort { $a <=> $b } keys %dead ) {
 		my $text = $dead{$key};
@@ -175,32 +172,37 @@ sub status
 	hadd( \%status, @_ );
 }
 
-$SIG{INT} = sub {
-	print_all_lines();
-	print "\nTERMINATED\n";
-	exit 0;
-};
+sub init
+{
+	$| = 1;
 
-$SIG{WINCH} = sub {
-	print "\033[2J\033[1;1H\n";
-	my ( $columns, $rows ) = Term::Size::chars;
-	my $start = $#dead - $rows;
-	$start = 0 if $start < 0;
-	print join( "\n", @dead[($start..$#dead)] ), "\n";
-	update();
-};
+	$SIG{INT} = sub {
+		print_all_lines();
+		print "\nTERMINATED\n";
+		exit 0;
+	};
 
-$SIG{__WARN__} = sub {
-	new RSGet::Line( "WARNING: ", shift );
-	update();
-};
+	$SIG{WINCH} = sub {
+		print "\033[2J\033[1;1H\n";
+		my ( $columns, $rows ) = Term::Size::chars;
+		my $start = $#dead - $rows;
+		$start = 0 if $start < 0;
+		print join( "\n", @dead[($start..$#dead)] ), "\n";
+		update();
+	};
 
-local $SIG{__DIE__} = sub {
-	print_all_lines();
-	print "\n";
-	print "DIED: ", shift, "\n\n";
-	exit 1;
-};
+	$SIG{__WARN__} = sub {
+		new RSGet::Line( "WARNING: ", shift );
+		update();
+	};
+
+	local $SIG{__DIE__} = sub {
+		print_all_lines();
+		print "\n";
+		print "DIED: ", shift, "\n\n";
+		exit 1;
+	};
+}
 
 1;
 

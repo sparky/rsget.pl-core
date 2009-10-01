@@ -5,7 +5,7 @@ use warnings;
 use RSGet::Tools;
 set_rev qq$Id$;
 
-my $options = "name|short|slots|cookie|status";
+my $options = "name|short|slots|cookie|status|min_ver";
 my $parts = "pre|start|perl";
 
 my $processed = "";
@@ -233,7 +233,7 @@ EOF
 
 	if ( $@ ) {
 		p "Error(s): $@\n";
-		return undef unless $settings{logging} > 0;
+		return undef unless setting("verbose") > 0;
 		my $err = $@;
 		return undef unless $err =~ /line \d+/;
 		my @p = split /\n/, $processed;

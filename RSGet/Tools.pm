@@ -7,10 +7,10 @@ use vars qw(@ISA @EXPORT @EXPORT_OK);
 require Exporter;
 @ISA = qw(Exporter);
 @EXPORT = qw(set_rev s2string bignum de_ml hadd hprint p isotime require_prog
-	data_file dump_to_file randomize %getters %settings);
+	def_settings setting
+	data_file dump_to_file randomize %getters);
 @EXPORT_OK = qw();
 
-our %settings;
 our %getters;
 our %revisions;
 
@@ -114,11 +114,30 @@ sub require_prog
 sub data_file
 {
 	my $file = shift;
-	my $f = "$main::configdir/data/$file";
+	my $f = "$main::local_path/data/$file";
 	return $f if -r $f;
-	$f = "$main::data_path/data/$file";
+	$f = "$main::install_path/data/$file";
 	return $f if -r $f;
 	return undef;
+}
+
+sub def_settings
+{
+	my %s = @_;
+	foreach my $k ( keys %s ) {
+		my $v = $s{ $k };
+		die "Incorrect setting '$k' declaration\n"
+			if ref $v ne "ARRAY" or scalar @$v != 3;
+		$main::def_settings{ $k } = $v;
+	}
+}
+
+sub setting
+{
+	my $name = shift;
+	die "Setting '$name' is not defined\n" unless exists $main::def_settings{ $name };
+	return $main::settings{ $name }->[0] if exists $main::settings{ $name };
+	return $main::def_settings{ $name }->[1];
 }
 
 sub dump_to_file

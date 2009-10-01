@@ -7,6 +7,9 @@ use RSGet::Captcha;
 use RSGet::Wait;
 use URI;
 set_rev qq$Id$;
+def_settings(
+	errorlog => [ "Save errors", 0, qr/\d/ ],
+);
 
 BEGIN {
 	our @ISA;
@@ -48,7 +51,7 @@ sub new
 	bless $self, $pkg;
 	$self->bestinfo();
 
-	if ( $settings{logging} > 1 or $cmd eq "get" ) {
+	if ( setting("verbose") > 1 or $cmd eq "get" ) {
 		my $outifstr = $outif ? "[$outif]" :  "";
 
 		hadd $self,
@@ -222,7 +225,7 @@ sub error
 {
 	my $self = shift;
 	my $msg = shift;
-	if ( $self->{body} and $settings{errorlog} ) {
+	if ( $self->{body} and setting("errorlog") ) {
 		my $n = 0;
 		my $name;
 		do {
@@ -292,7 +295,7 @@ sub info
 
 	return 0 unless $self->{_cmd} eq "check";
 	p "info( $self->{_uri} ): $self->{bestname} ($self->{bestsize})\n"
-		if $settings{logging} > 0;
+		if setting("verbose") > 0;
 	RSGet::Dispatch::finished( $self );
 	return 1;
 }

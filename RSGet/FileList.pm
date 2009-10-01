@@ -6,6 +6,11 @@ use URI::Escape;
 use RSGet::Tools;
 set_rev qq$Id$;
 
+def_settings(
+	list_lock => [ "If lock file exists, list file won't be updated.", '.${file}.swp', qr/.+/ ],
+	list_file => [ "Use specified file as URI list.", undef, qr/.+/ ],
+);
+
 my $file;
 my $file_swp;
 
@@ -23,10 +28,12 @@ our @added;
 
 sub set_file
 {
-	$file = shift;
+	$file = setting( "list_file" );
 	unless ( defined $file ) {
 		$file = 'get.list';
-		unless ( -r $file ) {
+		if ( -r $file ) {
+			p "Using '$file' file list\n";
+		} else {
 			p "Creating empty file list '$file'";
 			open F_OUT, '>', $file;
 			print F_OUT "# empty list\n";
@@ -36,8 +43,7 @@ sub set_file
 		p "Using '$file' file list\n";
 	}
 	die "Can't read '$file'\n" unless -r $file;
-	my $make_swp = $settings{list_lock};
-	$file_swp = eval "\"$make_swp\"";
+	( $file_swp = setting( "list_lock" ) ) =~ s/\${file}/$file/g;
 	p "Using '$file_swp' as file lock\n";
 }
 

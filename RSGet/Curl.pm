@@ -12,6 +12,17 @@ use File::Path;
 use Fcntl qw(SEEK_SET);
 set_rev qq$Id$;
 
+def_settings(
+	backup => [ "Make backups if downloaded file exists.",
+	"copy,move", qr/copy,move|copy|move|no/ ],
+	backup_suf => [ "Rename backup files with specified suffix. " .
+		"If none defined file extension won't be changed",
+		undef, qr/.+/ ],
+	outdir => [ "Output directory; where finished files are moved.", '.', undef ],
+	workdir => [ "Work directory; where unfinished files are stored.", '.', undef ],
+);
+
+
 my $curl_multi = new WWW::Curl::Multi;
 
 my $curl_headers = [
@@ -90,7 +101,7 @@ sub new
 		# if file exists try to continue
 		my $fn = $get_obj->{_opts}->{fname};
 		if ( $fn ) {
-			my $fp = filepath( $settings{workdir}, $get_obj->{_opts}->{dir}, $fn );
+			my $fp = filepath( setting("workdir"), $get_obj->{_opts}->{dir}, $fn );
 			if ( -r $fp ) {
 				my $got = (stat(_))[7];
 				#p "File '$fn' already exists, trying to continue at $got";
@@ -119,10 +130,10 @@ sub file_backup
 {
 	my $fn = shift;
 	my $type = shift;
-	return undef unless $settings{backup} =~ /$type/;
+	return undef unless setting("backup") =~ /$type/;
 	return undef unless -r $fn;
 
-	if ( my $s = $settings{backup_suf} ) {
+	if ( my $s = setting("backup_suf") ) {
 		my $i = 1;
 		++$i while -r $fn . $s . $i;
 		return $fn . $s . $i;
@@ -218,7 +229,7 @@ sub file_init
 
 	{
 		my $fn = $supercurl->{filepath} =
-			filepath( $settings{workdir}, $get_obj->{_opts}->{dir}, $supercurl->{fname} );
+			filepath( setting("workdir"), $get_obj->{_opts}->{dir}, $supercurl->{fname} );
 		my $old = file_backup( $fn, "move" );
 		if ( $old ) {
 			rename $fn, $old;
@@ -320,7 +331,7 @@ sub finish
 	my $func = $get_obj->{after_curl};
 	if ( $supercurl->{file} ) {
 		rename $supercurl->{filepath},
-			filepath( $settings{outdir}, $get_obj->{_opts}->{dir}, $supercurl->{fname} );
+			filepath( setting("outdir"), $get_obj->{_opts}->{dir}, $supercurl->{fname} );
 		$get_obj->{dlinfo} = sprintf 'DONE %s %s / %s',
 			$supercurl->{fname},
 			bignum( $supercurl->{size_got} ),
