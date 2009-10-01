@@ -17,7 +17,6 @@ use RSGet::Processor;
 use RSGet::Tools;
 use RSGet::Wait;
 use Time::HiRes;
-
 set_rev qq$Id$;
 
 def_settings(
