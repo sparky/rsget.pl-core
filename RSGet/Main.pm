@@ -40,7 +40,7 @@ sub init
 	$SIG{CHLD} = "IGNORE";
 	maybe_update( $argv );
 	RSGet::Line::init();
-	print_settings() if setting( "verbose" ) >= 1;
+	print_settings() if verbose( 1 );
 	RSGet::FileList::set_file();
 	maybe_start_http();
 	set_interfaces( $ifs );
@@ -101,12 +101,30 @@ sub maybe_update
 			warn "Update successful, restarting\n";
 			exec $0, @$argv, "--use_svn", "yes";
 		}
+		set( "use_svn", "yes", "SVN updated" );
 	}
 }
 
 sub check_settings
 {
-	warn "Unable to check settings\n";
+	my $die = 0;
+	foreach my $s ( sort keys %main::settings ) {
+		my $v = $main::settings{ $s };
+		my $def = $main::def_settings{ $s };
+		unless ( $def ) {
+			warn "There is no setting '$s' -- defined at $v->[1].\n";
+			$die = 1;
+			next;
+		}
+		my $value = $v->[0];
+		my $re = $def->[2];
+		unless ( $value =~ m/^$re$/ ) {
+			warn "Setting '$s' has invalid value: '$value' -- defined at $v->[1].\n";
+			$die = 1;
+			next;
+		}
+	}
+	die "ERROR: Found invalid settings.\n" if $die;
 }
 
 sub print_settings

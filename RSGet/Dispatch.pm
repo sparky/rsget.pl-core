@@ -215,7 +215,9 @@ sub process
 		}
 
 		foreach my $uri ( sort {
-					$num_by_pkg{ $pkg_by_uri{ $a} } <=> $num_by_pkg{ $pkg_by_uri{ $b } }
+					( $num_by_pkg{ $pkg_by_uri{ $a } } || 0 )
+						<=>
+					( $num_by_pkg{ $pkg_by_uri{ $b } } || 0 )
 				} keys %$uris ) {
 			my ( $getter, $options ) = @{ $uris->{ $uri } };
 			next EACH_LINE if run( "get", $uri, $getter, { %$options, %$globals } );
