@@ -7,7 +7,7 @@ use vars qw(@ISA @EXPORT @EXPORT_OK);
 require Exporter;
 @ISA = qw(Exporter);
 @EXPORT = qw(set_rev s2string bignum de_ml hadd hprint p isotime require_prog
-	def_settings setting
+	def_settings setting verbose
 	data_file dump_to_file randomize %getters);
 @EXPORT_OK = qw();
 
@@ -138,6 +138,13 @@ sub setting
 	die "Setting '$name' is not defined\n" unless exists $main::def_settings{ $name };
 	return $main::settings{ $name }->[0] if exists $main::settings{ $name };
 	return $main::def_settings{ $name }->[1];
+}
+
+sub verbose
+{
+	my $min = shift;
+	return 1 if setting( "verbose" ) >= $min;
+	return 0;
 }
 
 sub dump_to_file

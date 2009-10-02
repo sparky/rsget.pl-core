@@ -238,7 +238,7 @@ EOF
 
 	if ( $@ ) {
 		p "Error(s): $@\n";
-		return undef unless setting("verbose") > 0;
+		return undef unless verbose( 1 );
 		my $err = $@;
 		return undef unless $err =~ /line \d+/;
 		my @p = split /\n/, $processed;

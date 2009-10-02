@@ -90,6 +90,7 @@ sub new
 				map { uri_escape( $_ ) . "=" . uri_escape( $post->{$_} ) }
 				sort keys %$post;
 		}
+		warn "POST( $uri ): $post\n" if verbose( 3 );
 		$curl->setopt( CURLOPT_POSTFIELDS, $post );
 		$curl->setopt( CURLOPT_POSTFIELDSIZE, length $post );
 	}
