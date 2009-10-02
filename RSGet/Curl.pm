@@ -14,12 +14,12 @@ set_rev qq$Id$;
 
 def_settings(
 	backup => [ "Make backups if downloaded file exists.",
-	"copy,move", qr/copy,move|copy|move|no/ ],
+	"copy,move", qr/copy,move|copy|move|no(ne)/ ],
 	backup_suf => [ "Rename backup files with specified suffix. " .
 		"If none defined -N will be added to file name, without disrupting file extension.",
 		undef, qr/.+/ ],
-	outdir => [ "Output directory; where finished files are moved to.", '.', undef ],
-	workdir => [ "Work directory; where unfinished files are stored.", '.', undef ],
+	outdir => [ "Output directory; where finished files are moved to.", '.', qr/.+/ ],
+	workdir => [ "Work directory; where unfinished files are stored.", '.', qr/.+/ ],
 );
 
 
