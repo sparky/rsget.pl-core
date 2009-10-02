@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use RSGet::Tools;
 use RSGet::Captcha;
+use RSGet::Form;
 use RSGet::Wait;
 use URI;
 set_rev qq$Id$;
@@ -51,7 +52,7 @@ sub new
 	bless $self, $pkg;
 	$self->bestinfo();
 
-	if ( setting("verbose") > 1 or $cmd eq "get" ) {
+	if ( verbose( 2 ) or $cmd eq "get" ) {
 		my $outifstr = $outif ? "[$outif]" :  "";
 
 		hadd $self,
@@ -99,6 +100,12 @@ sub search
 		}
 	}
 	return 0;
+}
+
+sub form
+{
+	my $self = shift;
+	return new RSGet::Form( $self->{body}, @_ );
 }
 
 sub print
@@ -295,7 +302,7 @@ sub info
 
 	return 0 unless $self->{_cmd} eq "check";
 	p "info( $self->{_uri} ): $self->{bestname} ($self->{bestsize})\n"
-		if setting("verbose") > 0;
+		if verbose( 1 );
 	RSGet::Dispatch::finished( $self );
 	return 1;
 }
