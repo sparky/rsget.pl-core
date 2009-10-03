@@ -11,9 +11,7 @@ our $install_path = $ENV{PWD};
 our $local_path = $install_path;
 
 our %def_settings;
-our %settings = (
-	use_svn => [ "no", undef ]
-);
+our %settings;
 
 unshift @INC, $install_path;
 
@@ -25,7 +23,7 @@ my $help;
 my @ifs;
 parse_args();
 
-if ( $settings{use_svn}->[0] =~ /^(yes|update)$/ ) {
+if ( $settings{use_svn} and $settings{use_svn}->[0] =~ /^(yes|update)$/ ) {
 	$local_path = $cdir;
 	unshift @INC, $local_path;
 
