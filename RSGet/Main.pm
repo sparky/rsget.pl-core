@@ -112,14 +112,14 @@ sub check_settings
 		my $v = $main::settings{ $s };
 		my $def = $main::def_settings{ $s };
 		unless ( $def ) {
-			warn "There is no setting '$s' -- defined at $v->[1].\n";
+			warn "There is no setting '$s' -- defined in $v->[1].\n";
 			$die = 1;
 			next;
 		}
 		my $value = $v->[0];
 		my $re = $def->[2];
 		unless ( $value =~ m/^$re$/ ) {
-			warn "Setting '$s' has invalid value: '$value' -- defined at $v->[1].\n";
+			warn "Setting '$s' has invalid value: '$value' -- defined in $v->[1].\n";
 			$die = 1;
 			next;
 		}
@@ -131,7 +131,10 @@ sub print_settings
 {
 	p "Settings:";
 	foreach my $s ( sort keys %main::settings ) {
-		p "  $s => " . setting( $s );
+		my $v = $main::settings{ $s };
+		my $def = "";
+		$def = " \t($v->[1])" if verbose( 2 );
+		p "  $s => $v->[0]$def";
 	}
 }
 
