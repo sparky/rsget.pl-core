@@ -28,6 +28,7 @@ sub update
 	chdir $svn_dir or die "Can't chdir to '$svn_dir'\n";
 
 	print "Updating from SVN:\n";
+	local $ENV{LC_ALL} = "C";
 	my $svn_uri = setting("svn_uri");
 	my $updated = 0;
 	foreach my $dir ( qw(data RSGet Get Link) ) {
