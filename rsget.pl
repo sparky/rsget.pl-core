@@ -67,9 +67,8 @@ sub read_config
 		$line++;
 		next if /^\s*(?:#.*)?$/;
 		chomp;
-		if ( s/^\s*([a-z_]+)\s*=\s*// ) {
-			s/\s+$//;
-			set( $1, $_, "config file, line $line" );
+		if ( s/^\s*([a-z_]+)\s*=\s*(.*?)\s*$// ) {
+			set( $1, $2, "config file, line $line" );
 			next;
 		}
 		warn "Incorrect config line: $_\n";
