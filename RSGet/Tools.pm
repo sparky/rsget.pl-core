@@ -7,7 +7,7 @@ use vars qw(@ISA @EXPORT @EXPORT_OK);
 require Exporter;
 @ISA = qw(Exporter);
 @EXPORT = qw(set_rev s2string bignum de_ml hadd hprint p isotime require_prog
-	def_settings setting verbose
+	jstime def_settings setting verbose
 	data_file dump_to_file randomize %getters);
 @EXPORT_OK = qw();
 
@@ -89,6 +89,11 @@ sub isotime()
 {
 	my @l = localtime;
 	return sprintf "%d-%.2d-%.2d %2d:%.2d:%.2d", $l[5] + 1900, $l[4] + 1, @l[(3,2,1,0)];
+}
+
+sub jstime()
+{
+	return time * 1000 + int rand 1000;
 }
 
 sub de_ml
