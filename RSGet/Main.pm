@@ -20,7 +20,7 @@ use Time::HiRes;
 set_rev qq$Id$;
 
 def_settings(
-	interfaces => [ "Specify output interfaces or IP addresses.", undef, qr/\d+/ ],
+	interfaces => [ "Specify output interfaces or IP addresses.", undef, qr/.+/ ],
 	http_port => [ "Start HTTP server on specified port.", undef, qr/\d+/ ],
 	verbose => [ "Verbosity level.", 0, qr/\d+/ ],
 );
