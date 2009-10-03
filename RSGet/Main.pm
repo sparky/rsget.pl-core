@@ -169,7 +169,7 @@ sub find_getters
 		unshift @paths, $main::local_path;
 	}
 	foreach my $path ( @paths ) {
-		foreach my $type ( qw(Get Link) ) {
+		foreach my $type ( qw(Get Link Video) ) {
 			my $dir = "$path/$type";
 			next unless -d $dir;
 			foreach ( sort glob "$path/$type/*" ) {

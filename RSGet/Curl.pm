@@ -99,6 +99,8 @@ sub new
 		$curl->setopt( CURLOPT_WRITEFUNCTION, \&body_file );
 		$curl->setopt( CURLOPT_WRITEDATA, $supercurl );
 
+		$supercurl->{force_name} = $opts{fname} if $opts{fname};
+
 		# if file exists try to continue
 		my $fn = $get_obj->{_opts}->{fname};
 		if ( $fn ) {
@@ -175,7 +177,9 @@ sub file_init
 	}
 
 	my $fname;
-	if ( $supercurl->{head} =~
+	if ( $supercurl->{force_name} ) {
+		$fname = $supercurl->{force_name};
+	} elsif ( $supercurl->{head} =~
 			/^Content-Disposition:\s*attachment;\s*filename\*=UTF-8''(.+?);?\s*$/mi ) {
 		$fname = de_ml( uri_unescape( $1 ) );
 	} elsif ( $supercurl->{head} =~

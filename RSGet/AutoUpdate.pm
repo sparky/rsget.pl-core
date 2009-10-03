@@ -16,6 +16,8 @@ def_settings(
 		qr{(svn|https?)://.{4,}} ],
 );
 
+my @update_dirs = qw(data RSGet Get Link Video);
+
 sub update
 {
 	unless ( require_prog( "svn" ) ) {
@@ -31,7 +33,7 @@ sub update
 	local $ENV{LC_ALL} = "C";
 	my $svn_uri = setting("svn_uri");
 	my $updated = 0;
-	foreach my $dir ( qw(data RSGet Get Link) ) {
+	foreach my $dir ( @update_dirs ) {
 		my $last;
 		print "  $dir:\n";
 		open SVN, "-|", "svn", "co", "$svn_uri/$dir";
@@ -48,7 +50,7 @@ sub update
 	}
 	chdir $start_dir;
 
-	$updated -= 4;
+	$updated -= scalar @update_dirs;
 	return undef unless $updated >= 0;
 	return $updated;
 }
