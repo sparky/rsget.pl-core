@@ -48,6 +48,27 @@ sub new
 		}
 		warn "Can't find form with name '$opts{name}'\n" unless $found;
 	}
+	if ( not $found and $opts{match} ) {
+		my $m = $opts{match};
+		EACH_FORM:
+		foreach my $form ( @forms ) {
+			foreach my $k ( keys %$m ) {
+				my $match = $m->{$k};
+				if ( $k eq "body" ) {
+					next EACH_FORM unless $form->[1] =~ m{$match};
+				} else {
+					next EACH_FORM unless exists $form->[0]->{$k};
+					next EACH_FORM unless $form->[0]->{$k} =~ m{$match};
+				}
+			}
+			$found = $form;
+			last;
+		}
+		unless ( $found ) {
+			my $all = join ", ", map { "$_ => $m->{$_}" } sort keys %$m;
+			warn "Can't find form whitch matches: $all\n";
+		}
+	}
 	if ( not $found and $opts{num} ) {
 		if ( $opts{num} >= 0 and $opts{num} < scalar @forms ) {
 			$found = $forms[ $opts{num} ];
