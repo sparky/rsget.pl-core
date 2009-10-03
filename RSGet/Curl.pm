@@ -14,7 +14,7 @@ set_rev qq$Id$;
 
 def_settings(
 	backup => [ "Make backups if downloaded file exists.",
-	"copy,move", qr/copy,move|copy|move|no(ne)/ ],
+	"copy,move", qr/copy,move|copy|move|no(ne)?/ ],
 	backup_suf => [ "Rename backup files with specified suffix. " .
 		"If none defined -N will be added to file name, without disrupting file extension.",
 		undef, qr/.+/ ],

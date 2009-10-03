@@ -145,6 +145,8 @@ sub read_file
 		our @ISA;
 		@ISA = qw(RSGet::Get);
 	}
+
+	my $STDSIZE = qr/\d+(?:\.\d+)?\s*[kmg]?b/i;
 EOF
 
 	pr join "\n", @{$parts{pre}}, "\n";
