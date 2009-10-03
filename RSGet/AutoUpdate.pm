@@ -13,7 +13,7 @@ def_settings(
 		"no", qr{no|yes|update} ],
 	svn_uri => [ "SVN path to rsget.pl source code.",
 		'http://svn.pld-linux.org/svn/toys/rsget.pl',
-		qr{(svn|http)://\.{4,}} ],
+		qr{(svn|https?)://.{4,}} ],
 );
 
 sub update

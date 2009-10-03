@@ -26,7 +26,7 @@ sub add_interface
 				next NEW_IP;
 			}
 		}
-		print "Adding $new_if interface/address\n";
+		p "Adding $new_if interface/address\n";
 		push @interfaces, $new_if;
 	}
 }

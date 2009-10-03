@@ -101,7 +101,7 @@ sub maybe_update
 			warn "Update successful, restarting\n";
 			exec $0, @$argv, "--use_svn", "yes";
 		}
-		set( "use_svn", "yes", "SVN updated" );
+		main::set( "use_svn", "yes", "SVN updated" );
 	}
 }
 
