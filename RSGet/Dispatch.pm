@@ -138,6 +138,8 @@ sub check
 		return $options if $options->{link1};
 	} else {
 		return $options if $options->{size} or $options->{asize};
+		return $options if $options->{quality};
+		return $options if $options->{link1};
 	}
 
 	run( "check", $uri, $getter, $options );

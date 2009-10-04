@@ -263,11 +263,20 @@ sub file_info
 		|| $o->{aname} || $o->{ainame};
 	$bestname = sgml( $bestname || "???" );
 
-	my $bestsize = $o->{size} ? bignum( $o->{size} ) . " bytes" : sgml( $o->{asize} || "?" );
+	my $bestsize = $o->{size} ? bignum( $o->{size} ) . " bytes" :
+		$o->{asize} ? sgml( $o->{asize} ) :
+		$o->{quality} ? sgml( $o->{quality} ) : "?";
+	if ( $o->{link1} ) {
+		$bestname = "Links";
+		my $i = 1;
+		$i++ while exists $o->{"link" . $i};
+		$i--;
+		$bestsize = $i;
+	}
 	my $uriid = makeid( $id_type, $uri, $uri );
 
 	my $color = "blue";
-	$color = "green" if $o->{size} or $o->{asize};
+	$color = "green" if $o->{size} or $o->{asize} or $o->{quality};
 	$color = "red" if $o->{error};
 	$color = "orange" if exists $RSGet::Dispatch::downloading{ $uri };
 

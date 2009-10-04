@@ -109,16 +109,6 @@ sub simplify_name
 
 # }}}
 
-sub uri_obj
-{
-	my $line = shift;
-	my %resp;
-	foreach ( qw(uri get name size clone error links) ) {
-		$resp{ $_ } = $line->{ $_ } if exists $line->{ $_ };
-	}
-	return \%resp;
-}
-
 sub arr_exists
 {
 	my $arr = shift;
@@ -138,6 +128,7 @@ sub clone_data
 	my $sn = simplify_name( $n );
 
 	my $s = $o->{fsize} || $o->{size} || $o->{asize};
+	$s ||= -1 if $o->{quality};
 	return () unless $s;
 	my $sr = size_to_range( $s, $o->{kilo} );
 
@@ -528,7 +519,7 @@ sub add_list_add
 
 		foreach my $uri ( sort keys %$uris ) {
 			my $o = $uris->{ $uri }->[1];
-			delete $uris->{ $uri } unless $o->{size} or $o->{asize};
+			delete $uris->{ $uri } unless $o->{size} or $o->{asize} or $o->{quality};
 		}
 
 		next unless keys %$uris;
