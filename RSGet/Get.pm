@@ -188,7 +188,9 @@ sub get_finish
 sub download
 {
 	my $self = shift;
+	$self->{stage_is_html} = shift;
 	my $uri = shift;
+
 	$self->print("starting download");
 	$self->get( \&finish, $uri, save => 1, @_ );
 }
@@ -215,7 +217,8 @@ sub finish
 	if ( $self->{is_html} ) {
 		$self->print( "is HTML" );
 		$_ = $self->{body};
-		return $self->stage_is_html();
+		my $func = $self->{stage_is_html};
+		return &$func( $self );
 	}
 
 	RSGet::Dispatch::mark_used( $self );
