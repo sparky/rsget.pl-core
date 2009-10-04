@@ -31,7 +31,7 @@ sub p_subend
 {
 	return unless $is_sub;
 	$is_sub--;
-	pr "\treturn \${self}->error( 'file is a html page' );\n}\n";
+	pr "\treturn \${self}->error( 'unexpected end of script' );\n}\n";
 }
 
 my $space;
@@ -191,17 +191,14 @@ EOF
 			p_sub( $next_stage );
 			$_ = $left;
 			redo if /\S/;
-		} elsif ( s/^ERROR\s*\(// ) {
-			p_ret( "error" );
+		} elsif ( s/^(ERROR|RESTART|LINK|MULTI)\s*\(// ) {
+			p_ret( lc $1 );
 			p_line();
 		} elsif ( s/^INFO\s*\(// ) {
 			pr $space . 'return "info" if $self->info( ';
 			p_line();
 		} elsif ( s/^SEARCH\s*\(// ) {
 			pr $space . 'return if $self->search( ';
-			p_line();
-		} elsif ( s/^RESTART\s*\(\s*// ) {
-			p_ret( "restart" );
 			p_line();
 		} elsif ( s/^DOWNLOAD\s*\(\s*// ) {
 			p_ret( "download" );
@@ -212,17 +209,6 @@ EOF
 			}
 			p_subend();
 			p_sub( "stage_is_html" );
-		} elsif ( s/^LINK\s*\(\s*// ) {
-			p_ret( "link" );
-			p_line();
-			until ( /;\s*$/ ) {
-				$_ = shift @machine;
-				p_line();
-			}
-			p_subend();
-		} elsif ( s/^MULTI\s*\(// ) {
-			p_ret( "multi" );
-			p_line();
 		} elsif ( s/^(PRINT|LOG|COOKIE)\s*\(// ) {
 			p_func( lc $1 );
 			p_line();
