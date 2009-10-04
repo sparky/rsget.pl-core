@@ -24,29 +24,24 @@ sub new
 		push @forms, [ \%attr, $fbody ];
 	}
 	unless ( @forms ) {
-		warn "No forms found\n";
-		dump_to_file( $html, "html" );
-		return undef;
+		warn "No forms found\n" if verbose( 2 );
+		dump_to_file( $html, "html" ) if setting( "errorlog" );
+		return undef unless $opts{fallback};
+		push @forms, [ {}, '' ];
 	}
 
 	my $found;
-	if ( not $found and $opts{id} ) {
-		foreach my $form ( @forms ) {
-			if ( $form->[0]->{id} and $form->[0]->{id} eq $opts{id} ) {
-				$found = $form;
-				last;
+	foreach my $attr ( qw(id name) ) {
+		if ( not $found and $opts{ $attr } ) {
+			foreach my $form ( @forms ) {
+				if ( $form->[0]->{$attr} and $form->[0]->{$attr} eq $opts{$attr} ) {
+					$found = $form;
+					last;
+				}
 			}
+			warn "Can't find form with $attr '$opts{$attr}'\n"
+				if verbose( 2 ) and not $found;
 		}
-		warn "Can't find form with id '$opts{id}'\n" unless $found;
-	}
-	if ( not $found and $opts{name} ) {
-		foreach my $form ( @forms ) {
-			if ( $form->[0]->{name} and $form->[0]->{name} eq $opts{name} ) {
-				$found = $form;
-				last;
-			}
-		}
-		warn "Can't find form with name '$opts{name}'\n" unless $found;
 	}
 	if ( not $found and $opts{match} ) {
 		my $m = $opts{match};
@@ -64,7 +59,7 @@ sub new
 			$found = $form;
 			last;
 		}
-		unless ( $found ) {
+		if ( verbose( 2 ) and not $found ) {
 			my $all = join ", ", map { "$_ => $m->{$_}" } sort keys %$m;
 			warn "Can't find form whitch matches: $all\n";
 		}
@@ -73,17 +68,19 @@ sub new
 		if ( $opts{num} >= 0 and $opts{num} < scalar @forms ) {
 			$found = $forms[ $opts{num} ];
 		}
-		warn "Can't find form number $opts{num}\n" unless $found;
+		warn "Can't find form number $opts{num}\n"
+			if verbose( 2 ) and not $found;
 	}
-	if ( not $found ) {
+	if ( not $found and $opts{fallback} ) {
 		$found = $forms[ 0 ];
 	}
+	return undef unless $found;
 
 	my ( $attr, $fbody ) = @$found;
 
 	my $self = {};
 	$self->{action} = $attr->{action} || "";
-	$self->{post} = 1 if lc $attr->{method} eq "post";
+	$self->{post} = 1 if $attr->{method} and lc $attr->{method} eq "post";
 	my @order;
 	my %values;
 	my $formelements = join "|",
