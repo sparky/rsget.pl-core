@@ -155,8 +155,8 @@ EOF
 	p_sub( "stage0" );
 	my @machine = @{$parts{start}};
 	while ( $_ = shift @machine ) {
-		s/^(\s+)//;
-		$space = $1;
+		$space = "";
+		$space = $1 if s/^(\s+)//;
 
 		if ( s/^(GET|WAIT|CAPTCHA)\s*\(// ) {
 			my $cmd = lc $1;
@@ -167,10 +167,6 @@ EOF
 				$_ = shift @machine;
 				push @skip, $_;
 			}
-			if ( $machine[0] =~ s/^(stage_.*?):\s*$// ) {
-				$next_stage = $1;
-				shift @machine;
-			}
 			p_ret( $cmd, "\\&$next_stage" );
 			foreach ( @skip ) {
 				p_line();
@@ -180,8 +176,21 @@ EOF
 		} elsif ( s/^(GET|WAIT|CAPTCHA)_NEXT\s*\(\s*(.*?)\s*,// ) {
 			my $cmd = lc $1;
 			my $next_stage = $2;
-			p_ret( $cmd, "\\&$2" );
+			p_ret( $cmd, "\\&$next_stage" );
 			p_line();
+		} elsif ( s/^GOTO\s+(stage_\S+)// ) {
+			p_ret( $1 );
+			pr ')';
+			p_line();
+		} elsif ( s/^(stage_\S+)\s*:\s*(.*)$// ) {
+			my $next_stage = $1;
+			my $left = $_;
+			p_ret( $next_stage );
+			pr ');';
+			p_subend();
+			p_sub( $next_stage );
+			$_ = $left;
+			redo if /\S/;
 		} elsif ( s/^ERROR\s*\(// ) {
 			p_ret( "error" );
 			p_line();
