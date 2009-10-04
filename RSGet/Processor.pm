@@ -17,6 +17,7 @@ sub pr(@)
 }
 
 my $is_sub = 0;
+my $last_cmd = undef;
 sub p_sub
 {
 	my $sub = shift;
@@ -31,7 +32,13 @@ sub p_subend
 {
 	return unless $is_sub;
 	$is_sub--;
-	pr "\treturn \${self}->error( 'unexpected end of script' );\n}\n";
+
+	my $error = 'unexpected end of script';
+	if ( $last_cmd and $last_cmd eq "download" ) {
+		$error = 'download is a HTML page';
+	}
+	$last_cmd = undef;
+	pr "\treturn \${self}->error( '$error' );\n}\n";
 }
 
 my $space;
@@ -128,6 +135,7 @@ sub read_file
 
 	$processed = "";
 	$space = "";
+	$last_cmd = undef;
 	$is_sub = 0;
 
 	$opts{uri} = [ map { eval $_ } @{$opts{uri}} ];
@@ -140,6 +148,7 @@ sub read_file
 	use warnings;
 	use RSGet::Get;
 	use RSGet::Tools;
+	use URI::Escape;
 
 	BEGIN {
 		our @ISA;
@@ -158,7 +167,7 @@ EOF
 		$space = "";
 		$space = $1 if s/^(\s+)//;
 
-		if ( s/^(GET|WAIT|CAPTCHA)\s*\(// ) {
+		if ( s/^(GET|WAIT|CAPTCHA|DOWNLOAD)\s*\(// ) {
 			my $cmd = lc $1;
 			my $next_stage = "stage" . ++$stage;
 			my @skip;
@@ -172,6 +181,7 @@ EOF
 				p_line();
 			}
 			p_subend();
+			$last_cmd = $cmd;
 			p_sub( $next_stage );
 		} elsif ( s/^(GET|WAIT|CAPTCHA)_NEXT\s*\(\s*(.*?)\s*,// ) {
 			my $cmd = lc $1;
@@ -200,15 +210,6 @@ EOF
 		} elsif ( s/^SEARCH\s*\(// ) {
 			pr $space . 'return if $self->search( ';
 			p_line();
-		} elsif ( s/^DOWNLOAD\s*\(\s*// ) {
-			p_ret( "download" );
-			p_line();
-			until ( /;\s*$/ ) {
-				$_ = shift @machine;
-				p_line();
-			}
-			p_subend();
-			p_sub( "stage_is_html" );
 		} elsif ( s/^(PRINT|LOG|COOKIE)\s*\(// ) {
 			p_func( lc $1 );
 			p_line();
