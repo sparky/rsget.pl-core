@@ -176,7 +176,9 @@ sub get
 sub get_finish
 {
 	my $self = shift;
-	$self->{_referer} = shift;
+	my $ref = shift;
+	my $keep_ref = shift;
+	$self->{_referer} = $ref unless $keep_ref;
 
 	my $func = $self->{after_curl};
 	$_ = $self->{body};

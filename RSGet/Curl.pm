@@ -90,7 +90,7 @@ sub new
 				map { uri_escape( $_ ) . "=" . uri_escape( $post->{$_} ) }
 				sort keys %$post;
 		}
-		warn "POST( $uri ): $post\n" if verbose( 3 );
+		$get_obj->log( "POST( $uri ): $post\n" ) if verbose( 3 );
 		$curl->setopt( CURLOPT_POSTFIELDS, $post );
 		$curl->setopt( CURLOPT_POSTFIELDSIZE, length $post );
 	}
@@ -123,6 +123,9 @@ sub new
 		$get_obj->{is_html} = 1;
 		$curl->setopt( CURLOPT_WRITEFUNCTION, \&body_scalar );
 		$curl->setopt( CURLOPT_WRITEDATA, \$supercurl->{body} );
+	}
+	if ( $opts{keep_referer} or $opts{keep_ref} ) {
+		$supercurl->{keep_referer} = 1;
 	}
 
 	$active_curl{ $id } = $supercurl;
@@ -176,6 +179,7 @@ sub file_init
 		$supercurl->{size_total} = $f_len;
 	}
 
+	dump_to_file( $supercurl->{head}, "head" ) if verbose( 5 );
 	my $fname;
 	if ( $supercurl->{force_name} ) {
 		$fname = $supercurl->{force_name};
@@ -345,7 +349,7 @@ sub finish
 		$get_obj->{body} = $supercurl->{body};
 	}
 
-	$get_obj->get_finish( $eurl );
+	$get_obj->get_finish( $eurl, $supercurl->{keep_referer} || 0 );
 }
 
 sub need_run
