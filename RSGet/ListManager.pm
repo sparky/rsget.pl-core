@@ -318,14 +318,24 @@ sub add_list
 		}
 	}
 
+	my $u = qr/[a-z0-9_-]+/;
+	my $tld = qr/[a-z]{2,8}/;
 	foreach ( split /\s+/s, $text ) {
-		next unless m{^(?:.*?([|#<>"'\(\)\{\}\[\]]))?(http://)?(.*?)$};
-		my $lim = $1;
+		next unless m{^(.*?)(https?://)?((?:$u\.)*$u\.$tld/.+)$};
+		my $pre = $1;
 		my $proto = $2 || "http://";
 		my $uri = $proto . $3;
-		if ( $lim ) {
-			$lim =~ tr/[](){}/][)(}{/;
-			$uri =~ s/\Q$lim\E.*//;
+		if ( $pre ) {
+			if ( $pre =~ /%([0-9A-F]{2})$/ ) {
+				my $l = chr hex $1;
+				$l =~ tr/[](){}<>/][)(}{></;
+				$l = sprintf "%.2X", ord $l;
+				$uri =~ s/%$l.*//i;
+			} elsif ( $pre =~ m{.*([^a-zA-Z0-9_/])$} ) {
+				my $l = $1;
+				$l =~ tr/[](){}<>/][)(}{></;
+				$uri =~ s/\Q$l\E.*//;
+			}
 		}
 		my $getter = RSGet::Dispatch::getter( $uri );
 		next unless $getter;
