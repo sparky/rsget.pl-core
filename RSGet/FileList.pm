@@ -7,7 +7,7 @@ use RSGet::Tools;
 set_rev qq$Id$;
 
 def_settings(
-	list_lock => [ "If lock file exists, list file won't be updated.", '.${file}.swp', qr/.+/ ],
+	list_lock => [ "If lock file exists, list file won't be updated.", '${dir}/.${file}.swp', qr/.+/ ],
 	list_file => [ "Use specified file as URI list.", undef, qr/.+/ ],
 );
 
@@ -43,8 +43,21 @@ sub set_file
 		p "Using '$file' file list\n";
 	}
 	die "Can't read '$file'\n" unless -r $file;
-	( $file_swp = setting( "list_lock" ) ) =~ s/\${file}/$file/g;
-	p "Using '$file_swp' as file lock\n";
+
+	{
+		my ( $dir, $fn );
+		if ( $file =~ m{^(.*)/(.*?)$} ) {
+			$dir = $1;
+			$fn = $2;
+		} else {
+			$dir = '.';
+			$fn = $file;
+		}
+		$file_swp = setting( "list_lock" );
+		$file_swp =~ s/\${file}/$fn/g;
+		$file_swp =~ s/\${dir}/$dir/g;
+		p "Using '$file_swp' as file lock\n";
+	}
 }
 
 sub update
