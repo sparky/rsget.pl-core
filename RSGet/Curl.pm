@@ -93,6 +93,8 @@ sub new
 		$get_obj->log( "POST( $uri ): $post\n" ) if verbose( 3 );
 		$curl->setopt( CURLOPT_POSTFIELDS, $post );
 		$curl->setopt( CURLOPT_POSTFIELDSIZE, length $post );
+	} else {
+		$get_obj->log( "GET( $uri )\n" ) if verbose( 4 );
 	}
 
 	if ( $opts{save} ) {
