@@ -102,6 +102,7 @@ sub de_ml
 	s/&le;/</g;
 	s/&ge;/>/g;
 	s/&quot;/"/g;
+	s/&#(\d+);/chr $1/eg;
 	s/&amp;/&/g;
 	return $_;
 }
