@@ -252,6 +252,17 @@ sub getter
 	return undef;
 }
 
+sub unigetter
+{
+	my $uri = shift;
+	my $getter = getter( $uri );
+	if ( $getter ) {
+		my $unify = $getter->{unify};
+		$uri = &$unify( $uri );
+		return $getter, $uri;
+	}
+	return undef, $uri;
+}
 
 
 1;

@@ -328,7 +328,8 @@ sub add_list
 				$uri =~ s/\Q$l\E.*//;
 			}
 		}
-		my $getter = RSGet::Dispatch::getter( $uri );
+
+		(my $getter, $uri) = RSGet::Dispatch::unigetter( $uri );
 		next unless $getter;
 		next if exists $all_uris{ $uri };
 		$all_uris{ $uri } = 1;
@@ -402,8 +403,8 @@ sub add_list_update
 
 				if ( my $links = $save->{links} ) {
 					my @new;
-					foreach my $uri ( @$links ) {
-						my $getter = RSGet::Dispatch::getter( $uri );
+					foreach my $luri ( @$links ) {
+						my ($getter, $uri) = RSGet::Dispatch::unigetter( $luri );
 						if ( $getter ) {
 							push @new, { cmd => "ADD", globals => {}, uris => { $uri => [ $getter, {} ] } };
 						} else {

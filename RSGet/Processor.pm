@@ -6,7 +6,6 @@ use RSGet::Tools;
 set_rev qq$Id$;
 
 my $options = "name|short|slots|cookie|status|min_ver";
-my $parts = "pre|start|perl";
 
 my $processed = "";
 sub pr(@)
@@ -74,10 +73,13 @@ sub read_file
 		uri => [],
 	);
 	my %parts = (
+		unify => [],
 		pre => [],
 		start => [],
 		perl => [],
 	);
+	my $parts = join "|", keys %parts;
+
 	my $part = undef;
 	while ( <F_IN> ) {
 		chomp;
@@ -141,6 +143,8 @@ sub read_file
 	$opts{uri} = [ map { eval $_ } @{$opts{uri}} ];
 	$opts{class} = ${class};
 	$opts{pkg} = "${class}::$opts{name}";
+	$opts{unify} = join "\n", @{ $parts{unify} };
+	$opts{unify} ||= 's/#.*//; s{/$}{};';
 
 	pr "package $opts{pkg};\n\n";
 	pr <<'EOF';
@@ -225,17 +229,20 @@ EOF
 	p_subend();
 
 	pr @{$parts{perl}};
-	pr "1;";
 
-	my $ret;
+	pr "\npackage $opts{pkg};\n";
+	pr "sub unify { local \$_ = shift; $opts{unify};\nreturn \$_;\n};\n";
+	pr '\&unify;';
+
+	my $unify;
 	{
 		local $SIG{__DIE__};
 		delete $SIG{__DIE__};
-		$ret = eval $processed;
+		$unify = eval $processed;
 	}
 
 	if ( $@ ) {
-		p "Error(s): $@\n";
+		p "Error(s): $@";
 		return undef unless verbose( 1 );
 		my $err = $@;
 		return undef unless $err =~ /line \d+/;
@@ -249,8 +256,14 @@ EOF
 		}
 		return undef;
 	}
+	if ( not $unify or not ref $unify or ref $unify ne "CODE" ) {
+		my $ru = ref $unify || "undef";
+		p "Error: invalid, unify returned '$ru'";
+		return undef;
+	}
+	$opts{unify} = $unify;
 
-	return $opts{pkg} => \%opts if $ret and $ret == 1;
+	return $opts{pkg} => \%opts;
 	return ();
 }
 
