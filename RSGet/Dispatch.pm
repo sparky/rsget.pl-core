@@ -5,6 +5,10 @@ use warnings;
 use RSGet::Tools;
 set_rev qq$Id$;
 
+def_settings(
+	max_slots => [ "Number of slots (per IP) to use if getter has no limitation.", 8, qr/0*[1-9]\d*/ ],
+);
+
 our %downloading;
 our %checking;
 our %resolving;
@@ -105,6 +109,20 @@ sub finished
 	RSGet::FileList::update();
 }
 
+sub get_slots
+{
+	my $cmd = shift;
+	my $suggested = shift;
+	return setting( "max_slots" ) if $cmd eq "check";
+	unless ( defined $suggested ) {
+		return $cmd eq "get" ? 1 : 5;
+	}
+	return 0 + $suggested if $suggested =~ /^\d+$/;
+	return setting( "max_slots" ) if lc $suggested eq "max";
+	warn "Invalid slots declaration: $suggested\n" if verbose( 1 );
+	return 1;
+}
+
 sub run
 {
 	my ( $cmd, $uri, $getter, $options ) = @_;
@@ -118,7 +136,7 @@ sub run
 	return $w if defined $w;
 
 	my $pkg = $getter->{pkg};
-	my $outif = find_free_if( $pkg, $working, ($cmd eq "get" ? ($getter->{slots} || 1) : 5) );
+	my $outif = find_free_if( $pkg, $working, get_slots( $cmd, $getter->{slots} ) );
 	return unless defined $outif;
 
 	my $obj = RSGet::Get::new( $pkg, $cmd, $uri, $options, $outif );
