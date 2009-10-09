@@ -11,6 +11,7 @@ use RSGet::Curl;
 use RSGet::Dispatch;
 use RSGet::FileList;
 use RSGet::Get;
+use RSGet::MortalObject;
 use RSGet::Line;
 use RSGet::ListManager;
 use RSGet::Processor;
@@ -221,6 +222,7 @@ sub loop
 		$lasttime = $time;
 	
 		RSGet::Wait::wait_update();
+		RSGet::MortalObject::update();
 		RSGet::Captcha::captcha_update();
 
 		my $getlist = RSGet::FileList::readlist();

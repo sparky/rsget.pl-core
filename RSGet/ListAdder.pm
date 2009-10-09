@@ -27,7 +27,7 @@ sub add_links
 	my $lines = $self->{lines};
 
 	my %list_uris;
-	foreach my $mcd ( @$act_clist ) {
+	foreach my $mcd ( @$RSGet::ListManager::act_clist ) {
 		foreach my $ucd ( @$mcd ) {
 			my $uri = $ucd->[0];
 			$list_uris{ $uri } = 1;
@@ -164,7 +164,7 @@ sub find_clones
 
 	$self->{select_clone} = 1;
 	my $lines = $self->{lines};
-	my $own_clist = [ @$act_clist ];
+	my $own_clist = [ @$RSGet::ListManager::act_clist ];
 	my $active = 0;
 
 	my $clone_select;

@@ -208,7 +208,7 @@ sub check_bad_clones
 	return $got_bad;
 }
 
-my $act_clist;
+our $act_clist;
 sub autoadd
 {
 	my $getlist = shift;
