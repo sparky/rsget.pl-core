@@ -5,7 +5,9 @@ use warnings;
 use IO::Socket;
 use RSGet::Line;
 use RSGet::Tools;
-use RSGet::ListManager;
+use RSGet::ListAdder;
+use RSGet::MortalObject;
+use Digest::MD5 qw(md5_hex);
 set_rev qq$Id$;
 
 our %handlers = (
@@ -19,7 +21,7 @@ our %handlers = (
 	captcha => \&captcha,
 );
 
-my %lastid;
+my %main_ids;
 
 sub xhtml_start
 {
@@ -156,7 +158,7 @@ sub f_notify
 
 sub f_active
 {
-	$lastid{act} = {};
+	$main_ids{act} = {};
 	my $r = '<fieldset id="f_active"><legend>active</legend><ul>';
 	foreach my $key ( sort { $a <=> $b } keys %RSGet::Line::active ) {
 		my $line = $RSGet::Line::active{ $key };
@@ -182,7 +184,7 @@ sub act_info
 	my $color = $o->{wait} ? $wait_to_color{ $o->{wait} } : "green";
 
 	my $uri = $o->{uri};
-	my $uriid = makeid( "act", $uri, $uri );
+	my $uriid = makeid( \%main_ids, "act", $uri, $uri );
 	my $name = sgml( $o->{name} );
 	my $size = ($o->{size} =~ /^\d+$/) ? bignum( $o->{size} ) . " bytes" : sgml( $o->{size} );
 	$logo =~ s/ $//;
@@ -214,8 +216,8 @@ sub f_dllist
 		ADD => "orange",
 	);
 
-	$lastid{file} = {};
-	$lastid{uri} = {};
+	$main_ids{file} = {};
+	$main_ids{uri} = {};
 	$r .= '<ul class="flist">';
 	foreach my $l ( @RSGet::FileList::actual ) {
 		unless ( ref $l ) {
@@ -233,7 +235,7 @@ sub f_dllist
 		}
 
 		my $color = $cmd_to_color{ $cmd };
-		my $fileid = makeid( "file", $g->{fname} || (keys %$uris)[0], $uris );
+		my $fileid = makeid( \%main_ids, "file", $g->{fname} || (keys %$uris)[0], $uris );
 
 		$r .= qq#<li id="$fileid" class="file $color">#;
 		my $size = $g->{fsize} ? bignum( $g->{fsize} ) : "?";
@@ -244,7 +246,7 @@ sub f_dllist
 		$r .= '</li>';
 
 		foreach my $uri ( sort keys %$uris ) {
-			$r .= file_info( "uri", $uri, @{$uris->{$uri}} );
+			$r .= file_info( \%main_ids, "uri", $uri, @{$uris->{$uri}} );
 		}
 
 	}
@@ -257,7 +259,7 @@ sub f_dllist
 
 sub file_info
 {
-	my ( $id_type, $uri, $getter, $o, $tools ) = @_;
+	my ( $list_ids, $id_type, $uri, $getter, $o, $tools ) = @_;
 
 	my $bestname = $o->{name} || $o->{iname}
 		|| $o->{aname} || $o->{ainame};
@@ -273,7 +275,7 @@ sub file_info
 		$i--;
 		$bestsize = $i;
 	}
-	my $uriid = makeid( $id_type, $uri, $uri );
+	my $uriid = makeid( $list_ids, $id_type, $uri, $uri );
 
 	my $color = "blue";
 	$color = "green" if $o->{size} or $o->{asize} or $o->{quality};
@@ -285,7 +287,7 @@ sub file_info
 	my $errormsg = "";
 	my @tools;
 	if ( $o->{error} ) {
-		push @tools, "CLEAN ERROR", "REMOVE";
+		push @tools, "CLEAR ERROR", "REMOVE";
 		$errormsg = qq#<div class="error">ERROR: # . sgml( $o->{error} ) . qq#</div>#;
 	} else {
 		push @tools, "DISABLE", ( $id_type eq "uri" ? "!REMOVE" : "REMOVE" );
@@ -344,13 +346,14 @@ sub href
 
 sub makeid
 {
+	my $id_list = shift;
 	my $pre = shift;
 	my $id = shift;
 	my $data = shift;
 	
 	$id =~ s/[^a-zA-Z0-9]+/_/g;
 
-	my $idgrp = $lastid{$pre};
+	my $idgrp = $id_list->{$pre};
 	if ( exists $idgrp->{ $id } ) {
 		my $i = 1;
 		++$i while exists $idgrp->{ "${id}_$i" };
@@ -371,7 +374,7 @@ sub command
 	my $cmd = $1;
 	my $grp = $2;
 
-	my $idgrp = $lastid{$grp};
+	my $idgrp = $main_ids{$grp};
 	my $data = $idgrp->{ $exec };
 	unless ( $data ) {
 		warn "Invalid ID: $cmd, $grp, $exec\n";
@@ -395,7 +398,7 @@ sub command
 		}
 	} elsif ( $grp eq "uri" ) {
 		my @save;
-		if ( $cmd eq "CLEAN ERROR" ) {
+		if ( $cmd eq "CLEAR ERROR" ) {
 			@save = ( options => { error => undef } );
 		} elsif ( $cmd eq "DISABLE" ) {
 			@save = ( options => { error => "disabled" } );
@@ -454,7 +457,7 @@ sub f_addform
 {
 	my $id = shift;
 	return '<form action="/add" method="POST"' . ( defined $id ? '>' : ' target="_blank">' )
-		. '<fieldset id="add"><legend>Add links to the list</legend>'
+		. '<fieldset id="f_addlinks"><legend>Add links to the list</legend>'
 		. ( $id ? qq#<input type="hidden" name="id" value="$id" /># : '' )
 		. '<textarea cols="100" rows="8" name="links"></textarea>'
 		. '<input type="submit" value="OK" />'
@@ -466,7 +469,7 @@ sub f_addcomment
 {
 	my $id = shift;
 	return '<form action="/add" method="POST">'
-		. '<fieldset id="add"><legend>Add comment (i.e. passwords) to the list</legend>'
+		. '<fieldset id="f_addcomment"><legend>Add comment (i.e. passwords) to the list</legend>'
 		. qq#<input type="hidden" name="id" value="$id" />#
 		. '<textarea cols="100" rows="4" name="comment"></textarea>'
 		. '<input type="submit" value="OK" />'
@@ -481,8 +484,8 @@ sub f_addlist
 
 	my $r = '<fieldset id="f_addlist"><legend>Add list</legend>'
 		. '<ul class="flist">';
-	my $uri_id = "adduri_" . $list->{id};
-	$lastid{ $uri_id } = {};
+	my $list_ids = $list->{ids};
+	$list_ids->{adduri} = {};
 
 	my $comment = $list->{comment};
 	foreach my $l ( @$comment ) {
@@ -509,7 +512,7 @@ sub f_addlist
 
 		my $uris = $l->{uris};
 		foreach my $uri ( sort keys %$uris ) {
-			$r .= file_info( $uri_id, $uri, @{$uris->{$uri}} );
+			$r .= file_info( $list_ids, "adduri", $uri, @{$uris->{$uri}} );
 		}
 	}
 
@@ -524,22 +527,27 @@ sub add
 	my ( $file, $post, $headers ) = @_;
 	my $r = xhtml_start( "main.js" );
 
-
 	my $list;
-	$list = RSGet::ListManager::add_list( $post->{links}, $post->{id} )
-		if $post->{links};
-	$list = RSGet::ListManager::add_list_comment( $post->{comment}, $post->{id} )
-		if $post->{comment};
-
-	if ( $list ) {
-		$r .= '<fieldset id="f_listask"></fieldset>';
-		$r .= f_addlist( $list );
-		$r .= f_addcomment( $list->{id} );
-		$r .= f_addform( $list->{id} );
-		$r .= qq#<script type="text/javascript">init_add( "$list->{id}" );</script>#;
-	} else {
-		$r .= f_addform( "" );
+	my $id = $post->{id} || undef;
+	if ( $id ) {
+		my $mo = RSGet::MortalObject->from_id( $post->{id} );
+		$list = $mo->obj if $mo;
 	}
+	unless ( $list ) {
+		$list = new RSGet::ListAdder;
+		my $mo = RSGet::MortalObject->new( $list );
+		$id = $mo->id();
+	}
+
+	$list->add_links( $post->{links} ) if $post->{links};
+	$list->add_comment( $post->{comment} ) if $post->{comment};
+
+	$r .= '<fieldset id="f_listask"></fieldset>';
+	$r .= f_addlist( $list, $id );
+	$r .= f_addcomment( $id );
+	$r .= f_addform( $id );
+	$r .= qq#<script type="text/javascript">init_add( "$id" );</script>#;
+
 	$r .= xhtml_end();
 
 	return $r;
@@ -547,15 +555,17 @@ sub add
 
 sub f_askclone
 {
+	my $list = shift;
 	my $ask = shift;
-	my $id = shift;
 	my $r = '<fieldset id="f_listask"><legend>Select clone</legend>'
 		. '<ul class="flist">';
 	my ( $uri, $options, $clones ) = @$ask;
 	my $getter = RSGet::Dispatch::getter( $uri );
-	my $clone_id = "addclone_" . $id;
-	$lastid{ $clone_id } = { uri => $uri };
-	$r .= file_info( $clone_id, $uri, $getter, $options, [] );
+
+	my $list_ids = $list->{ids};
+	$list_ids->{addclone} = { uri => $uri };
+
+	$r .= file_info( $list_ids, "addclone", $uri, $getter, $options, [] );
 	$r .= '</ul><ul class="flist">';
 	foreach my $clone ( @$clones ) {
 		foreach my $ucd ( @$clone ) {
@@ -565,11 +575,11 @@ sub f_askclone
 				size => $ucd->[3],
 			};
 			my $getter = RSGet::Dispatch::getter( $uri );
-			$r .= file_info( $clone_id, $uri, $getter, $options, ['SELECT'] );
+			$r .= file_info( $list_ids, "addclone", $uri, $getter, $options, ['SELECT'] );
 		}
 	}
 	{
-		$r .= file_info( $clone_id, "NEW SOURCE", $getter,
+		$r .= file_info( $list_ids, "addclone", "NEW SOURCE", $getter,
 			{ name => "Add as a separate source" }, ['SELECT'] );
 	}
 	$r .= '</ul></fieldset>';
@@ -578,14 +588,15 @@ sub f_askclone
 
 sub f_askconfirm
 {
-	my $id = shift;
-	my $act = shift;
+	my $list = shift;
 	my $r = '<fieldset id="f_listask"><legend>Confirm additions</legend>'
 		. '<ul class="flist">';
-	my $confirm_id = "addlist_" . $id;
-	$lastid{ $confirm_id } = {};
-	$r .= file_info( $confirm_id, "NEW SOURCES", { short => "OK?" },
-		{ name => "Add $act new sources to the list" }, ['CONFIRM'] );
+
+	my $list_ids = $list->{ids};
+	$list_ids->{addlist} = {};
+
+	$r .= file_info( $list_ids, "addlist", "NEW SOURCES", { short => "OK?" },
+		{ name => "Add $list->{active} new sources to the list" }, ['CONFIRM'] );
 	$r .= '</ul></fieldset>';
 	return $r;
 }
@@ -602,32 +613,46 @@ sub f_msg
 sub add_update
 {
 	my ( $file, $post, $headers ) = @_;
-	my $r = xhtml_start( );
+	my $r = xhtml_start();
 
-	RSGet::ListManager::add_command( \%lastid, $post->{id}, $post->{exec} ) if $post->{exec};
-	my $list = RSGet::ListManager::add_list_update( $post->{id} );
+	my $list;
+	my $id = $post->{id};
+	my $mo = RSGet::MortalObject->from_id( $id );
+	$list = $mo->obj() if $mo;
+
 	my $jsdata = 0;
 	if ( not $list ) {
 		$r .= '<fieldset id="f_listask"></fieldset>';
 		$r .= f_msg( "f_addlist", "ERROR: No such add list" );
-	} elsif ( not ref $list ) {
+		$r .= f_msg( "f_addcomment", 'Go to <a href="/">main page</a> or <a href="/add">add more links</a>.' );
+		$r .= f_msg( "f_addlinks", "" );
+	} elsif ( $list->{msg} ) {
 		$r .= '<fieldset id="f_listask"></fieldset>';
-		$r .= f_msg( "f_addlist", $list . '; <a href="/">to main page</a>' );
+		$r .= f_msg( "f_addlist", $list->{msg} );
+		$r .= f_msg( "f_addcomment", 'Go to <a href="/">main page</a> or <a href="/add">add more links</a>.' );
+		$r .= f_msg( "f_addlinks", "" );
 	} else {
+		$list->command( $post->{exec} ) if $post->{exec};
+		$list->list_update();
 		if ( $post->{select_clone} ) {
-			my $ask_clone;
-			($list, $ask_clone) = RSGet::ListManager::add_list_clones( $post->{id} );
+			my $ask_clone = $list->find_clones();
 			if ( $ask_clone ) {
-				$r .= f_askclone( $ask_clone, $list->{id} );
+				$r .= f_askclone( $list, $ask_clone );
 			} else {
-				$r .= f_askconfirm( $list->{id}, $list->{active} );
+				$r .= f_askconfirm( $list );
 			}
 		}
 
-		$r .= f_addlist( $list );
+		my $list_data = f_addlist( $list );
+		my $md5 = md5_hex( $list_data );
+		my $oldmd5 = $post->{addlist_hash} || '';
+		if ( $oldmd5 ne $md5 ) {
+			$r .= $list_data;
+		}
 		$jsdata = {
-			id => $list->{id},
-			select_clone => $list->{select_clone} || 0
+			id => $id,
+			select_clone => $list->{select_clone} || 0,
+			addlist_hash => $md5,
 		};
 	}
 
