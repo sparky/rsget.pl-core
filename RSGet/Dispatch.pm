@@ -11,12 +11,10 @@ def_settings(
 
 our %downloading;
 our %checking;
-our %resolving;
 
 my %working = (
 	get => \%downloading,
 	check => \%checking,
-	link => \%resolving,
 );
 
 my @interfaces;
@@ -114,9 +112,7 @@ sub get_slots
 	my $cmd = shift;
 	my $suggested = shift;
 	return setting( "max_slots" ) if $cmd eq "check";
-	unless ( defined $suggested ) {
-		return $cmd eq "get" ? 1 : 5;
-	}
+	return 1 unless defined $suggested;
 	return 0 + $suggested if $suggested =~ /^\d+$/;
 	return setting( "max_slots" ) if lc $suggested eq "max";
 	warn "Invalid slots declaration: $suggested\n" if verbose( 1 );
@@ -127,7 +123,6 @@ sub run
 {
 	my ( $cmd, $uri, $getter, $options ) = @_;
 	my $class = $getter->{class};
-	$cmd = "link" if $class eq "Link";
 
 	return if $options->{error};
 
@@ -152,13 +147,9 @@ sub check
 	my $options = shift;
 
 	return $options if $options->{error};
-	if ( $getter->{class} eq "Link" ) {
-		return $options if $options->{link1};
-	} else {
-		return $options if $options->{size} or $options->{asize};
-		return $options if $options->{quality};
-		return $options if $options->{link1};
-	}
+	return $options if $options->{size} or $options->{asize};
+	return $options if $options->{quality};
+	return $options if $options->{link1};
 
 	run( "check", $uri, $getter, $options );
 	return undef;
@@ -206,7 +197,6 @@ sub process
 	RSGet::Line::status(
 		'to download' => $to_dl,
 		'downloading' => scalar keys %downloading,
-		'resolving links' => scalar keys %resolving,
 		'checking URIs' => scalar keys %checking,
 	);
 
