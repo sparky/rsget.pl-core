@@ -234,12 +234,7 @@ EOF
 	pr "sub unify { local \$_ = shift; $opts{unify};\nreturn \$_;\n};\n";
 	pr '\&unify;';
 
-	my $unify;
-	{
-		local $SIG{__DIE__};
-		delete $SIG{__DIE__};
-		$unify = eval $processed;
-	}
+	my $unify = eval_it( $processed );
 
 	if ( $@ ) {
 		p "Error(s): $@";
@@ -265,6 +260,13 @@ EOF
 
 	return $opts{pkg} => \%opts;
 	return ();
+}
+
+sub eval_it
+{
+	local $SIG{__DIE__};
+	delete $SIG{__DIE__};
+	return eval shift;
 }
 
 1;
