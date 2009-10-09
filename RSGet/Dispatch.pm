@@ -111,10 +111,14 @@ sub get_slots
 {
 	my $cmd = shift;
 	my $suggested = shift;
-	return setting( "max_slots" ) if $cmd eq "check";
+	my $max = setting( "max_slots" );
+	return $max if $cmd eq "check";
 	return 1 unless defined $suggested;
-	return 0 + $suggested if $suggested =~ /^\d+$/;
-	return setting( "max_slots" ) if lc $suggested eq "max";
+	if ( $suggested =~ /^\d+$/ ) {
+		return $max if $max < $suggested;
+		return 0 | $suggested;
+	}
+	return $max if lc $suggested eq "max";
 	warn "Invalid slots declaration: $suggested\n" if verbose( 1 );
 	return 1;
 }
