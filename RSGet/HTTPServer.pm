@@ -5,6 +5,7 @@ use warnings;
 use IO::Socket;
 use RSGet::Tools;
 use RSGet::HTTPRequest;
+use URI::Escape;
 set_rev qq$Id$;
 
 sub new
@@ -85,7 +86,7 @@ sub request
 		}
 	} elsif ( $file =~ s/\?(.*)// ) {
 		my $get = $1;
-		%post = map /^(.*?)=(.*)/, split /;+/, $get;
+		%post = map { /^(.*?)=(.*)/; (uri_unescape( $1 ), uri_unescape( $2 )) } split /;+/, $get;
 	}
 	my $print;
 	if ( my $func = $RSGet::HTTPRequest::handlers{$file} ) {
