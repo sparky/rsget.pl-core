@@ -62,20 +62,20 @@ sub captcha_update
 	foreach my $id ( keys %waiting ) {
 		my $obj = $waiting{ $id };
 		my $left = $obj->{captcha_until} - $time;
+		my $md5 = $obj->{captcha_md5};
 		if ( $left <= 0 ) {
-			delete $waiting{ $id };
-			delete $needed{ $obj->{captcha_md5} };
 			$obj->print( "captcha not solved" );
 			unsolved( $obj );
 		} elsif ( $obj->{_abort} ) {
-			delete $waiting{ $id };
 			$obj->abort();
-		} elsif ( my $s = $solved{ $obj->{captcha_md5} } ) {
-			delete $waiting{ $id };
+		} elsif ( my $s = $solved{ $md5 } ) {
 			solved( $obj, $s );
 		} else {
 			$obj->print( "solve captcha " . s2string( $left ) );
+			next;
 		}
+		delete $waiting{ $id };
+		delete $needed{ $md5 };
 	}
 	RSGet::Line::status( 'captcha' => scalar keys %waiting );
 }
