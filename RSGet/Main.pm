@@ -55,7 +55,7 @@ sub init
 	set_rev $main_rev;
 
 	print_help() if $help;
-	check_settings();
+	check_settings( \%main::settings );
 
 	$SIG{CHLD} = "IGNORE";
 	maybe_update( $argv );
@@ -128,9 +128,11 @@ sub maybe_update
 
 sub check_settings
 {
+	my $settings = shift;
+	my $user = shift;
 	my $die = 0;
-	foreach my $s ( sort keys %main::settings ) {
-		my $v = $main::settings{ $s };
+	foreach my $s ( sort keys %$settings ) {
+		my $v = $settings->{ $s };
 		my $def = $main::def_settings{ $s };
 		unless ( $def ) {
 			warn "There is no setting '$s' -- defined in $v->[1].\n";
@@ -144,6 +146,11 @@ sub check_settings
 				$die = 1;
 				next;
 			}
+		}
+		if ( $user and not $def->{user} ) {
+			warn "Setting '$s' is global, users cannot have it set -- defined in $v->[1].\n";
+			$die = 1;
+			next;
 		}
 	}
 	die "ERROR: Found invalid settings.\n" if $die;
@@ -194,14 +201,19 @@ sub read_userconfig
 		} elsif ( /^\s*([a-z_]+)\s*=\s*(.*?)\s*$/ ) {
 			die "User not defined, at user config file, line ($line):\n$_\n"
 				unless $user;
-			$usettings{ $user }->{$1} = [ $2, "user config file, line $line" ];
+			$usettings{ $user }->{$1} = [ $2, "user config file, section [$user], line $line" ];
 			next;
 		}
 		warn "Incorrect config line: $_\n";
 	}
 	close F_IN;
 
-
+	foreach my $user ( sort keys %usettings ) {
+		eval {
+			check_settings( $usettings{ $user }, $user );
+		}
+	}
+	die $@ if $@;
 }
 
 sub set_interfaces
