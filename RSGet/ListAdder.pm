@@ -5,7 +5,7 @@ use warnings;
 use RSGet::Tools;
 use RSGet::ListManager;
 use RSGet::Dispatch;
-set_rev qq$Id: ListManager.pm 10719 2009-10-07 21:24:52Z sparky $;
+set_rev qq$Id$;
 
 sub new
 {
