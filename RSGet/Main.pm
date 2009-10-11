@@ -23,6 +23,7 @@ set_rev qq$Id$;
 def_settings(
 	interfaces => [ "Specify output interfaces or IP addresses.", undef, qr/.+/ ],
 	http_port => [ "Start HTTP server on specified port.", undef, qr/\d+/ ],
+	http_pass => [ "HTTP password, as plain text, user is 'root'.", undef, qr/\S+/ ],
 	verbose => [ "Verbosity level.", 0, qr/\d+/ ],
 );
 

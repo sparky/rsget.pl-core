@@ -5,6 +5,7 @@ use warnings;
 use IO::Socket;
 use RSGet::Tools;
 use RSGet::HTTPRequest;
+use MIME::Base64 ();
 use URI::Escape;
 set_rev qq$Id$;
 
@@ -53,6 +54,7 @@ sub request
 				$OK = 1;
 				last;
 			}
+			s/\r\n$//;
 			push @headers, $_;
 			$len = $1 if /^Content-Length:\s*(\d+)/i;
 		}
@@ -71,7 +73,7 @@ sub request
 		close $client;
 		return undef;
 	}
-	
+
 	my( $method, $file, $ignore ) = split /\s+/, $request;
 	$file =~ s#^/+##;
 
@@ -88,8 +90,28 @@ sub request
 		my $get = $1;
 		%post = map { /^(.*?)=(.*)/; (uri_unescape( $1 ), uri_unescape( $2 )) } split /;+/, $get;
 	}
+
+	my $authorized = 1;
+	if ( my $pass = setting( "http_pass" ) ) {
+		$authorized = 0;
+		my %headers = map /^(.*?):\s*(.*)$/, @headers;
+		if ( $headers{Authorization} and $headers{Authorization} =~ /^Basic\s+(.*)/ ) {
+			my $auth = MIME::Base64::decode( $1 );
+			$auth =~ s/^(.*?)://;
+			my $user = $1;
+			if ( $user eq "root" ) {
+				$authorized = 1 if $pass eq $auth;
+			}
+		}
+	}
+
 	my $print;
-	if ( my $func = $RSGet::HTTPRequest::handlers{$file} ) {
+	if ( not $authorized ) {
+		$print .= "HTTP/1.1 401 Authorization Required\r\n";
+		$print .= "WWW-Authenticate: Basic\r\n";
+		$print .= "Content-Type: text/plain\r\n";
+		$print .= "\r\nAuthorization Required\n";
+	} elsif ( my $func = $RSGet::HTTPRequest::handlers{$file} ) {
 		$print = "HTTP/1.1 200 OK\r\n";
 		my $headers = { Content_Type => "text/xml; charset=utf-8" };
 		my $data = &$func( $file, \%post, $headers );
