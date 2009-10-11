@@ -8,8 +8,14 @@ use RSGet::Form;
 use RSGet::Wait;
 use URI;
 set_rev qq$Id$;
+
 def_settings(
-	errorlog => [ "Save errors.", 0, qr/\d/ ],
+	debug => {
+		desc => "Save errors.",
+		default => 0,
+		allowed => qr/\d/,
+		dynamic => "NUMBER",
+	},
 );
 
 BEGIN {
@@ -237,7 +243,7 @@ sub error
 {
 	my $self = shift;
 	my $msg = shift;
-	if ( $self->{body} and setting("errorlog") ) {
+	if ( $self->{body} and setting( "debug" ) ) {
 		my $n = 0;
 		my $name;
 		do {

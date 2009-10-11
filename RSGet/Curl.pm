@@ -13,13 +13,37 @@ use Fcntl qw(SEEK_SET);
 set_rev qq$Id$;
 
 def_settings(
-	backup => [ "Make backups if downloaded file exists.",
-	"copy,move", qr/copy,move|copy|move|no(ne)?/ ],
-	backup_suf => [ "Rename backup files with specified suffix. " .
-		"If none defined -N will be added to file name, without disrupting file extension.",
-		undef, qr/.+/ ],
-	outdir => [ "Output directory; where finished files are moved to.", '.', qr/.+/ ],
-	workdir => [ "Work directory; where unfinished files are stored.", '.', qr/.+/ ],
+	backup => {
+		desc => "Make backups if downloaded file exists.",
+		default => "done,continue,scratch",
+		allowed => qr/(no|(done|continue|scratch)(?:,(?2))*)/,
+		dynamic => {
+			'done,continue,scratch' => "Always.",
+			done => "Only if it would replace file in donedir.",
+			'continue,scratch' => "Only if it whould replace file in workdir.",
+			no => "Never.",
+		},
+		user => 1,
+	},
+	backup_suf => {
+		desc => "Rename backup files with specified suffix. " .
+			"If none defined -N will be added to file name, without disrupting file extension.",
+		allowed => qr/\S*/,
+		dynamic => "STRING",
+		user => 1,
+	},
+	outdir => {
+		desc => "Output directory; where finished files are moved to.",
+		default => '.',
+		dynamic => "STRING",
+		user => 1,
+	},
+	workdir => {
+		desc => "Work directory; where unfinished files are stored.",
+		default => '.',
+		dynamic => "STRING",
+		user => 1,
+	},
 );
 
 

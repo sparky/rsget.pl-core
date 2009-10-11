@@ -6,6 +6,21 @@ use Digest::MD5 qw(md5_hex);
 use RSGet::Tools;
 set_rev qq$Id$;
 
+=unused
+def_settings(
+	allow_captcha => {
+		desc => "Allow captchas which need to be solved manually.",
+		default => "http",
+		allowed => qr/(http|yes|no)/,
+		dynamic => {
+			http => "Allow only if control page is opened.",
+			yes => "Allow always",
+			no => "Never allow",
+		},
+	},
+);
+=cut
+
 our %needed;
 our %solved;
 

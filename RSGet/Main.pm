@@ -21,11 +21,29 @@ use Time::HiRes;
 set_rev qq$Id$;
 
 def_settings(
-	interfaces => [ "Specify output interfaces or IP addresses.", undef, qr/.+/ ],
-	http_port => [ "Start HTTP server on specified port.", undef, qr/\d+/ ],
-	http_pass => [ "HTTP password, as plain text, user is 'root'.", undef, qr/\S+/ ],
-	verbose => [ "Verbosity level.", 0, qr/\d+/ ],
+	interfaces => {
+		desc => "Specify output interfaces or IP addresses.",
+	},
+	http_port => {
+		desc => "Start HTTP server on specified port.",
+		allowed => qr/\d+/,
+	},
+	http_pass => {
+		desc => "HTTP password, as plain text, user is 'root'.",
+		allowed => qr/\S+/,
+	},
+	verbose => {
+		desc => "Verbosity level.",
+		default => 0,
+		allowed => qr/\d+/,
+	},
+	userconfig => {
+		desc => "User configuration file.",
+		allowed => qr/.+/,
+	},
 );
+
+our %usettings;
 
 my $http = undef;
 sub init
@@ -41,6 +59,7 @@ sub init
 
 	$SIG{CHLD} = "IGNORE";
 	maybe_update( $argv );
+	read_userconfig();
 	RSGet::Line::init();
 	print_settings() if verbose( 1 );
 	RSGet::FileList::set_file();
@@ -77,8 +96,8 @@ sub print_help
 		} else {
 			print $option . " " x ( $optlen - $l );
 		}
-		my @text = split /\s+/, $main::def_settings{ $s }->[0];
-		my $defval = $main::def_settings{ $s }->[1];
+		my @text = split /\s+/, $main::def_settings{ $s }->{desc};
+		my $defval = $main::def_settings{ $s }->{default};
 		push @text, "Default:", $defval if defined $defval;
 		my $line = "";
 		foreach my $word ( @text ) {
@@ -119,11 +138,12 @@ sub check_settings
 			next;
 		}
 		my $value = $v->[0];
-		my $re = $def->[2];
-		unless ( $value =~ m/^$re$/ ) {
-			warn "Setting '$s' has invalid value: '$value' -- defined in $v->[1].\n";
-			$die = 1;
-			next;
+		if ( my $re = $def->{allowed} ) {
+			unless ( $value =~ m/^$re$/ ) {
+				warn "Setting '$s' has invalid value: '$value' -- defined in $v->[1].\n";
+				$die = 1;
+				next;
+			}
 		}
 	}
 	die "ERROR: Found invalid settings.\n" if $die;
@@ -152,6 +172,36 @@ sub maybe_start_http
 	} else {
 		warn "HTTP server failed (port $port)\n";
 	}
+}
+
+sub read_userconfig
+{
+	my $cfg = setting( "userconfig" );
+	return unless $cfg;
+	die "Cannot read user config '$cfg' file\n" unless -r $cfg;
+
+	my $line = 0;
+	my $user = undef;
+	open F_IN, "<", $cfg;
+	while ( <F_IN> ) {
+		$line++;
+		next if /^\s*(?:#.*)?$/;
+		chomp;
+		if ( /^\s*\[([a-zA-Z0-9_]+)\]\s*$/ ) {
+			$user = $1;
+			$usettings{ $user } = {};
+			next;
+		} elsif ( /^\s*([a-z_]+)\s*=\s*(.*?)\s*$/ ) {
+			die "User not defined, at user config file, line ($line):\n$_\n"
+				unless $user;
+			$usettings{ $user }->{$1} = [ $2, "user config file, line $line" ];
+			next;
+		}
+		warn "Incorrect config line: $_\n";
+	}
+	close F_IN;
+
+
 }
 
 sub set_interfaces

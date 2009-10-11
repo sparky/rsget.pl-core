@@ -7,8 +7,17 @@ use RSGet::Tools;
 set_rev qq$Id$;
 
 def_settings(
-	list_lock => [ "If lock file exists, list file won't be updated.", '${dir}/.${file}.swp', qr/.+/ ],
-	list_file => [ "Use specified file as URI list.", undef, qr/.+/ ],
+	list_lock => {
+		desc => "If lock file exists, list file won't be updated.",
+		default => '${dir}/.${file}.swp',
+		allowed => qr/.+/,
+		user => 1,
+	},
+	list_file => {
+		desc => "Use specified file as URI list.",
+		allowed => qr/.+/,
+		user => 1,
+	}
 );
 
 my $file;

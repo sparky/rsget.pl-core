@@ -130,10 +130,25 @@ sub data_file
 sub def_settings
 {
 	my %s = @_;
+	my %options = (
+		desc => "Setting description.",
+		default => "Default value.",
+		allowed => "RegExp that defines allowed values.",
+		dynamic => "May be changed after start.",
+		user => "May be modified by user.",
+	);
 	foreach my $k ( keys %s ) {
 		my $v = $s{ $k };
-		die "Incorrect setting '$k' declaration\n"
-			if ref $v ne "ARRAY" or scalar @$v != 3;
+		if ( ref $v ne "HASH" ) {
+			die "Setting '$k' is not a HASH\n";
+		}
+		if ( not $v->{desc} ) {
+			die "Setting '$k' is missing description\n";
+		}
+		foreach ( keys %$v ) {
+			die "Setting '$k' has unknown option: $_\n"
+				unless exists $options{ $_ };
+		}
 		$main::def_settings{ $k } = $v;
 	}
 }
@@ -143,7 +158,7 @@ sub setting
 	my $name = shift;
 	die "Setting '$name' is not defined\n" unless exists $main::def_settings{ $name };
 	return $main::settings{ $name }->[0] if exists $main::settings{ $name };
-	return $main::def_settings{ $name }->[1];
+	return $main::def_settings{ $name }->{default};
 }
 
 sub verbose

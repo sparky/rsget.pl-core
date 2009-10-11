@@ -8,12 +8,17 @@ use Cwd;
 set_rev qq$Id$;
 
 def_settings(
-	use_svn => [ "Set to 'update' to automatically update rsget.pl components from SVN. " .
-		"Set to 'yes' to use downloaded components without updating first.",
-		"no", qr{no|yes|update} ],
-	svn_uri => [ "SVN path to rsget.pl source code.",
-		'http://svn.pld-linux.org/svn/toys/rsget.pl',
-		qr{(svn|https?)://.{4,}} ],
+	use_svn => {
+		desc => "Set to 'update' to automatically update rsget.pl components from SVN. " .
+			"Set to 'yes' to use downloaded components without updating first.",
+		default => "no",
+		allowed => qr{no|yes|update},
+	},
+	svn_uri => {
+		desc => "SVN path to rsget.pl source code.",
+		default => 'http://svn.pld-linux.org/svn/toys/rsget.pl',
+		allowed => qr{(svn|https?)://.{4,}},
+	},
 );
 
 my @update_dirs = qw(data RSGet Get Link Video);

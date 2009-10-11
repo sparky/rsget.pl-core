@@ -6,7 +6,12 @@ use RSGet::Tools;
 set_rev qq$Id$;
 
 def_settings(
-	max_slots => [ "Number of slots (per IP) to use if getter has no limitation.", 8, qr/0*[1-9]\d*/ ],
+	max_slots => {
+		desc => "Number of slots (per IP) to use if getter has no limitation.",
+		default => 8,
+		allowed => qr/0*[1-9]\d*/,
+		dynamic => "NUMBER",
+	},
 );
 
 our %downloading;
