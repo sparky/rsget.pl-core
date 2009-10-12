@@ -16,6 +16,8 @@ our %settings;
 unshift @INC, $install_path;
 
 my $cdir = "$ENV{HOME}/.rsget.pl";
+$cdir = $ENV{RSGET_DIR} if $ENV{RSGET_DIR};
+$ENV{RSGET_DIR} = $cdir;
 read_config( "$cdir/config" );
 
 my @save_ARGV = @ARGV;
@@ -70,8 +72,9 @@ sub read_config
 		$line++;
 		next if /^\s*(?:#.*)?$/;
 		chomp;
-		if ( s/^\s*([a-z_]+)\s*=\s*(.*?)\s*$// ) {
-			set( $1, $2, "config file, line $line" );
+		if ( my ( $key, $value ) = /^\s*([a-z_]+)\s*=\s*(.*?)\s*$/ ) {
+			$value =~ s/\${([a-zA-Z0-9_]+)}/$ENV{$1} || ""/eg;
+			set( $key, $value, "config file, line $line" );
 			next;
 		}
 		warn "Incorrect config line: $_\n";
