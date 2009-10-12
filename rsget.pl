@@ -35,6 +35,9 @@ if ( $settings{use_svn} and $settings{use_svn}->[0] =~ /^(yes|update)$/ ) {
 		warn "Cannot use components from SVN: $@\n";
 		set( "use_svn", "no", "disabled because of errors" )
 			if $settings{use_svn}->[0] eq "yes";
+		foreach my $inc ( keys %INC ) {
+			delete $INC{ $inc } if $inc =~ /^RSGet\//;
+		}
 	}
 }
 
