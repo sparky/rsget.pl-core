@@ -12,6 +12,10 @@ sub new
 	my $html = shift;
 	my %opts = @_;
 
+	if ( $opts{source} ) {
+		$html = $opts{source};
+		$opts{num} ||= 0;
+	}
 	my @forms;
 	while ( $html =~ s{^.*?<form\s*(.*?)>(.*?)</form>}{}si ) {
 		my $attr = $1;
@@ -25,7 +29,7 @@ sub new
 	}
 	unless ( @forms ) {
 		warn "No forms found\n" if verbose( 2 );
-		dump_to_file( $html, "html" ) if setting( "errorlog" );
+		dump_to_file( $html, "html" ) if setting( "debug" );
 		return undef unless $opts{fallback};
 		push @forms, [ {}, '' ];
 	}
@@ -64,7 +68,7 @@ sub new
 			warn "Can't find form whitch matches: $all\n";
 		}
 	}
-	if ( not $found and $opts{num} ) {
+	if ( not $found and exists $opts{num} ) {
 		if ( $opts{num} >= 0 and $opts{num} < scalar @forms ) {
 			$found = $forms[ $opts{num} ];
 		}
