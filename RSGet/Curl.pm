@@ -218,6 +218,7 @@ sub file_init
 	} else {
 		my $eurl = $curl->getinfo( CURLINFO_EFFECTIVE_URL );
 		$eurl =~ s#^.*/##;
+		$eurl =~ s/\?.*$//;
 		$fname = de_ml( uri_unescape( $eurl ) );
 	}
 
