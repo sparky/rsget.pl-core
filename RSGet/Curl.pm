@@ -16,10 +16,10 @@ def_settings(
 	backup => {
 		desc => "Make backups if downloaded file exists.",
 		default => "done,continue,scratch",
-		allowed => qr/(no|(done|continue|scratch)(?:,(?2))*)/,
+		allowed => qr/(no|(done|continue|scratch)(?:,(done|continue|scratch))*)/,
 		dynamic => {
 			'done,continue,scratch' => "Always.",
-			done => "Only if it would replace file in donedir.",
+			done => "Only if it would replace file in outdir.",
 			'continue,scratch' => "Only if it whould replace file in workdir.",
 			no => "Never.",
 		},
