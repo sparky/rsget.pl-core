@@ -9,7 +9,7 @@ set_rev qq$Id$;
 def_settings(
 	list_lock => {
 		desc => "If lock file exists, list file won't be updated.",
-		default => '${dir}/.${file}.swp',
+		default => '$(dir)/.$(file).swp',
 		allowed => qr/.+/,
 		user => 1,
 	},
@@ -63,8 +63,8 @@ sub set_file
 			$fn = $file;
 		}
 		$file_swp = setting( "list_lock" );
-		$file_swp =~ s/\${file}/$fn/g;
-		$file_swp =~ s/\${dir}/$dir/g;
+		$file_swp =~ s/\$\(file\)/$fn/g;
+		$file_swp =~ s/\$\(dir\)/$dir/g;
 		p "Using '$file_swp' as file lock\n";
 	}
 }
