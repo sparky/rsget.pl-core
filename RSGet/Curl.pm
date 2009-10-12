@@ -234,7 +234,7 @@ sub file_init
 				if $supercurl->{fsize} != $supercurl->{size_total};
 
 			my $fp = $supercurl->{filepath};
-			my $old = file_backup( $fp, "copy" );
+			my $old = file_backup( $fp, "continue" );
 			my $old_msg = "";
 			if ( $old ) {
 				rename $fp, $old;
@@ -265,7 +265,7 @@ sub file_init
 	{
 		my $fn = $supercurl->{filepath} =
 			filepath( setting("workdir"), $get_obj->{_opts}->{dir}, $supercurl->{fname} );
-		my $old = file_backup( $fn, "move" );
+		my $old = file_backup( $fn, "scratch" );
 		if ( $old ) {
 			rename $fn, $old;
 			$old =~ s#.*/##;
@@ -365,8 +365,33 @@ sub finish
 
 	my $func = $get_obj->{after_curl};
 	if ( $supercurl->{file} ) {
-		rename $supercurl->{filepath},
-			filepath( setting("outdir"), $get_obj->{_opts}->{dir}, $supercurl->{fname} );
+		rename_done: {
+			my $infile = $supercurl->{filepath};
+			my $outfile = filepath( setting("outdir"), $get_obj->{_opts}->{dir}, $supercurl->{fname} );
+			if ( -e $outfile ) {
+				my @si = stat $infile;
+				my @so = stat $outfile;
+				if ( $si[0] == $so[0] and $si[1] == $so[1] ) {
+					p "$infile and $outfile are the same file, not renaming"
+						if verbose( 2 );
+					last rename_done;
+				}
+
+				my $out_rename = file_backup( $outfile, "done" );
+				rename $outfile, $out_rename if $out_rename;
+				p "backing up $outfile as $out_rename" if verbose( 1 );
+			}
+			p "renaming $infile to $outfile" if verbose( 2 );
+			$! = undef;
+			rename $infile, $outfile;
+			if ( $! ) {
+				warn "Cannot rename $infile to $outfile ($!), copying instead\n"
+					if verbose( 1 );
+				copy( $infile, $outfile ) || die "Cannot copy $infile to $outfile: $!";
+				unlink $infile;
+			}
+		}
+
 		$get_obj->{dlinfo} = sprintf 'DONE %s %s / %s',
 			$supercurl->{fname},
 			bignum( $supercurl->{size_got} ),
