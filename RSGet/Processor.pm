@@ -192,11 +192,11 @@ EOF
 			my $next_stage = $2;
 			p_ret( $cmd, "\\&$next_stage" );
 			p_line();
-		} elsif ( s/^GOTO\s+(stage_\S+)// ) {
+		} elsif ( s/^GOTO\s+(stage_[a-z0-9_]+)// ) {
 			p_ret( $1 );
 			pr ')';
 			p_line();
-		} elsif ( s/^(stage_\S+)\s*:\s*(.*)$// ) {
+		} elsif ( s/^(stage_[a-z0-9_]+)\s*:\s*(.*)$// ) {
 			my $next_stage = $1;
 			my $left = $_;
 			p_ret( $next_stage );
