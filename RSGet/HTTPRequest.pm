@@ -261,11 +261,12 @@ sub file_info
 {
 	my ( $list_ids, $id_type, $uri, $getter, $o, $tools ) = @_;
 
-	my $bestname = $o->{name} || $o->{iname}
+	my $bestname = $o->{fname} || $o->{name} || $o->{iname}
 		|| $o->{aname} || $o->{ainame};
 	$bestname = sgml( $bestname || "???" );
 
-	my $bestsize = $o->{size} ? bignum( $o->{size} ) . " bytes" :
+	my $bestsize = $o->{fsize} ? bignum( $o->{fsize} ) . " bytes":
+   		$o->{size} ? bignum( $o->{size} ) . " bytes" :
 		$o->{asize} ? sgml( $o->{asize} ) :
 		$o->{quality} ? sgml( $o->{quality} ) : "?";
 	if ( $o->{link1} ) {
@@ -278,7 +279,7 @@ sub file_info
 	my $uriid = makeid( $list_ids, $id_type, $uri, $uri );
 
 	my $color = "blue";
-	$color = "green" if $o->{size} or $o->{asize} or $o->{quality};
+	$color = "green" if $o->{fsize} or $o->{size} or $o->{asize} or $o->{quality};
 	$color = "red" if $o->{error};
 	$color = "orange" if exists $RSGet::Dispatch::downloading{ $uri };
 

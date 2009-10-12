@@ -343,7 +343,8 @@ sub set_finfo
 	$self->bestinfo();
 
 	RSGet::FileList::save( $self->{_uri},
-		globals => { fname => $fname, fsize => $fsize } );
+		globals => { fname => $fname, fsize => $fsize },
+		options => { fname => $fname, fsize => $fsize } );
 	RSGet::FileList::update();
 }
 
