@@ -105,6 +105,7 @@ sub new
 		if defined $get_obj->{_referer};
 	$curl->setopt( CURLOPT_ENCODING, 'gzip,deflate' );
 	$curl->setopt( CURLOPT_CONNECTTIMEOUT, 20 );
+	$curl->setopt( CURLOPT_SSL_VERIFYPEER, 0 );
 
 	if ( $opts{post} ) {
 		my $post = $opts{post};
@@ -136,6 +137,7 @@ sub new
 				#p "File '$fn' already exists, trying to continue at $got";
 				$curl->setopt( CURLOPT_RANGE, "$got-" );
 
+				$get_obj->log( "trying to continue at $got\n" ) if verbose( 4 );
 				$supercurl->{fname} = $fn;
 				$supercurl->{filepath} = $fp
 			}
