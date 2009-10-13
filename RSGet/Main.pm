@@ -198,10 +198,11 @@ sub read_userconfig
 			$user = $1;
 			$usettings{ $user } = {};
 			next;
-		} elsif ( /^\s*([a-z_]+)\s*=\s*(.*?)\s*$/ ) {
+		} elsif ( my ( $key, $value ) = /^\s*([a-z_]+)\s*=\s*(.*?)\s*$/ ) {
 			die "User not defined, at user config file, line ($line):\n$_\n"
 				unless $user;
-			$usettings{ $user }->{$1} = [ $2, "user config file, section [$user], line $line" ];
+			$value =~ s/\${([a-zA-Z0-9_]+)}/$ENV{$1} || ""/eg;
+			$usettings{ $user }->{$key} = [ $value, "user config file, section [$user], line $line" ];
 			next;
 		}
 		warn "Incorrect config line: $_\n";
