@@ -181,6 +181,40 @@ sub file_backup
 	return "$fn-$i$ext";
 }
 
+sub content_filename
+{
+	# TODO: actually read rfc2183 and rfc2184
+	local $_ = shift;
+
+	s/\s*;?\s+$//; # remove at least last \r
+	unless ( s/^\s*attachment;\s*// ) {
+		warn "Not an attachment in C-D: '$_'\n" if verbose( 1 );
+		return;
+	}
+	unless ( s/^(.*?\s+)?filename// ) {
+		warn "No filename in C-D: '$_'\n" if verbose( 1 );
+		return;
+	}
+	if ( s/^\*=(.+?)('.*?')// ) {
+		warn "C-D: Unknown filename encoding: $1 $2\n"
+			if uc $1 ne "UTF-8" and verbose( 1 );
+		s/\s+.*//;
+		return $_;
+	}
+	return unless s/^\s*=\s*//;
+	if ( s/^"// ) {
+		unless ( s/".*// ) {
+			warn "C-D: Broken filename: \"$_\n"
+				if verbose( 1 );
+			return;
+		}
+		return $_;
+	} else {
+		s/[;\s].*//;
+		return $_;
+	}
+}
+
 sub file_init
 {
 	my $supercurl = shift;
@@ -211,13 +245,11 @@ sub file_init
 	my $fname;
 	if ( $supercurl->{force_name} ) {
 		$fname = $supercurl->{force_name};
-	} elsif ( $supercurl->{head} =~
-			/^Content-Disposition:[ \t]*attachment;[ \t]*filename\*=UTF-8''(.+?);?[ \t]*$/mi ) {
-		$fname = de_ml( uri_unescape( $1 ) );
-	} elsif ( $supercurl->{head} =~
-			/^Content-Disposition:[ \t]*attachment;[ \t]*filename[ \t]*=[ \t]*"?(.+?)"?;?[ \t]*$/mi ) {
-		$fname = de_ml( uri_unescape( $1 ) );
-	} else {
+	} elsif ( $supercurl->{head} =~ /^Content-Disposition:(.+?)$/mi ) {
+		my $cf = content_filename( $1 );
+		$fname = de_ml( uri_unescape( $cf ) ) if defined $cf and length $cf;
+	}
+	unless ( $fname ) {
 		my $eurl = $curl->getinfo( CURLINFO_EFFECTIVE_URL );
 		$eurl =~ s#^.*/##;
 		$eurl =~ s/\?.*$//;
