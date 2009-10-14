@@ -212,10 +212,10 @@ sub file_init
 	if ( $supercurl->{force_name} ) {
 		$fname = $supercurl->{force_name};
 	} elsif ( $supercurl->{head} =~
-			/^Content-Disposition:\s*attachment;\s*filename\*=UTF-8''(.+?);?\s*$/mi ) {
+			/^Content-Disposition:[ \t]*attachment;[ \t]*filename\*=UTF-8''(.+?);?[ \t]*$/mi ) {
 		$fname = de_ml( uri_unescape( $1 ) );
 	} elsif ( $supercurl->{head} =~
-			/^Content-Disposition:\s*attachment;\s*filename\s*=\s*"?(.+?)"?;?\s*$/mi ) {
+			/^Content-Disposition:[ \t]*attachment;[ \t]*filename[ \t]*=[ \t]*"?(.+?)"?;?[ \t]*$/mi ) {
 		$fname = de_ml( uri_unescape( $1 ) );
 	} else {
 		my $eurl = $curl->getinfo( CURLINFO_EFFECTIVE_URL );
