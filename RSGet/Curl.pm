@@ -295,7 +295,7 @@ sub file_init
 		$supercurl->{fname} = $fname;
 	}
 
-	$get_obj->set_finfo( $supercurl->{fname}, $supercurl->{size_total} );
+	$get_obj->started_download( fname => $supercurl->{fname}, fsize => $supercurl->{size_total} );
 
 	{
 		my $fn = $supercurl->{filepath} =
@@ -374,6 +374,7 @@ sub finish
 	$get_obj->linedata();
 
 	my $eurl = $curl->getinfo( CURLINFO_EFFECTIVE_URL );
+	$get_obj->{content_type} = $curl->getinfo( CURLINFO_CONTENT_TYPE );
 	my $error = $curl->errbuf;
 	$curl = undef; # destroy curl before destroying getter
 
@@ -396,9 +397,6 @@ sub finish
 		return undef;
 	}
 
-	return unless $get_obj->{after_curl};
-
-	my $func = $get_obj->{after_curl};
 	if ( $supercurl->{file} ) {
 		rename_done: {
 			my $infile = $supercurl->{filepath};

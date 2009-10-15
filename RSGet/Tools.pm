@@ -164,6 +164,7 @@ sub setting
 sub verbose
 {
 	my $min = shift;
+	return 1 if setting( "debug" );
 	return 1 if setting( "verbose" ) >= $min;
 	return 0;
 }

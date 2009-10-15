@@ -53,6 +53,8 @@ sub new
 		_cmd => $cmd,
 		_pkg => $pkg,
 		_outif => $outif,
+		_id => (sprintf "%.6x", int rand 1 << 24),
+		_last_dump => 0,
 		make_cookie( $getter->{cookie}, $cmd ),
 	};
 	bless $self, $pkg;
@@ -186,7 +188,13 @@ sub get_finish
 	my $keep_ref = shift;
 	$self->{_referer} = $ref unless $keep_ref;
 
+	$self->dump() if setting( "debug" ) >= 2;
+
 	my $func = $self->{after_curl};
+	unless ( $func ) {
+		$self->log( "WARNING: no after_curl" );
+		return;
+	}
 	$_ = $self->{body};
 	&$func( $self );
 }
@@ -213,7 +221,8 @@ sub restart
 sub multi
 {
 	my $self = shift;
-	return $self->wait( \&start, -60 - 240 * rand, "multi-download not allowed", "multi" );
+	my $msg = shift || "multi-download not allowed";
+	return $self->wait( \&start, -60 - 240 * rand, $msg, "multi" );
 }
 
 sub finish
@@ -244,16 +253,7 @@ sub error
 	my $self = shift;
 	my $msg = shift;
 	if ( $self->{body} and setting( "debug" ) ) {
-		my $n = 0;
-		my $name;
-		do {
-			$name = "errorlog." . (++$n) . ".html";
-		} while ( -r $name );
-		open ERR_OUT, '>', $name;
-		print ERR_OUT $self->{body};
-		close ERR_OUT;
-
-		$msg .= "; saved $name";
+		$self->dump();
 	}
 
 	$self->print( $msg ) || $self->log( $msg );
@@ -273,6 +273,29 @@ sub problem
 	} else {
 		return $self->error( $msg . ", aborting" );
 	}
+}
+
+sub dump
+{
+	my $self = shift;
+	my $ct = $self->{content_type};
+
+	my $ext = "txt";
+	if ( $ct =~ /javascript/ ) {
+		$ext = "js";
+	} elsif ( $ct =~ /(ht|x)ml/ ) {
+		$ext = "html";
+	} elsif ( $ct =~ m{image/(.*)} ) {
+		$ext = $1;
+	}
+	my $file = sprintf "dump.$self->{_id}.%.4d.$ext",
+		++$self->{_last_dump};
+
+	open my $f_out, '>', $file;
+	print $f_out $self->{body};
+	close $f_out;
+
+	$self->log( "dumped to file: $file ($ct)" );
 }
 
 sub bestinfo
@@ -332,19 +355,24 @@ sub link
 	return 1;
 }
 
-sub set_finfo
+sub started_download
 {
 	my $self = shift;
-	my $fname = shift;
-	my $fsize = shift;
+	my %opts = @_;
+	my $fname = $opts{fname};
+	my $fsize = $opts{fsize};
+
 	my $o = $self->{_opts};
 	$o->{fname} = $fname;
 	$o->{fsize} = $fsize;
 	$self->bestinfo();
 
+	my @osize;
+	@osize = ( fsize => $fsize ) if $fsize > 0;
+
 	RSGet::FileList::save( $self->{_uri},
 		globals => { fname => $fname, fsize => $fsize },
-		options => { fname => $fname, fsize => $fsize } );
+		options => { fname => $fname, @osize } );
 	RSGet::FileList::update();
 }
 
