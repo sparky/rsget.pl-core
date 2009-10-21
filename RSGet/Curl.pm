@@ -185,18 +185,19 @@ sub content_filename
 {
 	# TODO: actually read rfc2183 and rfc2184
 	local $_ = shift;
+	my $src = $_;
 
 	s/\s*;?\s+$//; # remove at least last \r
 	unless ( s/^\s*attachment;\s*// ) {
-		warn "Not an attachment in C-D: '$_'\n" if verbose( 1 );
+		warn "Not an attachment in C-D: '$src'\n" if verbose( 1 );
 		return;
 	}
 	unless ( s/^(.*?\s+)?filename// ) {
-		warn "No filename in C-D: '$_'\n" if verbose( 1 );
+		warn "No filename in C-D: '$src'\n" if verbose( 1 );
 		return;
 	}
 	if ( s/^\*=(.+?)('.*?')// ) {
-		warn "C-D: Unknown filename encoding: $1 $2\n"
+		warn "C-D: Unknown filename encoding: $1 $2, at $src\n"
 			if uc $1 ne "UTF-8" and verbose( 1 );
 		s/\s+.*//;
 		return $_;
@@ -204,7 +205,7 @@ sub content_filename
 	return unless s/^\s*=\s*//;
 	if ( s/^"// ) {
 		unless ( s/".*// ) {
-			warn "C-D: Broken filename: \"$_\n"
+			warn "C-D: Broken filename: $src\n"
 				if verbose( 1 );
 			return;
 		}
