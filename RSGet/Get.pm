@@ -169,6 +169,23 @@ sub cookie
 	close $c;
 }
 
+sub click
+{
+	my $self = shift;
+	my @opts = @_;
+	$self->{_click_opts} = \@opts;
+	return $self->wait( \&click_start_get, 3 + int rand 10,
+		"clicking link", "delay" );
+}
+
+sub click_start_get
+{
+	my $self = shift;
+	my @opts = @{ $self->{_click_opts} };
+	delete $self->{_click_opts};
+	return $self->get( @opts );
+}
+
 sub get
 {
 	my $self = shift;
@@ -197,6 +214,23 @@ sub get_finish
 	}
 	$_ = $self->{body};
 	&$func( $self );
+}
+
+sub click_download
+{
+	my $self = shift;
+	my @opts = @_;
+	$self->{_click_opts} = \@opts;
+	return $self->wait( \&click_start_download, 3 + int rand 10,
+		"clicking download link", "delay" );
+}
+
+sub click_start_download
+{
+	my $self = shift;
+	my @opts = @{ $self->{_click_opts} };
+	delete $self->{_click_opts};
+	return $self->download( @opts );
 }
 
 sub download
@@ -374,6 +408,8 @@ sub started_download
 		globals => { fname => $fname, fsize => $fsize },
 		options => { fname => $fname, @osize } );
 	RSGet::FileList::update();
+
+	$self->captcha_result( "ok" );
 }
 
 1;
