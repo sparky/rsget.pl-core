@@ -24,7 +24,7 @@ sub wait
 		$self->{wait_until_should} = $time + $wait;
 		$wait = $rnd_wait;
 	}
-	$wait = $wait < 0 ? - $wait : $wait + int rand 10;
+	$wait = -$wait if $wait < 0;
 
 	$self->{wait_next} = $next_stage;
 	$self->{wait_msg} = $msg;
