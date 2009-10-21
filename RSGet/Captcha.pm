@@ -155,7 +155,8 @@ sub unsolved
 	$_ = undef;
 
 	$self->linedata();
-	$self->start();
+	my $func = $self->{captcha_next};
+	&$func( $self );
 }
 
 sub captcha_update
