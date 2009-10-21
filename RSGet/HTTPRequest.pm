@@ -180,6 +180,7 @@ sub act_info
 		multi => "red",
 		problem => "red",
 		wait => "blue",
+		delay => "bluegreen",
 	);
 	my $color = $o->{wait} ? $wait_to_color{ $o->{wait} } : "green";
 
@@ -679,7 +680,8 @@ sub captcha
 		$headers->{Content_Type} = "text/plain";
 		return $post->{solve};
 	} elsif ( my $n = $RSGet::Captcha::needed{ $md5 } ) {
-		( $ct, $data ) = @$n;
+		( $ct, my $dataref ) = @$n;
+		$data = $$dataref;
 	} else {
 		$ct = "image/png";
 		local $/ = undef;
