@@ -171,7 +171,7 @@ EOF
 		$space = "";
 		$space = $1 if s/^(\s+)//;
 
-		if ( s/^(GET|WAIT|CAPTCHA|DOWNLOAD)\s*\(// ) {
+		if ( s/^(GET|WAIT|CAPTCHA|(?:CLICK_)?DOWNLOAD|CLICK)\s*\(// ) {
 			my $cmd = lc $1;
 			my $next_stage = "stage" . ++$stage;
 			my @skip;
@@ -187,7 +187,7 @@ EOF
 			p_subend();
 			$last_cmd = $cmd;
 			p_sub( $next_stage );
-		} elsif ( s/^(GET|WAIT|CAPTCHA)_NEXT\s*\(\s*(.*?)\s*,// ) {
+		} elsif ( s/^(GET|WAIT|CAPTCHA|CLICK)_NEXT\s*\(\s*(.*?)\s*,// ) {
 			my $cmd = lc $1;
 			my $next_stage = $2;
 			p_ret( $cmd, "\\&$next_stage" );
@@ -214,7 +214,7 @@ EOF
 		} elsif ( s/^SEARCH\s*\(// ) {
 			pr $space . 'return if $self->search( ';
 			p_line();
-		} elsif ( s/^(PRINT|LOG|COOKIE)\s*\(// ) {
+		} elsif ( s/^(PRINT|LOG|COOKIE|CAPTCHA_RESULT)\s*\(// ) {
 			p_func( lc $1 );
 			p_line();
 		} elsif ( s/^!\s+// ) {
