@@ -92,7 +92,7 @@ sub read_file
 				next;
 			}
 			if ( $part eq "perl" ) {
-				push @{$parts{perl}}, $_, <F_IN>;
+				push @{$parts{perl}}, $_."\n", <F_IN>;
 				last;
 			} elsif ( $part eq "start" and /^stage_.*?:/ ) {
 				push @{$parts{start}}, $_;
