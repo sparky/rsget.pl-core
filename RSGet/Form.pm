@@ -21,7 +21,7 @@ sub new
 		my $attr = $1;
 		my $fbody = $2;
 		my %attr = map {
-			/^(.*?)=(["'])(.*)\2$/
+			/^(.*?)=(["']?)(.*)\2$/
 				? ( lc $1, $3 )
 				: ( $_, undef )
 			} split /\s+/, $attr;
@@ -93,7 +93,7 @@ sub new
 		my $el = lc $1;
 		my $attr = $2;
 		my %attr = map {
-			/^(.*?)=(["'])(.*)\2$/
+			/^(.*?)=(["']?)(.*)\2$/
 				? ( lc $1, $3 )
 				: ( $_, undef )
 			} split /\s+/, $attr;
