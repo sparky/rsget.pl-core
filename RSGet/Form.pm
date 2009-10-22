@@ -93,7 +93,8 @@ sub new
 			$values{ $name } = undef;
 		}
 		if ( $el eq "input" and lc $attr->{type} eq "hidden" ) {
-			$values{ $name } = $attr->{value} || "";
+			my $v = $attr->{value};
+			$values{ $name } = defined $v ? $v : "";
 		}
 	}
 	$self->{order} = \@order;
@@ -119,7 +120,7 @@ sub split_attributes
 				s/(\S+)//;
 				$value = $1;
 			}
-			$attr{ $name } = de_ml( $value || "" );
+			$attr{ $name } = defined $value ? de_ml( $value ) : "";
 		} else {
 			$attr{ $name } = $name;
 		}
