@@ -92,9 +92,18 @@ sub new
 			push @order, $name;
 			$values{ $name } = undef;
 		}
-		if ( $el eq "input" and lc $attr->{type} eq "hidden" ) {
-			my $v = $attr->{value};
-			$values{ $name } = defined $v ? $v : "";
+		if ( $el eq "input" ) {
+			my $type = lc $attr->{type};
+			if  ( $type eq "hidden" ) {
+				my $v = $attr->{value};
+				$values{ $name } = defined $v ? $v : "";
+			} elsif ( $type eq "submit" ) {
+				my $v = $attr->{value};
+				if ( defined $v ) {
+					my $vs = $values{ $name } ||= [];
+					push @$vs, $v;
+				}
+			}
 		}
 	}
 	$self->{order} = \@order;
@@ -142,6 +151,26 @@ sub set
 	$self->{values}->{$key} = $value;
 }
 
+sub select
+{
+	my $self = shift;
+	my $key = shift;
+	my $num = shift || 0;
+
+	unless ( exists $self->{values}->{$key} ) {
+		warn "'$key' does not exist\n" if verbose( 1 );
+		return undef;
+	}
+
+	my $v = $self->{values}->{$key};
+	if ( ref $v ) {
+		$v = $v->[ $num ];
+		$self->{values}->{$key} = $v;
+		return $v;
+	}
+	return undef;
+}
+
 sub get
 {
 	my $self = shift;
@@ -165,6 +194,9 @@ sub dump
 	foreach my $k ( @{$self->{order}} ) {
 		my $v = $vs->{$k};
 		$v = "undef" unless defined $v;
+		if ( ref $v and ref $v eq "ARRAY" ) {
+			$v = "[ " . ( join "; ", @$v ) . " ]";
+		}
 		$p .= "  $k => $v\n";
 	}
 
@@ -178,7 +210,7 @@ sub post
 	my $vs = $self->{values};
 	my $post = join "&",
 		map { uri_escape( $_ ) . "=" . uri_escape( $vs->{ $_ } ) }
-		grep { defined $vs->{ $_ } }
+		grep { defined $vs->{ $_ } and not ref $vs->{ $_ } }
 		@{$self->{order}};
 
 	if ( $self->{post} ) {
