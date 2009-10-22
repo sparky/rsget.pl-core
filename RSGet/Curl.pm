@@ -185,14 +185,14 @@ sub content_filename
 {
 	# TODO: actually read rfc2183 and rfc2184
 	local $_ = shift;
-	my $src = $_;
 
 	s/\s*;?\s+$//; # remove at least last \r
-	unless ( s/^\s*attachment;\s*// ) {
+	my $src = $_;
+	unless ( s/^\s*attachment;\s*//i ) {
 		warn "Not an attachment in C-D: '$src'\n" if verbose( 1 );
 		return;
 	}
-	unless ( s/^(.*?\s+)?filename// ) {
+	unless ( s/^(.*?\s+)?filename//i ) {
 		warn "No filename in C-D: '$src'\n" if verbose( 1 );
 		return;
 	}
