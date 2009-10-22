@@ -18,27 +18,23 @@ sub new
 	}
 	my @forms;
 	while ( $html =~ s{^.*?<form\s*(.*?)>(.*?)</form>}{}si ) {
-		my $attr = $1;
 		my $fbody = $2;
-		my %attr = map {
-			/^(.*?)=(["']?)(.*)\2$/
-				? ( lc $1, $3 )
-				: ( $_, undef )
-			} split /\s+/, $attr;
-		push @forms, [ \%attr, $fbody ];
+		my $attr = split_attributes( $1 || "" );
+		$attr->{body} = $fbody;
+		push @forms, $attr;
 	}
 	unless ( @forms ) {
 		warn "No forms found\n" if verbose( 2 );
 		dump_to_file( $html, "html" ) if setting( "debug" );
 		return undef unless $opts{fallback};
-		push @forms, [ {}, '' ];
+		push @forms, { body => '' };
 	}
 
 	my $found;
 	foreach my $attr ( qw(id name) ) {
 		if ( not $found and $opts{ $attr } ) {
 			foreach my $form ( @forms ) {
-				if ( $form->[0]->{$attr} and $form->[0]->{$attr} eq $opts{$attr} ) {
+				if ( $form->{$attr} and $form->{$attr} eq $opts{$attr} ) {
 					$found = $form;
 					last;
 				}
@@ -53,12 +49,8 @@ sub new
 		foreach my $form ( @forms ) {
 			foreach my $k ( keys %$m ) {
 				my $match = $m->{$k};
-				if ( $k eq "body" ) {
-					next EACH_FORM unless $form->[1] =~ m{$match};
-				} else {
-					next EACH_FORM unless exists $form->[0]->{$k};
-					next EACH_FORM unless $form->[0]->{$k} =~ m{$match};
-				}
+				next EACH_FORM unless exists $form->{$k};
+				next EACH_FORM unless $form->{$k} =~ m{$match};
 			}
 			$found = $form;
 			last;
@@ -80,7 +72,8 @@ sub new
 	}
 	return undef unless $found;
 
-	my ( $attr, $fbody ) = @$found;
+	my $attr = $found;
+	my $fbody = $attr->{body};
 
 	my $self = {};
 	$self->{action} = $attr->{action} || "";
@@ -89,29 +82,49 @@ sub new
 	my %values;
 	my $formelements = join "|",
 		qw(input button select optgroup option textarea isindex);
-	while ( $fbody =~ s{^.*?<($formelements)(\s+.*?)?\s*/?\s*>}{}si ) {
+	while ( $fbody =~ s{^.*?<($formelements)\s+(.*?)?\s*/?\s*>}{}si ) {
 		my $el = lc $1;
-		my $attr = $2;
-		my %attr = map {
-			/^(.*?)=(["']?)(.*)\2$/
-				? ( lc $1, $3 )
-				: ( $_, undef )
-			} split /\s+/, $attr;
-		my $name = $attr{name};
+		my $attr = split_attributes( $2 || "" );
+		my $name = $attr->{name};
 		next unless $name;
 
 		unless ( exists $values{ $name } ) {
 			push @order, $name;
 			$values{ $name } = undef;
 		}
-		if ( $el eq "input" and lc $attr{type} eq "hidden" ) {
-			$values{ $name } = $attr{value} || "";
+		if ( $el eq "input" and lc $attr->{type} eq "hidden" ) {
+			$values{ $name } = $attr->{value} || "";
 		}
 	}
 	$self->{order} = \@order;
 	$self->{values} = \%values;
 
 	return bless $self, $class;
+}
+
+sub split_attributes
+{
+	local $_ = shift;
+	my %attr;
+	while ( s/^\s*([a-z0-9_]+)([=\s])//i ) {
+		my $name = lc $1;
+		my $eq = $2;
+		if ( $eq eq "=" ) {
+			my $value;
+			if ( s/^(["'])// ) {
+				my $quot = $1;
+				s/^(.*?)$quot//;
+				$value = $1;
+			} else {
+				s/(\S+)//;
+				$value = $1;
+			}
+			$attr{ $name } = de_ml( $value || "" );
+		} else {
+			$attr{ $name } = $name;
+		}
+	}
+	return \%attr;
 }
 
 sub set
