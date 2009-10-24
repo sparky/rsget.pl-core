@@ -33,7 +33,7 @@ sub p_subend
 	$is_sub--;
 
 	my $error = 'unexpected end of script';
-	if ( $last_cmd and $last_cmd eq "download" ) {
+	if ( $last_cmd and $last_cmd =~ /(?:click_)?download/ ) {
 		$error = 'download is a HTML page';
 	}
 	$last_cmd = undef;
