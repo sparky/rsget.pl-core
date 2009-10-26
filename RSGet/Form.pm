@@ -184,6 +184,25 @@ sub get
 	}
 }
 
+sub action
+{
+	my $self = shift;
+	if ( @_ ) {
+		$self->{action} = shift;
+	}
+	return $self->{action};
+}
+
+sub method
+{
+	my $self = shift;
+	if ( @_ ) {
+		my $method = shift;
+		$self->{post} = $method eq "post" ? 1 : 0;
+	}
+	return $self->{post} ? "post" : "get";
+}
+
 sub dump
 {
 	my $self = shift;
