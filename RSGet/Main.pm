@@ -1,8 +1,10 @@
 package RSGet::Main;
+# This file is an integral part of rsget.pl downloader.
 #
 # 2009 (c) Przemysław Iskra <sparky@pld-linux.org>
-# Use/modify/distribute under GPL v2 or newer.
-#
+#		This program is free software,
+# you may distribute it under GPL v2 or newer.
+
 use strict;
 use warnings;
 use RSGet::AutoUpdate;
@@ -298,4 +300,5 @@ sub loop
 }
 
 1;
-# vim:ts=4:sw=4
+
+# vim: ts=4:sw=4

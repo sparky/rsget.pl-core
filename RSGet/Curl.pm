@@ -1,4 +1,9 @@
 package RSGet::Curl;
+# This file is an integral part of rsget.pl downloader.
+#
+# 2009 (c) Przemysław Iskra <sparky@pld-linux.org>
+#		This program is free software,
+# you may distribute it under GPL v2 or newer.
 
 use strict;
 use warnings;
@@ -552,4 +557,4 @@ sub donemsg
 
 1;
 
-# vim:ts=4:sw=4
+# vim: ts=4:sw=4

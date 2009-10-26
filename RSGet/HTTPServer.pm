@@ -1,4 +1,9 @@
 package RSGet::HTTPServer;
+# This file is an optional part of rsget.pl downloader.
+#
+# 2009 (c) Przemysław Iskra <sparky@pld-linux.org>
+#		This program is free software,
+# you may distribute it under GPL v2 or newer.
 
 use strict;
 use warnings;
