@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use RSGet::Tools;
 use RSGet::Line;
-use WWW::Curl::Easy;
+use WWW::Curl::Easy 4.00;
 use WWW::Curl::Multi;
 use URI::Escape;
 use File::Copy;
