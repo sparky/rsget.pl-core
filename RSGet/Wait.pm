@@ -24,7 +24,7 @@ sub wait
 	my $time = time;
 	delete $self->{wait_until_should};
 
-	my $rnd_wait = int rand ( 5 * 60 ) + 2 * 60;
+	my $rnd_wait = irand 120, 300;
 	if ( $wait > $rnd_wait + 1 * 60 ) {
 		$self->{wait_until_should} = $time + $wait;
 		$wait = $rnd_wait;

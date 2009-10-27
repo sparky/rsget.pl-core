@@ -129,7 +129,7 @@ sub solved_delay
 
 	$self->linedata( wait => "delay" );
 	$self->{captcha_response} = $captcha;
-	my $wait = 5 + int rand 10;
+	my $wait = irand 5, 15;
 	unless ( defined $captcha ) {
 		$wait /= 4;
 		$self->captcha_result( undef );

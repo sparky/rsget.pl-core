@@ -9,10 +9,13 @@ use strict;
 use warnings;
 use vars qw(@ISA @EXPORT @EXPORT_OK);
 
+sub set_rev($);
+set_rev qq$Id$;
+
 require Exporter;
 @ISA = qw(Exporter);
 @EXPORT = qw(set_rev s2string bignum de_ml hadd hprint p isotime require_prog
-	jstime def_settings setting verbose
+	irand jstime def_settings setting verbose
 	data_file dump_to_file randomize %getters);
 @EXPORT_OK = qw();
 
@@ -27,7 +30,6 @@ sub set_rev($)
 	$pm =~ s/\.pm$//;
 	$revisions{ $pm } = 0 | $rev;
 }
-set_rev qq$Id$;
 
 sub s2string($)
 {
@@ -89,6 +91,13 @@ sub randomize
 	return sort { 0.5 <=> rand } @_;
 }
 
+sub irand($;$)
+{
+	my $arg = shift;
+	return int rand $arg unless @_;
+
+	return int ( $arg + rand ( (shift) - $arg ) );
+}
 
 sub isotime()
 {
@@ -98,7 +107,7 @@ sub isotime()
 
 sub jstime()
 {
-	return time * 1000 + int rand 1000;
+	return time * 1000 + irand 1000;
 }
 
 sub de_ml

@@ -179,7 +179,7 @@ sub click
 	my $self = shift;
 	my @opts = @_;
 	$self->{_click_opts} = \@opts;
-	return $self->wait( \&click_start_get, 3 + int rand 10,
+	return $self->wait( \&click_start_get, irand( 2, 10 ),
 		"clicking link", "delay" );
 }
 
@@ -226,7 +226,7 @@ sub click_download
 	my $self = shift;
 	my @opts = @_;
 	$self->{_click_opts} = \@opts;
-	return $self->wait( \&click_start_download, 3 + int rand 10,
+	return $self->wait( \&click_start_download, irand( 2, 10 ),
 		"clicking download link", "delay" );
 }
 
