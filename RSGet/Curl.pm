@@ -131,6 +131,7 @@ sub new
 		$curl->setopt( CURLOPT_WRITEFUNCTION, \&body_file );
 		$curl->setopt( CURLOPT_WRITEDATA, $supercurl );
 
+		$supercurl->{force_size} = $opts{fsize} if $opts{fsize};
 		$supercurl->{force_name} = $opts{fname} if $opts{fname};
 
 		# if file exists try to continue
@@ -245,6 +246,9 @@ sub file_init
 
 	if ( my $f_len = $curl->getinfo( CURLINFO_CONTENT_LENGTH_DOWNLOAD ) ) {
 		$supercurl->{size_total} = $f_len;
+	}
+	if ( $supercurl->{size_total} <= 0 and $supercurl->{force_size} ) {
+		$supercurl->{size_total} = $supercurl->{force_size};
 	}
 
 	dump_to_file( $supercurl->{head}, "head" ) if verbose( 5 );
