@@ -17,6 +17,13 @@ def_settings(
 		allowed => qr/0*[1-9]\d*/,
 		dynamic => "NUMBER",
 	},
+	max_slots_check => {
+		desc => "Number of slots per service (per IP) to use when checking file information.",
+		default => 8,
+		allowed => qr/0*[1-9]\d*/,
+		dynamic => "NUMBER",
+	},
+
 );
 
 our %downloading;
@@ -121,18 +128,22 @@ sub get_slots
 {
 	my $cmd = shift;
 	my $suggested = shift;
-	my $max = setting( "max_slots" );
-	return 1 unless defined $suggested;
+	$suggested = "1" unless defined $suggested;
 	if ( $cmd eq "check" ) {
-		return $max unless defined $suggested and $suggested =~ s/^!//;
+		my $max = setting( "max_slots_check" );
+		if ( $suggested =~ s/^!(\d+)// ) {
+			return $max < $1 ? $max : $1;
+		}
+		return $max;
+	} else {
+		my $max = setting( "max_slots" );
+		if ( $suggested =~ /^\d+$/ ) {
+			return $max < $suggested ? $max : $suggested;
+		}
+		return $max if lc $suggested eq "max";
+		warn "Invalid slots declaration: $suggested\n" if verbose( 1 );
+		return 1;
 	}
-	if ( $suggested =~ /^\d+$/ ) {
-		return $max if $max < $suggested;
-		return 0 | $suggested;
-	}
-	return $max if lc $suggested eq "max";
-	warn "Invalid slots declaration: $suggested\n" if verbose( 1 );
-	return 1;
 }
 
 sub run
