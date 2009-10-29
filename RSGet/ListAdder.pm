@@ -73,8 +73,9 @@ sub add_links
 			}
 		}
 
-		(my $getter, $uri) = RSGet::Dispatch::unigetter( $uri );
+		my $getter = RSGet::Plugin::from_uri( $uri );
 		next unless $getter;
+		$uri = $getter->unify( $uri );
 		next if exists $all_uris{ $uri };
 		$all_uris{ $uri } = 1;
 		my $options = {};
@@ -132,8 +133,9 @@ sub list_update
 				if ( my $links = $save->{links} ) {
 					my @new;
 					foreach my $luri ( @$links ) {
-						my ($getter, $uri) = RSGet::Dispatch::unigetter( $luri );
+						my $getter = RSGet::Plugin::from_uri( $luri );
 						if ( $getter ) {
+							my $uri = $getter->unify( $luri );
 							push @new, { cmd => "ADD", globals => {}, uris => { $uri => [ $getter, {} ] } };
 						} else {
 							push @new, "# unsupported uri: $uri";

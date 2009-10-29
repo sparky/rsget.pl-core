@@ -10,8 +10,6 @@ use warnings;
 use RSGet::Tools;
 set_rev qq$Id$;
 
-my $options = "name|short|slots|cookie|status|min_ver";
-
 my $processed = "";
 sub pr(@)
 {
@@ -67,91 +65,19 @@ sub p_line
 }
 
 
-sub read_file
+sub compile
 {
-	my $class = shift;
-	my $file = shift;
-
-	open F_IN, '<', $file;
-
-	my %opts = (
-		uri => [],
-	);
-	my %parts = (
-		unify => [],
-		pre => [],
-		start => [],
-		perl => [],
-	);
-	my $parts = join "|", keys %parts;
-
-	my $part = undef;
-	while ( <F_IN> ) {
-		chomp;
-		next unless length;
-		next if /^\s*#/;
-
-		if ( $part ) {
-			unless ( /^\S+/ ) {
-				push @{$parts{$part}}, $_;
-				next;
-			}
-			if ( $part eq "perl" ) {
-				push @{$parts{perl}}, $_."\n", <F_IN>;
-				last;
-			} elsif ( $part eq "start" and /^stage_.*?:/ ) {
-				push @{$parts{start}}, $_;
-				next;
-			}
-			$part = undef;
-		}
-
-		if ( /^($parts)\s*:/ ) {
-			$part = $1;
-		} elsif ( /^uri\s*:\s+(.*)$/ ) {
-			push @{$opts{uri}}, $1;
-		} elsif ( /^($options)\s*:\s+(.*)$/ ) {
-			$opts{$1} = $2;
-		}
-	}
-
-	close F_IN;
-	unless ( scalar @{$parts{start}} ) {
-		p "Can't find 'start:'\n";
-		return undef;
-	}
-	unless ( @{$opts{uri}} ) {
-		p "Can't find 'uri:'\n";
-		return undef;
-	}
-	foreach ( qw(name short) ) {
-		next if $opts{$_};
-		p "Can't find '$_:'\n";
-		return undef;
-	}
-	$file =~ m{.*/(.*?)$};
-	my $fname = $1;
-	if ( $fname ne $opts{name} ) {
-		p "Name field: '$opts{name}' differs from file name: '$fname'\n";
-		return undef;
-	}
-	if ( $opts{status} and $opts{status} !~ /^OK(\s+.*)?$/ ) {
-		p "Marked as '$opts{status}'\n";
-		return undef;
-	}
+	my $opts = shift;
+	my $parts = shift;
 
 	$processed = "";
 	$space = "";
 	$last_cmd = undef;
 	$is_sub = 0;
 
-	$opts{uri} = [ map { eval $_ } @{$opts{uri}} ];
-	$opts{class} = ${class};
-	$opts{pkg} = "${class}::$opts{name}";
-	$opts{unify} = join "\n", @{ $parts{unify} };
-	$opts{unify} ||= 's/#.*//; s{/$}{};';
+	my $unify_body = ( join "\n", @{ $parts->{unify} } ) || 's/#.*//; s{/$}{};';
 
-	pr "package $opts{pkg};\n\n";
+	pr "package $opts->{pkg};\n\n";
 	pr <<'EOF';
 	use strict;
 	use warnings;
@@ -167,11 +93,11 @@ sub read_file
 	my $STDSIZE = qr/\d+(?:\.\d+)?\s*[kmg]?b/i;
 EOF
 
-	pr join "\n", @{$parts{pre}}, "\n";
+	pr join "\n", @{$parts->{pre}}, "\n";
 
 	my $stage = 0;
 	p_sub( "stage0" );
-	my @machine = @{$parts{start}};
+	my @machine = @{ $parts->{start} };
 	while ( $_ = shift @machine ) {
 		$space = "";
 		$space = $1 if s/^(\s+)//;
@@ -214,17 +140,17 @@ EOF
 			p_ret( lc $1 );
 			p_line();
 		} elsif ( s/^INFO\s*\(// ) {
-			pr $space . 'return "info" if $self->info( ';
+			pr $space . 'return "info" if ${self}->info( ';
 			p_line();
 		} elsif ( s/^SEARCH\s*\(// ) {
-			pr $space . 'return if $self->search( ';
+			pr $space . 'return if ${self}->search( ';
 			p_line();
 		} elsif ( s/^(PRINT|LOG|COOKIE|CAPTCHA_RESULT)\s*\(// ) {
 			p_func( lc $1 );
 			p_line();
 		} elsif ( s/^!\s+// ) {
 			my $line = quotemeta $_;
-			pr $space . 'return $self->problem( "'. $line .'" ) unless ';
+			pr $space . 'return ${self}->problem( "'. $line .'" ) unless ';
 			p_line();
 		} else {
 			pr $space;
@@ -233,10 +159,10 @@ EOF
 	}
 	p_subend();
 
-	pr @{$parts{perl}};
+	pr @{$parts->{perl}};
 
-	pr "\npackage $opts{pkg};\n";
-	pr "sub unify { local \$_ = shift; $opts{unify};\nreturn \$_;\n};\n";
+	pr "\npackage $opts->{pkg};\n";
+	pr "sub unify { local \$_ = shift; $unify_body;\nreturn \$_;\n};\n";
 	pr '\&unify;';
 
 	my $unify = eval_it( $processed );
@@ -261,10 +187,7 @@ EOF
 		p "Error: invalid, unify returned '$ru'";
 		return undef;
 	}
-	$opts{unify} = $unify;
-
-	return $opts{pkg} => \%opts;
-	return ();
+	return $unify;
 }
 
 sub eval_it

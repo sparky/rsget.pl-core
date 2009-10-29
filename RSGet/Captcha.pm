@@ -109,7 +109,7 @@ sub captcha_result
 		return;
 	}
 
-	my $getter = $getters{ $self->{_pkg} };
+	my $getter = RSGet::Plugin::from_pkg( $self->{_pkg} );
 	my $dir = "captcha/$getter->{short}/$subdir";
 	mkpath( $dir ) unless -d $dir;
 

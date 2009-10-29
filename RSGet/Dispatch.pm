@@ -161,7 +161,11 @@ sub run
 	my $outif = find_free_if( $pkg, $working, get_slots( $cmd, $getter->{slots} ) );
 	return unless defined $outif;
 
-	my $obj = RSGet::Get::new( $pkg, $cmd, $uri, $options, $outif );
+	my $obj = $getter->start( $cmd, $uri, $options, $outif );
+	if ( not $obj and $getter->{error} ) {
+		$options->{error} = $getter->{error};
+		return;
+	}
 	$working->{ $uri } = $obj if $obj;
 	
 	return $obj;
@@ -274,31 +278,6 @@ sub abort_missing
 		$obj->{_abort} = "Stopped or removed from the list!";
 	}
 }
-
-sub getter
-{
-	my $uri = shift;
-	foreach my $getter ( values %getters ) {
-		foreach my $re ( @{ $getter->{uri} } ) {
-			return $getter
-				if $uri =~ m{^http://(?:www\.)?$re};
-		}
-	}
-	return undef;
-}
-
-sub unigetter
-{
-	my $uri = shift;
-	my $getter = getter( $uri );
-	if ( $getter ) {
-		my $unify = $getter->{unify};
-		$uri = &$unify( $uri );
-		return $getter, $uri;
-	}
-	return undef, $uri;
-}
-
 
 1;
 

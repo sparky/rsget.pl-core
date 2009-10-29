@@ -48,21 +48,20 @@ sub make_cookie
 
 sub new
 {
-	my ( $pkg, $cmd, $uri, $options, $outif ) = @_;
-	my $getter = $getters{ $pkg };
+	my ( $getter, $cmd, $uri, $options, $outif ) = @_;
 
 	my $self = {
 		_uri => $uri,
 		_opts => $options,
 		_try => 0,
 		_cmd => $cmd,
-		_pkg => $pkg,
+		_pkg => $getter->{pkg},
 		_outif => $outif,
 		_id => (sprintf "%.6x", int rand 1 << 24),
 		_last_dump => 0,
 		make_cookie( $getter->{cookie}, $cmd ),
 	};
-	bless $self, $pkg;
+	bless $self, $getter->{pkg};
 	$self->bestinfo();
 
 	if ( verbose( 2 ) or $cmd eq "get" ) {
@@ -94,7 +93,7 @@ sub log
 	return unless $line;
 
 	my $outifstr = $self->{_outif} ? "[$self->{_outif}]" :  "";
-	my $getter = $getters{ $self->{_pkg} };
+	my $getter = RSGet::Plugin::from_pkg( $self->{_pkg} );
 	new RSGet::Line( "[$getter->{short}]$outifstr ", $self->{_name} . ": " . $text );
 }
 

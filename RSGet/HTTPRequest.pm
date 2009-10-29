@@ -567,7 +567,7 @@ sub f_askclone
 	my $r = '<fieldset id="f_listask"><legend>Select clone</legend>'
 		. '<ul class="flist">';
 	my ( $uri, $options, $clones ) = @$ask;
-	my $getter = RSGet::Dispatch::getter( $uri );
+	my $getter = RSGet::Plugin::from_uri( $uri );
 
 	my $list_ids = $list->{ids};
 	$list_ids->{addclone} = { uri => $uri };
@@ -581,7 +581,7 @@ sub f_askclone
 				name => $ucd->[1],
 				size => $ucd->[3],
 			};
-			my $getter = RSGet::Dispatch::getter( $uri );
+			my $getter = RSGet::Plugin::from_uri( $uri );
 			$r .= file_info( $list_ids, "addclone", $uri, $getter, $options, ['SELECT'] );
 		}
 	}

@@ -16,10 +16,9 @@ require Exporter;
 @ISA = qw(Exporter);
 @EXPORT = qw(set_rev s2string bignum de_ml hadd hprint p isotime require_prog
 	irand jstime def_settings setting verbose
-	data_file dump_to_file randomize %getters);
+	data_file dump_to_file randomize);
 @EXPORT_OK = qw();
 
-our %getters;
 our %revisions;
 
 sub set_rev($)

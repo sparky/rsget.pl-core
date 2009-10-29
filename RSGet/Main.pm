@@ -16,7 +16,7 @@ use RSGet::Get;
 use RSGet::MortalObject;
 use RSGet::Line;
 use RSGet::ListManager;
-use RSGet::Processor;
+use RSGet::Plugin;
 use RSGet::Tools;
 use RSGet::Wait;
 use Time::HiRes;
@@ -239,29 +239,13 @@ sub find_getters
 		foreach my $type ( qw(Get Link Video) ) {
 			my $dir = "$path/$type";
 			next unless -d $dir;
+			my $count = 0;
 			foreach ( sort glob "$path/$type/*" ) {
-				add_getter( $type, $_ );
+				$count += RSGet::Plugin::add( $type, $_ );
 			}
+			new RSGet::Line( "INIT: ", "$dir: found $count new plugins\n" )
+				if $count;
 		}
-	}
-}
-
-sub add_getter
-{
-	my $type = shift;
-	local $_ = shift;
-	return if /~$/;
-	return if m{/\.[^/]*$};
-	( my $file = $_ ) =~ s#.*/##;
-	return if exists $getters{ $type . "::" . $file };
-	my ( $pkg, $getter ) = RSGet::Processor::read_file( $type, $_ );
-	my $msg = "${type}/$file: failed";
-	if ( $pkg and $getter ) {
-		$getters{ $pkg } = $getter;
-		$msg = "$pkg: added\n";
-		new RSGet::Line( "INIT: ", $msg );
-	} else {
-		warn "$msg\n";
 	}
 }
 

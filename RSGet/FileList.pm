@@ -165,8 +165,10 @@ sub readlist
 				next;
 			} elsif ( m{^(http://)?(.*?)$} ) {
 				my $proto = $1 || "http://";
-				my ( $getter, $uri ) = RSGet::Dispatch::unigetter( $proto . $2 );
+				my $uri = $proto . $2;
+				my $getter = RSGet::Plugin::from_uri( $uri );
 				if ( $getter ) {
+					$uri = $getter->unify( $uri );
 					$options = {};
 					$decoded{ $uri } = [ $getter, $options ];
 					next;
