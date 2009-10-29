@@ -147,7 +147,7 @@ sub eval_uris
 		}
 	}
 
-	$self->{uri} = \@out;
+	$self->{urire} = \@out;
 }
 
 sub new
@@ -169,7 +169,7 @@ sub new
 	$error .= $self->check_parts( $parts );
 
 	$self->eval_uris();
-	return undef unless @{ $self->{uri} };
+	return undef unless @{ $self->{urire} };
 
 	$self->{error} = "$self->{pkg} plugin error: $error" if $error;
 	p $file . ": " . $self->{error} if $error;
@@ -206,7 +206,7 @@ sub can_do
 	my $self = shift;
 	my $uri = shift;
 
-	foreach my $re ( @{ $self->{uri} } ) {
+	foreach my $re ( @{ $self->{urire} } ) {
 		return 1 if $uri =~ m{^http://(?:www\.)?$re};
 	}
 	return 0;
