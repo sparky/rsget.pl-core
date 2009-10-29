@@ -194,11 +194,11 @@ sub content_filename
 
 	s/\s*;?\s+$//; # remove at least last \r
 	my $src = $_;
-	unless ( s/^\s*attachment;\s*//i ) {
+	unless ( s/^\s*attachment\s*//i ) {
 		warn "Not an attachment in C-D: '$src'\n" if verbose( 1 );
 		return;
 	}
-	unless ( s/^(.*?\s+)?filename//i ) {
+	unless ( s/^;(.*?\s+)?filename//i ) {
 		warn "No filename in C-D: '$src'\n" if verbose( 1 );
 		return;
 	}
@@ -215,11 +215,11 @@ sub content_filename
 				if verbose( 1 );
 			return;
 		}
-		return $_;
 	} else {
 		s/[;\s].*//;
-		return $_;
 	}
+	p "C-D filename is: $_\n" if verbose( 2 );
+	return $_;
 }
 
 sub file_init
