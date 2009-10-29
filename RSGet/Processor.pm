@@ -8,7 +8,7 @@ package RSGet::Processor;
 use strict;
 use warnings;
 use RSGet::Tools;
-set_rev qq$Id$;
+set_rev qq$Id: Processor.pm 10874 2009-10-29 02:48:11Z sparky $;
 
 my $processed = "";
 sub pr(@)
