@@ -174,6 +174,8 @@ sub new
 	$self->{error} = "$self->{pkg} plugin error: $error" if $error;
 	p $file . ": " . $self->{error} if $error;
 
+	$self->compile if setting( "debug" );
+
 	return $self;
 }
 
