@@ -57,10 +57,11 @@ sub init
 	set_rev $main_rev;
 
 	print_help() if $help;
-	check_settings( \%main::settings );
 
 	$SIG{CHLD} = "IGNORE";
 	maybe_update( $argv );
+
+	check_settings( \%main::settings );
 	read_userconfig();
 	RSGet::Line::init();
 	print_settings() if verbose( 1 );
