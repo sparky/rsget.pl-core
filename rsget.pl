@@ -29,7 +29,7 @@ my @ifs;
 parse_args();
 
 if ( $settings{use_svn} and $settings{use_svn}->[0] =~ /^(yes|update)$/ ) {
-	$local_path = $cdir;
+	$local_path = "$cdir/svn";
 	unshift @INC, $local_path;
 
 	eval {
