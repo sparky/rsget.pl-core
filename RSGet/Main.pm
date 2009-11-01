@@ -250,37 +250,47 @@ sub find_getters
 	}
 }
 
+sub iteration_short
+{
+	if ( RSGet::Curl::need_run() ) {
+		RSGet::Curl::maybe_abort();
+		foreach ( 0..4 ) {
+			RSGet::Curl::perform();
+			Time::HiRes::sleep(0.050);
+		}
+	} else {
+		Time::HiRes::sleep(0.250);
+	}
+	RSGet::Curl::update_status();
+	RSGet::Line::update();
+	$http->perform() if $http;
+}
+
+sub iteration_long
+{
+	RSGet::Wait::wait_update();
+	RSGet::MortalObject::update();
+	RSGet::Captcha::captcha_update();
+
+	my $getlist = RSGet::FileList::readlist();
+	return unless $getlist;
+
+	RSGet::Dispatch::process( $getlist );
+	RSGet::ListManager::autoadd( $getlist );
+}
+
 sub loop
 {
 	# main loop
 	my $lasttime = 0;
 	for (;;) {
-		if ( RSGet::Curl::need_run() ) {
-			RSGet::Curl::maybe_abort();
-			foreach ( 0..4 ) {
-				RSGet::Curl::perform();
-				Time::HiRes::sleep(0.050);
-			}
-		} else {
-			Time::HiRes::sleep(0.250);
-		}
-		RSGet::Curl::update_status();
-		RSGet::Line::update();
-		$http->perform() if $http;
+		iteration_short();
 
 		my $time = time;
 		next if $time == $lasttime;
 		$lasttime = $time;
-	
-		RSGet::Wait::wait_update();
-		RSGet::MortalObject::update();
-		RSGet::Captcha::captcha_update();
 
-		my $getlist = RSGet::FileList::readlist();
-		if ( $getlist ) {
-			my $allchk = RSGet::Dispatch::process( $getlist );
-			RSGet::ListManager::autoadd( $getlist );
-		}
+		iteration_long();
 	}
 }
 
