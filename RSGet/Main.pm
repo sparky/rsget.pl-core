@@ -123,7 +123,7 @@ sub maybe_update
 	if ( setting( "use_svn" ) eq "update" ) {
 		if ( RSGet::AutoUpdate::update() ) {
 			warn "Update successful, restarting\n";
-			exec $0, @$argv, "--use_svn", "yes";
+			exec $0, @$argv;
 		}
 		main::set( "use_svn", "yes", "SVN updated" );
 	}
