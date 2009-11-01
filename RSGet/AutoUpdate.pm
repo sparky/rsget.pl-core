@@ -26,8 +26,6 @@ def_settings(
 	},
 );
 
-my @update_dirs = qw(data RSGet Get Link Video);
-
 sub update
 {
 	unless ( require_prog( "svn" ) ) {
@@ -43,24 +41,21 @@ sub update
 	local $ENV{LC_ALL} = "C";
 	my $svn_uri = setting("svn_uri");
 	my $updated = 0;
-	foreach my $dir ( @update_dirs ) {
-		my $last;
-		print "  $dir:\n";
-		open SVN, "-|", "svn", "co", "$svn_uri/$dir";
-		while ( <SVN> ) {
-			print "    " . $_;
-			chomp;
-			$updated++;
-			$last = $_;
-		}
-		close SVN;
-		unless ( $last =~ /Checked out revision \d+/ ) {
-			warn "Update failed ?\n";
-		}
+	my $last = "";
+	open SVN, "-|", "svn", "co", "$svn_uri", ".";
+	while ( <SVN> ) {
+		print "    " . $_;
+		chomp;
+		$updated++;
+		$last = $_;
+	}
+	close SVN;
+	unless ( $last =~ /Checked out revision \d+/ ) {
+		warn "Update failed ?\n";
 	}
 	chdir $start_dir;
 
-	$updated -= scalar @update_dirs;
+	$updated--;
 	return undef unless $updated >= 0;
 	return $updated;
 }
