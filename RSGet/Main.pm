@@ -43,6 +43,11 @@ def_settings(
 		desc => "User configuration file.",
 		allowed => qr/.+/,
 	},
+	daemon => {
+		desc => "Enter daemon mode. 1 - disable console output, 2 - also fork",
+		default => 0,
+		allowed => qr/[012]/,
+	},
 );
 
 our %usettings;
@@ -63,7 +68,8 @@ sub init
 
 	check_settings( \%main::settings );
 	read_userconfig();
-	RSGet::Line::init();
+	my $daemon = setting( "daemon" );
+	RSGet::Line::init( $daemon );
 	print_settings() if verbose( 1 );
 	RSGet::FileList::set_file();
 	maybe_start_http();
@@ -77,6 +83,17 @@ sub init
 	new RSGet::Line( "rsget.pl started successfully" );
 	new RSGet::Line();
 	RSGet::Line::update();
+
+	if ( $daemon == 2 ) {
+		my $pid = fork();
+		die "Cannot fork" unless defined $pid;
+		if ( $pid ) {
+			print "rsget.pl daemon started on pid: $pid\n";
+			exit 0;
+		}
+	} elsif ( $daemon ) {
+		print "rsget.pl daemon started successfully\n";
+	}
 
 	loop();
 }

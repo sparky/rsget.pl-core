@@ -27,6 +27,7 @@ sub term_size
 	return $term_size_columns;
 }
 
+my $nooutput = 0;
 our %active;
 my %dead;
 our @dead;
@@ -135,6 +136,7 @@ sub print_all_lines
 
 sub update
 {
+	return if $nooutput;
 	my $added = print_all_lines();
 	print "\033[J\033[" . $added . "A\r" if $added;
 }
@@ -195,7 +197,15 @@ sub status
 
 sub init
 {
+	$nooutput = shift;
 	$| = 1;
+
+	$SIG{__WARN__} = sub {
+		new RSGet::Line( "WARNING: ", shift );
+		update();
+	};
+
+	return if $nooutput;
 
 	$SIG{INT} = sub {
 		print_all_lines();
@@ -209,11 +219,6 @@ sub init
 		my $start = $term_size_rows ? $#dead - $term_size_rows : 0;
 		$start = 0 if $start < 0;
 		print join( "\n", @dead[($start..$#dead)] ), "\n";
-		update();
-	};
-
-	$SIG{__WARN__} = sub {
-		new RSGet::Line( "WARNING: ", shift );
 		update();
 	};
 
