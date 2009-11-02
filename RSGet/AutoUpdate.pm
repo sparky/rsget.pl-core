@@ -9,6 +9,7 @@ use strict;
 use warnings;
 use RSGet::Tools;
 use Cwd;
+use File::Path;
 
 set_rev qq$Id$;
 
@@ -34,7 +35,7 @@ sub update
 	}
 	my $start_dir = getcwd();
 	my $svn_dir = $main::local_path;
-	mkdir $svn_dir unless -d $svn_dir;
+	mkpath $svn_dir unless -d $svn_dir;
 	chdir $svn_dir or die "Can't chdir to '$svn_dir'\n";
 
 	print "Updating from SVN:\n";
