@@ -7,8 +7,6 @@ package RSGet::CaptchaImage;
 
 use strict;
 use warnings;
-use GD;
-use Math::Trig;
 use RSGet::Tools;
 set_rev qq$Id$;
 
@@ -18,6 +16,7 @@ sub new # {{{
 	my $class = shift;
 	my $imgdata = shift;
 
+	require GD;
 	GD::Image->trueColor( 1 );
 	my $img = GD::Image->new( $$imgdata );
 
@@ -256,36 +255,6 @@ sub chop # {{{
 	return @parts;
 } # }}}
 
-sub img_rotate # {{{
-{
-=later
-	my $self = shift;
-	my $opts = shift;
-
-	my $select = $opts->{select} || 0;
-	$select = [ $select ] unless ref $select;
-
-	my $angle = $opts->{angle};
-	$angle = [ -$angle, +$angle ] unless ref $angle;
-
-	foreach my $i ( @$select ) {
-		my $img = $self->[ $i ];
-		my $best;
-		my $max = 0;
-		for ( my $a = $angle->[0]; $a <= $angle->[1]; $a += 15 ) {
-			my $r = $img->rotate( $a );
-			my $sum = $r->sum_columns( $opts->{sum} );
-			#print "Sum $i: $sum\n";
-			if ( $sum > $max ) {
-				$best = $r;
-				$max = $sum;
-			}
-		}
-		$self->add( $best );
-	}
-=cut
-} # }}}
-
 # call ocr program
 sub ocr # {{{
 {
@@ -301,12 +270,14 @@ sub ocr # {{{
 	
 	system "tesseract $bmp cap$rand 2>/dev/null";
 	
-	open my $f_in, "<", $txt;
-	my $text = <$f_in>;
-	close $f_in;
+	my $text;
+	if ( open my $f_in, "<", $txt ) {
+		$text = <$f_in>;
+		close $f_in;
+	}
 	unlink $bmp, $txt;
 
-	return undef unless $text;
+	return "" unless $text;
 	chomp $text;
 	return $text;
 } # }}}

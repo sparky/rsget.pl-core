@@ -76,9 +76,11 @@ sub captcha
 		if ( $@ ) {
 			warn "Captcha process problem: $@\n";
 		} else {
-			p "Captcha process returned: " . $text
+			p "Captcha process returned: " . ( defined $text ? $text : "undef" )
 				if verbose( 2 );
-			$text = undef unless $text =~ /^$check$/;
+			if ( defined $text ) {
+				$text = undef unless $text =~ /^$check$/;
+			}
 			return $self->solved_delay( $text );
 		}
 	}
