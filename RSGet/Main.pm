@@ -83,8 +83,7 @@ sub init
 
 sub print_help
 {
-	require Term::Size;
-	my ( $columns, $rows ) = Term::Size::chars;
+	my $columns = RSGet::Line::term_size();
 	print "Usage: $0 [OPTIONS] [LIST FILE]\n";
 	print "Downloads files from services like RapidShare.\n\n";
 	print "Arguments are always mandatory.\n";

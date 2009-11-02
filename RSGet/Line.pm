@@ -8,8 +8,24 @@ package RSGet::Line;
 use strict;
 use warnings;
 use RSGet::Tools;
-use Term::Size;
 set_rev qq$Id$;
+
+my $term_size_columns;
+my $term_size_rows;
+
+sub term_size
+{
+	local $SIG{__DIE__};
+	delete $SIG{__DIE__};
+	eval {
+		require Term::Size;
+		( $term_size_columns, $term_size_rows ) = Term::Size::chars();
+	};
+	$term_size_columns ||= $ENV{COLUMNS} || 80;
+	$term_size_rows ||= $ENV{LINES} || 0;
+
+	return $term_size_columns;
+}
 
 our %active;
 my %dead;
@@ -109,11 +125,11 @@ sub print_active_lines
 
 sub print_all_lines
 {
-	my ( $columns, $rows ) = Term::Size::chars;
+	term_size() unless $term_size_columns;
 	my $added = 0;
 	print_dead_lines();
-	$added += print_status_lines( $columns );
-	$added += print_active_lines( $columns );
+	$added += print_status_lines( $term_size_columns );
+	$added += print_active_lines( $term_size_columns );
 	return $added;
 }
 
@@ -189,8 +205,8 @@ sub init
 
 	$SIG{WINCH} = sub {
 		print "\033[2J\033[1;1H\n";
-		my ( $columns, $rows ) = Term::Size::chars;
-		my $start = $#dead - $rows;
+		term_size();
+		my $start = $term_size_rows ? $#dead - $term_size_rows : 0;
 		$start = 0 if $start < 0;
 		print join( "\n", @dead[($start..$#dead)] ), "\n";
 		update();
