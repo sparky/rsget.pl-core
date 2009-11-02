@@ -93,12 +93,12 @@ sub print_status_lines
 			$status[ $#status ] .= $s;
 		}
 	}
-	my @print = ( " \\$h/ " );
+	my @print = ( " \\$h/" );
 	foreach ( @status ) {
-		my $l = " |" . ( " " x ($columns - 4 - length $_ )) . $_ . "| ";
+		my $l = " |" . ( " " x ($columns - 4 - length $_ )) . $_ . "|";
 		push @print, $l;
 	}
-	push @print, " /$horiz\\ ";
+	push @print, " /$horiz\\";
 	print map { "\r\n$_\033[K" } @print;
 	return scalar @print;
 }
@@ -106,7 +106,7 @@ sub print_status_lines
 
 sub print_active_lines
 {
-    my $columns = shift;
+    my $columns = shift() - 1;
 	my @print;
 
 	foreach my $key ( sort { $a <=> $b } keys %active ) {
