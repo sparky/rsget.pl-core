@@ -253,7 +253,7 @@ sub find_getters
 		unshift @paths, $main::local_path;
 	}
 	foreach my $path ( @paths ) {
-		foreach my $type ( qw(Get Link Video) ) {
+		foreach my $type ( qw(Get Video Audio Image Link) ) {
 			my $dir = "$path/$type";
 			next unless -d $dir;
 			my $count = 0;
@@ -261,7 +261,7 @@ sub find_getters
 				$count += RSGet::Plugin::add( $type, $_ );
 			}
 			new RSGet::Line( "INIT: ", "$dir: found $count new plugins\n" )
-				if $count;
+				if verbose( 2 ) or $count;
 		}
 	}
 }
