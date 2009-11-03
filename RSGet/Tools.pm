@@ -15,7 +15,7 @@ set_rev qq$Id$;
 require Exporter;
 @ISA = qw(Exporter);
 @EXPORT = qw(set_rev s2string bignum de_ml hadd hprint p isotime require_prog
-	irand jstime def_settings setting verbose
+	irand randid jstime def_settings setting verbose
 	data_file dump_to_file randomize);
 @EXPORT_OK = qw();
 
@@ -96,6 +96,11 @@ sub irand($;$)
 	return int rand $arg unless @_;
 
 	return int ( $arg + rand ( (shift) - $arg ) );
+}
+
+sub randid()
+{
+	return join "", map { sprintf "%.4x", int rand 1 << 16 } (0..7);
 }
 
 sub isotime()

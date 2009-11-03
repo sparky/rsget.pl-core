@@ -25,7 +25,7 @@ sub new
 
 	my $time = time;
 
-	my $id = sprintf "%d_%.6x", ++$last_id, int rand 1 << 24;
+	my $id = ++$last_id . "_" . randid();
 
 	my $holder = {
 		obj => $obj,

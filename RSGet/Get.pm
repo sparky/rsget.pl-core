@@ -57,7 +57,7 @@ sub new
 		_cmd => $cmd,
 		_pkg => $getter->{pkg},
 		_outif => $outif,
-		_id => (sprintf "%.6x", int rand 1 << 24),
+		_id => randid(),
 		_last_dump => 0,
 		make_cookie( $getter->{cookie}, $cmd ),
 	};
@@ -260,7 +260,7 @@ sub multi
 {
 	my $self = shift;
 	my $msg = shift || "multi-download not allowed";
-	return $self->wait( \&start, -60 - 240 * rand, $msg, "multi" );
+	return $self->wait( \&start, - irand( 60, 300 ), $msg, "multi" );
 }
 
 sub finish

@@ -260,15 +260,14 @@ sub ocr # {{{
 {
 	my $self = shift;
 
-	my $rand = sprintf "%.6x", int rand 1 << 24;
-
-	my $bmp = "cap$rand.bmp";
-	my $txt = "cap$rand.txt";
+	my $file = "cap_" . randid();
+	my $bmp = "$file.bmp";
+	my $txt = "$file.txt";
 
 	unlink $bmp, $txt;
 	$self->write_bmp( $bmp );
 	
-	system "tesseract $bmp cap$rand 2>/dev/null";
+	system "tesseract $bmp $file 2>/dev/null";
 	
 	my $text;
 	if ( open my $f_in, "<", $txt ) {
