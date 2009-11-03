@@ -19,7 +19,7 @@ def_settings(
 		desc => "Save errors.",
 		default => 0,
 		allowed => qr/\d/,
-		dynamic => "NUMBER",
+		type => "NUMBER",
 	},
 );
 

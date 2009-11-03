@@ -34,19 +34,19 @@ def_settings(
 		desc => "Rename backup files with specified suffix. " .
 			"If none defined -N will be added to file name, without disrupting file extension.",
 		allowed => qr/\S*/,
-		dynamic => "STRING",
+		type => "STRING",
 		user => 1,
 	},
 	outdir => {
 		desc => "Output directory; where finished files are moved to.",
 		default => '.',
-		dynamic => "STRING",
+		type => "PATH",
 		user => 1,
 	},
 	workdir => {
 		desc => "Work directory; where unfinished files are stored.",
 		default => '.',
-		dynamic => "STRING",
+		type => "PATH",
 		user => 1,
 	},
 );

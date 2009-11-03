@@ -153,6 +153,7 @@ sub def_settings
 		default => "Default value.",
 		allowed => "RegExp that defines allowed values.",
 		dynamic => "May be changed after start.",
+		type => "Type of the setting.",
 		user => "May be modified by user.",
 	);
 	foreach my $k ( keys %s ) {

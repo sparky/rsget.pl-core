@@ -16,11 +16,13 @@ def_settings(
 		desc => "If lock file exists, list file won't be updated.",
 		default => '$(dir)/.$(file).swp',
 		allowed => qr/.+/,
+		type => "PATH",
 		user => 1,
 	},
 	list_file => {
 		desc => "Use specified file as URI list.",
 		allowed => qr/.+/,
+		type => "PATH",
 		user => 1,
 	}
 );

@@ -15,13 +15,13 @@ def_settings(
 		desc => "Number of slots (per IP) to use if getter has no limitation.",
 		default => 8,
 		allowed => qr/0*[1-9]\d*/,
-		dynamic => "NUMBER",
+		type => "NUMBER",
 	},
 	max_slots_check => {
 		desc => "Number of slots per service (per IP) to use when checking file information.",
 		default => 8,
 		allowed => qr/0*[1-9]\d*/,
-		dynamic => "NUMBER",
+		type => "NUMBER",
 	},
 
 );
