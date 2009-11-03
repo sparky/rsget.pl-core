@@ -16,8 +16,7 @@ set_rev qq$Id$;
 def_settings(
 	captcha_save_results => {
 		desc => "Save captcha results, for captcha debugging.",
-		default => 0,
-		allowed => qr/\d+/,
+		type => "PATH",
 	},
 );
 
@@ -98,8 +97,9 @@ sub captcha_result
 	my $name = $self->{captcha_md5};
 	delete $self->{captcha_md5};
 
-	return unless setting( "captcha_save_results" );
 	return unless $name;
+	my $capdir = setting( "captcha_save_results" );
+	return unless $capdir;
 
 	my $subdir;
 	if ( not defined $result ) {
@@ -113,7 +113,7 @@ sub captcha_result
 	}
 
 	my $getter = RSGet::Plugin::from_pkg( $self->{_pkg} );
-	my $dir = "captcha/$getter->{short}/$subdir";
+	my $dir = "$capdir/captcha/$getter->{short}/$subdir";
 	mkpath( $dir ) unless -d $dir;
 
 	my $file = "$dir/$name";
