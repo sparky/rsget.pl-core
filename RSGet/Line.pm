@@ -59,7 +59,7 @@ sub print_dead_lines
 		push @newdead, $text;
 	}
 
-	print @print;
+	print @print unless $nooutput;
 	if ( @newdead ) {
 		push @dead, @newdead;
 		$dead_change++;
@@ -126,9 +126,10 @@ sub print_active_lines
 
 sub print_all_lines
 {
+	print_dead_lines();
+	return if $nooutput;
 	term_size() unless $term_size_columns;
 	my $added = 0;
-	print_dead_lines();
 	$added += print_status_lines( $term_size_columns );
 	$added += print_active_lines( $term_size_columns );
 	return $added;
@@ -136,8 +137,8 @@ sub print_all_lines
 
 sub update
 {
-	return if $nooutput;
 	my $added = print_all_lines();
+	return if $nooutput;
 	print "\033[J\033[" . $added . "A\r" if $added;
 }
 
