@@ -20,6 +20,7 @@ use RSGet::Plugin;
 use RSGet::Tools;
 use RSGet::Wait;
 use Time::HiRes;
+use Cwd;
 set_rev qq$Id$;
 
 def_settings(
@@ -42,6 +43,7 @@ def_settings(
 	userconfig => {
 		desc => "User configuration file.",
 		allowed => qr/.+/,
+		type => "PATH",
 	},
 	daemon => {
 		desc => "Enter daemon mode. 1 - disable console output, 2 - also fork",
@@ -72,28 +74,28 @@ sub init
 	RSGet::Line::init( $daemon );
 	print_settings() if verbose( 1 );
 	RSGet::FileList::set_file();
-	maybe_start_http();
 	set_interfaces( $ifs );
 
 	new RSGet::Line();
 
 	find_getters();
 
+
+	if ( $daemon == 2 ) {
+		my $start_dir = getcwd();
+		require Proc::Daemon;
+		print "starting rsget.pl daemon\n" if verbose( 1 );
+		Proc::Daemon::Init();
+		chdir $start_dir;
+	} elsif ( $daemon ) {
+		print "rsget.pl daemon started successfully\n";
+	}
+
+	maybe_start_http();
 	new RSGet::Line();
 	new RSGet::Line( "rsget.pl started successfully" );
 	new RSGet::Line();
 	RSGet::Line::update();
-
-	if ( $daemon == 2 ) {
-		my $pid = fork();
-		die "Cannot fork" unless defined $pid;
-		if ( $pid ) {
-			print "rsget.pl daemon started on pid: $pid\n";
-			exit 0;
-		}
-	} elsif ( $daemon ) {
-		print "rsget.pl daemon started successfully\n";
-	}
 
 	loop();
 }
