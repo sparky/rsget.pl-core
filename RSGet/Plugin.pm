@@ -22,7 +22,7 @@ sub read_file($)
 
 	my %opts = (
 		uri => [],
-		map { $_ => undef } qw(name short slots cookie status),
+		map { $_ => undef } qw(name short slots cookie status web tos),
 	);
 	my $opts = join "|", keys %opts;
 
@@ -184,7 +184,8 @@ sub compile
 	my $self = shift;
 	$self->{compiled} = 1;
 	return if $self->{error};
-	p "Compiling $self->{pkg} plugin";
+	p "Compiling $self->{pkg} plugin ($self->{web})";
+	p "$self->{pkg}: make sure you agree with $self->{tos}" if $self->{tos};
 
 	my $parts = $self->read_file();
 	unless ( $parts ) {
