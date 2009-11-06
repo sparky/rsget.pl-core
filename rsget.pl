@@ -8,9 +8,10 @@
 #
 use strict;
 use warnings;
+use Cwd;
 my $rev = qq$Id$;
 
-our $install_path = $ENV{PWD};
+our $install_path = getcwd();
 our $local_path = $install_path;
 
 our %def_settings;
