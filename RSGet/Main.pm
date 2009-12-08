@@ -272,9 +272,10 @@ sub iteration_short
 {
 	if ( RSGet::Curl::need_run() ) {
 		RSGet::Curl::maybe_abort();
-		foreach ( 0..4 ) {
+		RSGet::Curl::perform();
+		foreach ( 0..25 ) {
+			Time::HiRes::sleep(0.01);
 			RSGet::Curl::perform();
-			Time::HiRes::sleep(0.050);
 		}
 	} else {
 		Time::HiRes::sleep(0.250);
