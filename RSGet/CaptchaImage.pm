@@ -267,7 +267,12 @@ sub ocr # {{{
 	unlink $bmp, $txt;
 	$self->write_bmp( $bmp );
 	
-	system "tesseract $bmp $file 2>/dev/null";
+	my $tes = `tesseract $bmp $file 2>&1`;
+	chomp $tes;
+	if ( $tes ne "Tesseract Open Source OCR Engine" ) {
+		warn "tesseract failed; check your instalation!\n";
+		warn "tesseract: $tes" if $tes;
+	}
 	
 	my $text;
 	if ( open my $f_in, "<", $txt ) {
