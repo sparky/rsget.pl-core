@@ -391,8 +391,8 @@ sub finish
 	if ( $err ) {
 		#warn "error($err): $error\n";
 		$get_obj->print( "ERROR($err): $error" ) if $err ne "aborted";
-		if ( $error =~ /Couldn't bind to '(.*)'/ ) {
-			my $if = $1;
+		if ( $error =~ /Couldn't bind to '(.*)'/ or $error =~ /bind failed/ ) {
+			my $if = $get_obj->{_outif};
 			RSGet::Dispatch::remove_interface( $if, "Interface $if is dead" );
 			$get_obj->{_abort} = "Interface $if is dead";
 		} elsif ( $error =~ /transfer closed with (\d+) bytes remaining to read/ ) {
