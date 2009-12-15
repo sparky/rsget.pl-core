@@ -21,7 +21,7 @@ sub new
 	my $socket = IO::Socket::INET->new(
 		Proto => 'tcp',
 		LocalPort => $port,
-		Listen => SOMAXCONN,
+		Listen => 5,
 		Reuse => 1,
 		Blocking => 0,
 	) || return undef;
@@ -49,6 +49,8 @@ sub request
 	my $post = "";
 	my $OK = 0;
 	eval {
+		local $SIG{__DIE__};
+		delete $SIG{__DIE__};
 		local $SIG{ALRM} = sub { die "HTTP: Frozen !\n"; };
 		alarm 2;
 		$request = <$client>;
