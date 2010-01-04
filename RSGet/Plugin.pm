@@ -263,12 +263,18 @@ sub add
 }
 
 
-
+my $from_uri_last;
 sub from_uri
 {
 	my $uri = shift;
+	if ( $from_uri_last ) {
+		return $from_uri_last if $from_uri_last->can_do( $uri );
+	}
 	foreach my $getter ( values %getters ) {
-		return $getter if $getter->can_do( $uri );
+		if ( $getter->can_do( $uri ) ) {
+			$from_uri_last = $getter;
+			return $getter;
+		}
 	}
 	return undef;
 }
