@@ -165,14 +165,14 @@ sub readlist
 			if ( /^([a-z0-9_]+)=(.*)$/ ) {
 				$options->{$1} = uri_unescape( $2 );
 				next;
-			} elsif ( m{^(http://)?(.*?)$} ) {
+			} elsif ( m{^((?:http|https|ftp)://)?(.*?\..*?/.*)$} ) {
 				my $proto = $1 || "http://";
 				my $uri = $proto . $2;
 				my $getter = RSGet::Plugin::from_uri( $uri );
 				if ( $getter ) {
 					$uri = $getter->unify( $uri );
 					$options = {};
-					$decoded{ $uri } = [ $getter, $options ];
+					$decoded{ $uri } = $options;
 					next;
 				}
 			}
@@ -186,6 +186,37 @@ sub readlist
 			push @actual, $line;
 			next;
 		}
+
+		foreach my $uri ( keys %decoded ) {
+			my $opt = $decoded{ $uri };
+			if ( $opt->{getter} ) {
+				$decoded{ $uri } = [ RSGet::Plugin::from_pkg( $opt->{getter} ),
+					$options ];
+			} else {
+				my $getter = RSGet::Plugin::from_uri( $uri );
+				if ( $getter ) {
+					my $newuri = $getter->unify( $uri );
+					$opt->{getter} = $getter->{pkg};
+					$decoded{ $newuri } = [ $getter, $opt ];
+					delete $decoded{ $uri } if $newuri ne $uri;
+				} else {
+					my $line = "# invalid uri: $uri " . (join " ", h2a( $opt ));
+					push @new, $line . "\n";
+					push @actual, $line;
+					delete $decoded{ $uri };
+				}
+			}
+		}
+
+		unless ( keys %decoded ) {
+			if ( my @a = h2a( $globals ) ) {
+					my $line = "# lost options: " . (join " ", @a);
+					push @new, $line . "\n";
+					push @actual, $line;
+			}
+			next;
+		}
+
 		if ( @invalid ) {
 			my $line = '# invalid: ' . (join " ", @invalid);
 			push @new, $line . "\n";
