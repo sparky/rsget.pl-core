@@ -187,7 +187,7 @@ sub readlist
 			my $opt = $decoded{ $uri };
 			if ( $opt->{getter} ) {
 				$decoded{ $uri } = [ RSGet::Plugin::from_pkg( $opt->{getter} ),
-					$options ];
+					$opt ];
 			} else {
 				my $getter = RSGet::Plugin::from_uri( $uri );
 				if ( $getter ) {
