@@ -168,13 +168,9 @@ sub readlist
 			} elsif ( m{^((?:http|https|ftp)://)?(.*?\..*?/.*)$} ) {
 				my $proto = $1 || "http://";
 				my $uri = $proto . $2;
-				my $getter = RSGet::Plugin::from_uri( $uri );
-				if ( $getter ) {
-					$uri = $getter->unify( $uri );
-					$options = {};
-					$decoded{ $uri } = $options;
-					next;
-				}
+				$options = {};
+				$decoded{ $uri } = $options;
+				next;
 			}
 
 			push @invalid, $_;
