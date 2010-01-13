@@ -2,7 +2,7 @@
 # $Id$
 #  This file is the main executable of rsget.pl downloader.
 #
-# 2009 (c) Przemysław Iskra <sparky@pld-linux.org>
+# 2009-2010 (c) Przemysław Iskra <sparky@pld-linux.org>
 #		This program is free software,
 # you may distribute it under GPL v2 or newer.
 #
