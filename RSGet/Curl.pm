@@ -251,7 +251,7 @@ sub file_init
 		$supercurl->{size_total} = $supercurl->{force_size};
 	}
 
-	dump_to_file( $supercurl->{head}, "head" ) if verbose( 5 );
+	$get_obj->dump( $supercurl->{head}, "head" ) if verbose( 5 );
 	my $fname;
 	if ( $supercurl->{force_name} ) {
 		$fname = $supercurl->{force_name};
