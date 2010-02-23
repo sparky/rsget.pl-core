@@ -316,21 +316,34 @@ sub problem
 sub dump
 {
 	my $self = shift;
-	my $ct = $self->{content_type};
-
-	my $ext = "txt";
-	if ( $ct =~ /javascript/ ) {
-		$ext = "js";
-	} elsif ( $ct =~ /(ht|x)ml/ ) {
-		$ext = "html";
-	} elsif ( $ct =~ m{image/(.*)} ) {
-		$ext = $1;
+	my ( $body, $ext );
+	my $ct = $self->{content_type} || "undef";
+	if ( @_ >= 2 ) {
+		$body = shift;
+		$ct = $ext = shift;
+	} else {
+		$body = $self->{body};
+		if ( $ct =~ /javascript/ ) {
+			$ext = "js";
+		} elsif ( $ct =~ /(ht|x)ml/ ) {
+			$ext = "html";
+		} elsif ( $ct =~ m{image/(\S+)} ) {
+			$ext = $1;
+		} else {
+			$ext = "txt";
+		}
 	}
+
+	unless ( defined $body ) {
+		$self->log( "body not defined, not dumping ($ct, $ext)" );
+		return;
+	}
+
 	my $file = sprintf "dump.$self->{_id}.%.4d.$ext",
 		++$self->{_last_dump};
 
 	open my $f_out, '>', $file;
-	print $f_out $self->{body};
+	print $f_out $body;
 	close $f_out;
 
 	$self->log( "dumped to file: $file ($ct)" );
