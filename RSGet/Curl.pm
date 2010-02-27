@@ -12,6 +12,7 @@ use RSGet::Line;
 use WWW::Curl::Easy 4.00;
 use WWW::Curl::Multi;
 use URI::Escape;
+use MIME::Base64;
 use File::Copy;
 use File::Path;
 use Fcntl qw(SEEK_SET);
@@ -215,6 +216,11 @@ sub content_filename
 				if verbose( 1 );
 			return;
 		}
+	} elsif ( m/=\?(.*?)\?B\?(.*?)\?=/ ) {
+		# described in rfc2047
+		warn "C-D: Unsupported filename encoding: $1, at $src\n"
+			if uc $1 ne "UTF-8" and verbose( 1 );
+		$_ = decode_base64( $2 );
 	} else {
 		s/[;\s].*//;
 	}
