@@ -62,7 +62,7 @@ sub new
 		}
 		if ( verbose( 2 ) and not $found ) {
 			my $all = join ", ", map { "$_ => $m->{$_}" } sort keys %$m;
-			warn "Can't find form whitch matches: $all\n";
+			warn "Can't find form which matches: $all\n";
 		}
 	}
 	if ( not $found and exists $opts{num} ) {
