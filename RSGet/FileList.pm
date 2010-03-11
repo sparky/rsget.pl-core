@@ -98,6 +98,56 @@ sub save
 	}
 }
 
+$RSGet::Dispatch::downloading if 0; # avoid warning
+sub proc_stop_inactive_get
+{
+	my $active = 0;
+	foreach my $uri ( keys %{$_[2]} ) {
+		if ( exists $RSGet::Dispatch::downloading{ $uri } ) {
+			$active = 1;
+			last;
+		}
+	}
+
+	$_[0] = "STOP" unless $active;
+}
+
+our %processors = (
+	"Remove all DONE" => sub {
+		if ( $_[0] eq "DONE" ) {
+			my $decoded = $_[2];
+			delete $decoded->{$_} foreach keys %$decoded;
+		}
+	},
+	"Remove all STOP" => sub {
+		if ( $_[0] eq "STOP" ) {
+			my $decoded = $_[2];
+			delete $decoded->{$_} foreach keys %$decoded;
+		}
+	},
+	"Start all STOP" => sub {
+		$_[0] = "GET" if $_[0] eq "STOP";
+	},
+	"Stop all GET" => sub {
+		$_[0] = "STOP" if $_[0] eq "GET";
+	},
+	"Stop inactive GET" => \&proc_stop_inactive_get,
+	"Remove all error" => sub {
+		foreach my $data ( values %{$_[2]} ) {
+			delete $data->[1]->{error};
+		}
+	},
+);
+
+my $process = undef;
+sub process
+{
+	my $name = shift;
+	if ( $processors{ $name } ) {
+		$process = $processors{ $name };
+		$update = 1;
+	}
+}
 
 
 sub h2a($)
@@ -249,6 +299,10 @@ sub readlist
 			delete $decoded{ $uri } if $save->{delete};
 		}
 
+		if ( $process ) {
+			&$process( $cmd, $globals, \%decoded );
+		}
+
 		foreach my $uri ( keys %decoded ) {
 			if ( $all_uri{ $uri } ) {
 				warn "URI: $uri repeated, removing second one\n";
@@ -298,6 +352,7 @@ sub readlist
 		unlink $file;
 		rename $file . ".tmp", $file;
 		@added = ();
+		$process = undef;
 		foreach my $uri ( @used_save ) {
 			delete $save{ $uri };
 		}
