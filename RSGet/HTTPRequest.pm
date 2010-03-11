@@ -214,6 +214,14 @@ sub act_info
 sub f_dllist
 {
 	my $r = '<fieldset id="f_dllist"><legend>download list</legend>';
+	
+	$main_ids{list} = { 0 => 1 };
+	$r .= '<div id="list_0">';
+
+	my @tools = sort keys %RSGet::FileList::processors;
+
+	$r .= '<div class="tools">' . (join " | ", map "<span>$_</span>", @tools) .
+		'</div></div>';
 
 	my %cmd_to_color = (
 		DONE => "blue",
@@ -416,6 +424,8 @@ sub command
 			return;
 		}
 		RSGet::FileList::save( $data, @save );
+	} elsif ( $grp eq "list" ) {
+		RSGet::FileList::process( $cmd );
 	} else {
 		warn "Invalid command group: $cmd, $grp, $exec\n";
 		return;
