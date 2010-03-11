@@ -101,6 +101,8 @@ sub save
 $RSGet::Dispatch::downloading if 0; # avoid warning
 sub proc_stop_inactive_get
 {
+	return unless $_[0] eq "GET";
+
 	my $active = 0;
 	foreach my $uri ( keys %{$_[2]} ) {
 		if ( exists $RSGet::Dispatch::downloading{ $uri } ) {
