@@ -95,7 +95,7 @@ sub request
 		}
 	} elsif ( $file =~ s/\?(.*)// ) {
 		my $get = $1;
-		%post = map { /^(.*?)=(.*)/; (uri_unescape( $1 ), uri_unescape( $2 )) } split /;+/, $get;
+		%post = map { /^(.*?)=(.*)/; (uri_unescape( $1 ), uri_unescape( $2 )) } split /[;&]+/, $get;
 	}
 
 	my $authorized = 1;
