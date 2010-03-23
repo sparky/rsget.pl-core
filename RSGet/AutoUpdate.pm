@@ -43,7 +43,7 @@ sub update
 	my $svn_uri = setting("svn_uri");
 	my $updated = 0;
 	my $last = "";
-	open SVN, "-|", "svn", "co", "$svn_uri", ".";
+	open SVN, "-|", "svn", "co", $svn_uri, ".";
 	while ( <SVN> ) {
 		print "    " . $_;
 		chomp;
