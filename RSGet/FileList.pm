@@ -103,15 +103,11 @@ sub proc_stop_inactive_get
 {
 	return unless $_[0] eq "GET";
 
-	my $active = 0;
 	foreach my $uri ( keys %{$_[2]} ) {
-		if ( exists $RSGet::Dispatch::downloading{ $uri } ) {
-			$active = 1;
-			last;
-		}
+		return if exists $RSGet::Dispatch::downloading{ $uri };
 	}
 
-	$_[0] = "STOP" unless $active;
+	$_[0] = "STOP";
 }
 
 our %processors = (
