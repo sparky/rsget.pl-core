@@ -21,3 +21,8 @@ Clients planned in future:
 - I/O gtk client (try tu use code from slimrat)
 - port cgi to php (for simplicity)
 - port cgi to mod_perl (for speed)
+
+Other ideas:
+- create http plugin repository, to easily update plugins without
+  svn client
+- store downloaded plugins in database
