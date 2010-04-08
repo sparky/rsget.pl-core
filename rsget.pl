@@ -28,24 +28,6 @@ my $help;
 my @ifs;
 parse_args();
 
-if ( $settings{use_svn} and $settings{use_svn}->[0] =~ /^(yes|update)$/ ) {
-	$local_path = "$cdir/svn";
-	unshift @INC, $local_path;
-
-	eval {
-		require RSGet::Main;
-	};
-	if ( $@ ) {
-		shift @INC;
-		warn "Cannot use components from SVN: $@\n";
-		set( "use_svn", "no", "disabled because of errors" )
-			if $settings{use_svn}->[0] eq "yes";
-		foreach my $inc ( keys %INC ) {
-			delete $INC{ $inc } if $inc =~ /^RSGet\//;
-		}
-	}
-}
-
 eval {
 	require RSGet::Main;
 };
