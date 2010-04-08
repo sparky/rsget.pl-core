@@ -18,7 +18,7 @@ def_settings(
 	plugin_uri => {
 		desc => "http path to rsget.pl plugins updater.",
 		default => 'http://rsget.pl/download/plugins.php',
-		allowed => qr{https?)://.{4,}},
+		allowed => qr{https?://.{4,}},
 	},
 );
 
