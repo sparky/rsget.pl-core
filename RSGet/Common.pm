@@ -14,13 +14,15 @@ set_rev qq$Id$;
 
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT = qw(set_rev s2string bignum de_ml hadd hprint p isotime require_prog
+@EXPORT = qw(cat
+	set_rev s2string bignum de_ml hadd hprint p isotime require_prog
 	irand randid jstime def_settings setting verbose
 	data_file dump_to_file randomize);
 @EXPORT_OK = qw();
 
 our %revisions;
 
+# XXX: useles
 sub set_rev($)
 {
 	my @id = split /\s+/, shift;
@@ -30,6 +32,7 @@ sub set_rev($)
 	$revisions{ $pm } = 0 | $rev;
 }
 
+# return number of seconds as string
 sub s2string($)
 {
 	my $s = shift;
@@ -45,6 +48,7 @@ sub s2string($)
 	}
 }
 
+# return NNNNNNNN number ad NN_NNN_NNN
 sub bignum($)
 {
 	local $_ = shift;
@@ -62,7 +66,7 @@ sub hadd(%@)
 	}
 }
 
-
+# XXX: rewrite
 sub p($)
 {
 	require RSGet::Line;
@@ -84,12 +88,16 @@ sub hprint(%)
 	}
 }
 
+# randomize order of an array
 sub randomize
 {
 	# not really good, but works
+	# violates qsort requirements for stable comparator
 	return sort { 0.5 <=> rand } @_;
 }
 
+# return some random integer from interval $_[0]..$_[1]
+# or 0..$_[0] if there is no $_[1]
 sub irand($;$)
 {
 	my $arg = shift;
@@ -98,22 +106,26 @@ sub irand($;$)
 	return int ( $arg + rand ( (shift) - $arg ) );
 }
 
+# random 16 byte hex number
 sub randid()
 {
 	return join "", map { sprintf "%.4x", int rand 1 << 16 } (0..7);
 }
 
+# actual date and time in iso format (YYYY-MM-DD HH:MM:SS)
 sub isotime()
 {
 	my @l = localtime;
 	return sprintf "%d-%.2d-%.2d %2d:%.2d:%.2d", $l[5] + 1900, $l[4] + 1, @l[(3,2,1,0)];
 }
 
+# actual time in JavaScript format
 sub jstime()
 {
 	return time * 1000 + irand 1000;
 }
 
+# remove sgml entities
 sub de_ml
 {
 	local $_ = shift;
@@ -125,6 +137,7 @@ sub de_ml
 	return $_;
 }
 
+# find program in $PATH
 sub require_prog
 {
 	my $prog = shift;
@@ -135,6 +148,7 @@ sub require_prog
 	return undef;
 }
 
+# XXX: likely depreciated
 sub data_file
 {
 	my $file = shift;
@@ -145,6 +159,7 @@ sub data_file
 	return undef;
 }
 
+# add settings to default hash
 sub def_settings
 {
 	my %s = @_;
@@ -172,6 +187,7 @@ sub def_settings
 	}
 }
 
+# retrieve global setting
 sub setting
 {
 	my $name = shift;
@@ -180,6 +196,7 @@ sub setting
 	return $main::def_settings{ $name }->{default};
 }
 
+# indicate wether additional information should be printed
 sub verbose
 {
 	my $min = shift;
@@ -188,6 +205,7 @@ sub verbose
 	return 0;
 }
 
+# XXX: dump to database instead
 sub dump_to_file
 {
 	my $data = shift;
@@ -204,6 +222,18 @@ sub dump_to_file
 	close $f_out;
 
 	warn "data dumped to file: $file\n";
+}
+
+
+# return contents of given file
+sub cat
+{
+	my $name = shift;
+	open $fin, "<", $name
+		or return undef;
+
+	local $/ = undef;
+	return <$fin>;
 }
 
 1;
