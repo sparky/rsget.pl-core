@@ -6,6 +6,8 @@ any compatibility with earlier versions.
 Remarks:
 - only daemon mode
 - xmlrpc or similar communication method
+  -- I'm considering rewriting RPC::PlServer not to use Net::Daemon, but
+    IO::Socket directly (either UNIX or INET). RPC::PlClient may need updating.
 - no integrated input/output interfaces
 - store data in SQL database (will support at least SQlite3, PgSQL and MySQL)
 - multi-user support
@@ -17,12 +19,43 @@ Salvaged clients:
 - input/output perl cgi application to create webbrowser interface
 
 Clients planned in future:
-- I/O ncurses client (something like rtorrent)
+- I/O ncurses client (something like rtorrent, caca for captcha ?)
 - I/O gtk client (try tu use code from slimrat)
 - port cgi to php (for simplicity)
 - port cgi to mod_perl (for speed)
+- kde/gnome tray icon (inform about completed downloads, ask captcha)
 
 Other ideas:
 - create http plugin repository, to easily update plugins without
   svn client
+  -- http://rsget.pl/download/plugins
 - store downloaded plugins in database
+
+
+* rsget.pl command should be a wrapper calling core and/or clients and
+  interconnecting them internally or externally
+
+- start daemon:
+  $ rsget.pl core --fork
+
+- add link to daemon:
+  $ rsget.pl addlink <http://...>
+   or
+  $ rsget.pl add <http://...>
+
+- add link list to daemon:
+  $ rsget.pl addlist <file.list>
+   or
+  $ rsget.pl add <flie.list>
+
+- start core (do not fork), and download some links, (exit after):
+  $ rsget.pl core -- add <http://..>
+
+- start curses client and connect do daemon:
+  $ rsget.pl curses
+
+- start curses with core:
+  $ rsget.pl core -- curses
+
+- most clients and core should be able to coexist
+  $ rsget.pl core -- addlink <link1> <link2> -- addlist <file.list> -- gtk
