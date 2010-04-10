@@ -20,8 +20,11 @@ Salvaged clients:
 
 Clients planned in future:
 - I/O ncurses client (something like rtorrent, caca for captcha ?)
+	echo -e '\033[31;42m\0342\0226\0205\033[0m'
 - I/O gtk client (try tu use code from slimrat)
 - port cgi to php (for simplicity)
+  -- probably very complicated (thugh not impossible) with storable-based RPC
+    communication
 - port cgi to mod_perl (for speed)
 - kde/gnome tray icon (inform about completed downloads, ask captcha)
 
@@ -30,7 +33,33 @@ Other ideas:
   svn client
   -- http://rsget.pl/download/plugins
 - store downloaded plugins in database
+- simple text-based communication (could be useful for some more advanced
+    hooks)
 
+
+* $ rsget.pl --help
+usage: rsget.pl [OPTS] COMMAND1 [OPTS1] [ARGS1] -- COMMAND2 [OPTS2] [ARGS2]
+
+Common options:
+   --local=FILE           Use UNIX socket for communication
+   --remote=[HOST:]PORT   Use TCP for communication
+
+Commands are:
+   addlink    Add links from command line to download links
+   addlist    Add links from list file to download links
+   cgi        CGI interface
+   core       Start daemon
+   curses     Curses interface
+   gtk        GTK interface
+   readline   Readline interface
+   tray       Tray icon
+See 'rsget.pl --help [command]' or 'rsget.pl --help-all' for more information.
+
+'addlink' help:
+   Arguments: <link1> <link2> <link3a> + <link3b> + <link3c> <link4>
+
+'addlist' help:
+   Arguments: <file1> <flie2>
 
 * rsget.pl command should be a wrapper calling core and/or clients and
   interconnecting them internally or externally
@@ -58,4 +87,4 @@ Other ideas:
   $ rsget.pl core -- curses
 
 - most clients and core should be able to coexist
-  $ rsget.pl core -- addlink <link1> <link2> -- addlist <file.list> -- gtk
+  $ rsget.pl --local core -- addlink <link1> <link2> -- addlist <file.list> -- gtk
