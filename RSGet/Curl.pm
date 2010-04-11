@@ -16,7 +16,7 @@ use MIME::Base64;
 use File::Copy;
 use File::Path;
 use Fcntl qw(SEEK_SET);
-set_rev qq$Id$;
+set_rev qq$$;
 
 def_settings(
 	backup => {
@@ -88,8 +88,34 @@ sub new
 	};
 
 	$curl->setopt( CURLOPT_PRIVATE, $id );
-	$curl->setopt( CURLOPT_INTERFACE, $get_obj->{_outif} )
-		if $get_obj->{_outif};
+
+	if ( $get_obj->{_outif} ) {
+		foreach my $if ( split /;+/, $get_obj->{_outif} ) {
+			if ( $if =~ /^([a-z0-9]+)=(\S+)(:(\d+))?$/ ) {
+				my ($tn, $host, $port) = ($1, $2, $4);
+				my %proxytype = (
+					http => 0, #CURLPROXY_HTTP,
+					http10 => 1, #CURLPROXY_HTTP_1_0,
+					socks4 => 4, #CURLPROXY_SOCKS4,
+					socks4a => 6, #CURLPROXY_SOCKS4a,
+					socks5 => 5, #CURLPROXY_SOCKS5,
+					socks5host => 7, #CURLPROXY_SOCKS5_HOSTNAME,
+				);
+				if ( my $type = $proxytype{ $tn } ) {
+					$curl->setopt( CURLOPT_PROXYTYPE, $type );
+					$curl->setopt( CURLOPT_PROXY, $host );
+					$curl->setopt( CURLOPT_PROXYPORT, $port )
+						if $port;
+				} else {
+					warn "Unrecognized proxy type '$tn' in '$get_obj->{_outif}'\n";
+				}
+			} elsif ( $if =~ /^\S+$/ ) {
+				$curl->setopt( CURLOPT_INTERFACE, $if );
+			} else {
+				warn "Unrecognized interface string '$if' in '$get_obj->{_outif}'\n";
+			}
+		}
+	}
 
 	if ( defined $get_obj->{_cookie} ) {
 		$curl->setopt( CURLOPT_COOKIEJAR, $get_obj->{_cookie} );
