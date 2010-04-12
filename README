@@ -89,3 +89,12 @@ See 'rsget.pl --help [command]' or 'rsget.pl --help-all' for more information.
 
 - most clients and core should be able to coexist
   $ rsget.pl --local core -- addlink <link1> <link2> -- addlist <file.list> -- gtk
+
+
+* some TODO found lying around:
+
+# Curl.pm: try making servers think we're just a proxy for some other host
+#  -- unlikely this is going to work.
+#   X-Forwarded-For: XX.XX.XXX.XXX
+#   Cache-Control: bypass-client=XX.XX.XX.XXX
+

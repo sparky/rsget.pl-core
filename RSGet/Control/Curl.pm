@@ -1,4 +1,4 @@
-package RSGet::Curl;
+package RSGet::Control::Curl;
 # This file is an integral part of rsget.pl downloader.
 #
 # 2009-2010 (c) Przemysław Iskra <sparky@pld-linux.org>

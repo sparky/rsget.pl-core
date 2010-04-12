@@ -9,28 +9,17 @@ use strict;
 use warnings;
 use vars qw(@ISA @EXPORT @EXPORT_OK);
 
-sub set_rev($);
-set_rev qq$Id$;
-
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT = qw(cat
-	set_rev s2string bignum de_ml hadd hprint p isotime require_prog
+@EXPORT = qw($user
+	cat
+	s2string bignum de_ml hadd hprint p isotime require_prog
 	irand randid jstime def_settings setting verbose
 	data_file dump_to_file randomize);
 @EXPORT_OK = qw();
 
-our %revisions;
-
-# XXX: useles
-sub set_rev($)
-{
-	my @id = split /\s+/, shift;
-	my $pm = $id[1];
-	my $rev = $id[2];
-	$pm =~ s/\.pm$//;
-	$revisions{ $pm } = 0 | $rev;
-}
+# user that is actually downloading
+our $user;
 
 # return number of seconds as string
 sub s2string($)
@@ -48,7 +37,7 @@ sub s2string($)
 	}
 }
 
-# return NNNNNNNN number ad NN_NNN_NNN
+# return NNNNNNNN number as NN_NNN_NNN
 sub bignum($)
 {
 	local $_ = shift;
@@ -57,13 +46,12 @@ sub bignum($)
 	return $_;
 }
 
+# add new values to hash
 sub hadd(%@)
 {
 	my $h = shift;
 	my %new = @_;
-	foreach ( keys %new ) {
-		$h->{$_} = $new{$_};
-	}
+	$h->{ keys %new } = values %new;
 }
 
 # XXX: rewrite

@@ -220,7 +220,7 @@ sub finish # {{{
 			#RSGet::Dispatch::remove_interface( $if, "Interface $if is dead" );
 			#$get_obj->{_abort} = "Interface $if is dead";
 
-			#RSGet::Hook::dispatch( "dead_interface", interface => $if );
+			#RSGet::Hook::dispatch( "dead_interface", undef, interface => $if );
 		} elsif ( $cc->{error} =~ /transfer closed with (\d+) bytes remaining to read/ ) {
 			#RSGet::Dispatch::mark_used( $get_obj );
 			#$get_obj->{_abort} = "PARTIAL " . donemsg( $supercurl );

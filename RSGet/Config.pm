@@ -66,12 +66,14 @@ sub get
 
 	my $value = _get_raw( $user, $name );
 	if ( wantarray ) {
+		return () unless defined $value;
 		my @out;
 		foreach my $term ( split /\s+/, $value ) {
 			push @out, _expand( $user, $local, $term );
 		}
 		return @out;
 	} else {
+		return undef unless defined $value;
 		return _expand( $user, $local, $value );
 	}
 }

@@ -18,11 +18,9 @@ sub dispatch
 	$opts{name} = $name;
 	$opts{user} = $user;
 
-	my $hook = RSGet::Config::get_raw( $user, "hook.$name" );
-	return unless $hook;
+	my @hook = RSGet::Config::get( $user, \%opts, "hook.$name" );
+	return unless @hook;
 
-	my @hook = RSGet::Config::expand( \%opts, split /\s+/, $hook );
-	
 	# TODO: don't block
 	open my $hookin, "-|", @hook;
 	while ( <$hookin> ) {
