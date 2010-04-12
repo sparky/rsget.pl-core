@@ -1,4 +1,4 @@
-package RSGet::AutoUpdate;
+package RSGet::Plugin::AutoUpdate;
 # This file is an integral part of rsget.pl downloader.
 #
 # 2009-2010 (c) Przemysław Iskra <sparky@pld-linux.org>
@@ -9,9 +9,8 @@ package RSGet::AutoUpdate;
 
 use strict;
 use warnings;
-use RSGet::Tools;
+use RSGet::Curl;
 use RSGet::DB;
-use RSGet::Plugin;
 use Digest::MD5 qw(md5_hex);
 
 def_settings(
@@ -63,4 +62,4 @@ sub process
 
 1;
 
-# vim: ts=4:sw=4
+# vim: ts=4:sw=4:fdm=marker

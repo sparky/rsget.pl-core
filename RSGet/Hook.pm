@@ -1,4 +1,4 @@
-package RSGet::Hooks;
+package RSGet::Hook;
 # This file is an integral part of rsget.pl downloader.
 #
 # 2010 (c) Przemysław Iskra <sparky@pld-linux.org>
