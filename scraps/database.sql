@@ -1,0 +1,150 @@
+-- 
+-- 2010 (c) Przemysław Iskra <sparky@pld-linux.org>
+--
+--
+-- Try to figure out databases and relations between them.
+--
+
+-- user information
+CREATE TABLE user (
+	id		INTEGER PRIMARY KEY,
+	name		TEXT NOT NULL,	-- user name
+	pass		TEXT,
+	path		TEXT NOT NULL,	-- path in
+	uri		TEXT,
+
+	flags		INTEGER NOT NULL,
+);
+
+-- file group, defines special relations between multiple files
+CREATE TABLE file_group (
+	id		INTEGER PRIMARY KEY,
+	name		TEXT,
+	path		TEXT,
+	user_id		INTEGER NOT NULL,
+	parent_group_id	INTEGER, -- null for root group
+
+	priority	REAL NOT NULL,
+	line		INTEGER NOT NULL,
+	quota		INTEGER NOT NULL,
+	flags		INTEGER NOT NULL,
+
+	FOREIGN KEY(user_id) REFERENCES user(id),
+);
+
+-- output file information
+-- save file node so we'll be able to find it if it's renamed
+CREATE TABLE file (
+	id		INTEGER PRIMARY KEY,
+	name		TEXT,
+	node		INTEGER, -- unique ?
+	path		TEXT, -- unique ?
+	size		INTEGER,
+	group_id	INTEGER NOT NULL,
+
+	priority	REAL NOT NULL,
+	line		INTEGER NOT NULL,
+
+	FOREIGN KEY(group_id) REFERENCES file_group(id),
+);
+
+
+
+CREATE TABLE uri (
+	id		INTEGER PRIMARY KEY,
+
+	-- link as specified by user
+	link		TEXT NOT NULL, -- unique ?
+
+	-- link after performing unify()
+	resolved_link	TEXT, -- unique ?
+
+	-- key to file table
+	file_id		INTEGER,
+
+	-- name as returned by web page or started download
+	file_name	TEXT,
+
+	-- larger number meens file name is more likely to be incorrect
+	-- 0 for name as returned by Content-Disposition
+	-- 1 for full name from web page
+	-- 2 for incomplete name
+	-- 3 for complete name with some chars changed
+	--   (e.g. letters changed to lower case)
+	-- 4 for incomplete name with some chars changed
+	file_name_strength	INTEGER,
+
+	-- predicted minimal and maximal file size
+	size_min	INTEGER,
+	size_max	INTEGER,
+
+	-- additional information from web page
+	info		TEXT,
+
+	-- error message
+	error		TEXT,
+
+	-- options like download password or video quality
+	options		TEXT, 
+
+	-- done, disabled, error ?
+	flags		INTEGER NOT NULL,
+
+	-- uri priority within file
+	priority	REAL NOT NULL,
+
+	-- wtf wa i thinking ?
+	line		INTEGER NOT NULL,
+
+	
+	FOREIGN KEY(file_id) REFERENCES file(id),
+);
+
+
+-- information about data chunk within file
+CREATE TABLE file_part (
+	id		INTEGER PRIMARY KEY,
+
+	-- originating uri
+	uri_id		INTEGER NOT NULL,
+
+	-- destination file
+	file_id		INTEGER NOT NULL,
+
+	-- start and stop positions of data part within file
+	start		INTEGER NOT NULL,
+	stop		INTEGER,
+
+	-- XXX: probably useless
+	data_before	BLOB,
+	data_after	BLOB,
+
+	FOREIGN KEY(uri_id) REFERENCES uri(id),
+	FOREIGN KEY(file_id) REFERENCES file(id),
+);
+
+
+-- log messages
+CREATE TABLE log (
+	id		INTEGER PRIMARY KEY,
+
+	-- time in seconds
+	time		INTEGER NOT NULL,
+
+	-- plain, info, done, warning, error
+	type		INTEGER NOT NULL,
+
+	-- text before actual line (e.g. [RS][eth1])
+	header		TEXT NOT NULL,
+
+	-- actual text
+	line		TEXT NOT NULL,
+);
+
+
+-- getters
+CREATE TABLE plugin (
+	name		TEXT NOT NULL,
+	md5		CHAR(32),
+	body		TEXT NOT NULL,
+);
