@@ -8,44 +8,79 @@
 -- user information
 CREATE TABLE user (
 	id		INTEGER PRIMARY KEY,
-	name		TEXT NOT NULL,	-- user name
+	-- user name
+	name		TEXT NOT NULL,
+	-- password, as plain text
 	pass		TEXT,
-	path		TEXT NOT NULL,	-- path in
+
+	-- how user can access their files:
+	--  local rsget:  file:///path/to/done/
+	--  remote rsget:  http://server/path/to/done/
+	--  faster remote:  rsync://server/module/path/
 	uri		TEXT,
 
-	flags		INTEGER NOT NULL,
+	-- pause, disable everything
+	flags		INTEGER NOT NULL
 );
 
 -- file group, defines special relations between multiple files
 CREATE TABLE file_group (
 	id		INTEGER PRIMARY KEY,
-	name		TEXT,
-	path		TEXT,
-	user_id		INTEGER NOT NULL,
-	parent_group_id	INTEGER, -- null for root group
 
+	-- group name
+	name		TEXT,
+
+	-- group subpath for files
+	path		TEXT,
+
+	-- which user does that belong to
+	user_id		INTEGER NOT NULL,
+
+	-- null for root group
+	parent_group_id	INTEGER,
+
+	-- lower numbers for higher priority
 	priority	REAL NOT NULL,
+
+	-- XXX: I don't remember this one
 	line		INTEGER NOT NULL,
+
+	-- quota used, in kb ? or maybe in seconds
 	quota		INTEGER NOT NULL,
+
+	-- disable whole group
 	flags		INTEGER NOT NULL,
 
-	FOREIGN KEY(user_id) REFERENCES user(id),
+	FOREIGN KEY(user_id) REFERENCES user(id)
 );
 
 -- output file information
 -- save file node so we'll be able to find it if it's renamed
 CREATE TABLE file (
 	id		INTEGER PRIMARY KEY,
+
+	-- file name
 	name		TEXT,
-	node		INTEGER, -- unique ?
-	path		TEXT, -- unique ?
+
+	-- hard drive node
+	node		INTEGER,
+
+	-- full path to file
+	path		TEXT,
+
+	-- exact file size
 	size		INTEGER,
+
+	-- id of group file belongs to
 	group_id	INTEGER NOT NULL,
 
+	-- lower number for higher priority
 	priority	REAL NOT NULL,
+
+	-- XXX: I don't remember this one either
 	line		INTEGER NOT NULL,
 
-	FOREIGN KEY(group_id) REFERENCES file_group(id),
+	FOREIGN KEY(group_id) REFERENCES file_group(id)
 );
 
 
@@ -97,7 +132,7 @@ CREATE TABLE uri (
 	line		INTEGER NOT NULL,
 
 	
-	FOREIGN KEY(file_id) REFERENCES file(id),
+	FOREIGN KEY(file_id) REFERENCES file(id)
 );
 
 
@@ -120,7 +155,7 @@ CREATE TABLE file_part (
 	data_after	BLOB,
 
 	FOREIGN KEY(uri_id) REFERENCES uri(id),
-	FOREIGN KEY(file_id) REFERENCES file(id),
+	FOREIGN KEY(file_id) REFERENCES file(id)
 );
 
 
@@ -138,13 +173,24 @@ CREATE TABLE log (
 	header		TEXT NOT NULL,
 
 	-- actual text
-	line		TEXT NOT NULL,
+	line		TEXT NOT NULL
 );
 
 
 -- getters
 CREATE TABLE plugin (
-	name		TEXT NOT NULL,
-	md5		CHAR(32),
-	body		TEXT NOT NULL,
+	-- plugin name
+	name		TEXT NOT NULL UNIQUE,
+
+	-- md5 of plugin body
+	md5		CHAR(32) UNIQUE,
+
+	-- whole plugin body
+	body		TEXT NOT NULL UNIQUE,
+
+	-- last updated time
+	time		INTEGER NOT NULL,
+
+	-- supported uris
+	uris		TEXT
 );
