@@ -11,17 +11,41 @@ use RSGet::Common;
 use RSGet::Config;
 
 def_settings(
-	database => {
-		desc => "Place where rsget.pl can store all information.",
-		default => "dbi:SQLite:dbname=rsget.db",
-	}
+	db => {
+		desc => "Place where rsget.pl can store all information."
+			. " Must be DBI compatible name.",
+		default => "dbi:SQLite:dbname=%{configdir}/rsget.db",
+	},
+	db_user => {
+		desc => "Database user.",
+		default => "",
+	},
+	db_pass => {
+		desc => "Database password.",
+		default => "",
+	},
+	db_prefix => {
+		desc => "Table prefix, like schema (with prefix 'rsget.' tables will be"
+			. "	called 'rsget.tablename').",
+		default => "rsget_",
+	},
 );
 
 
 my $dbh;
 sub init
 {
-	$dbh = DBI->connect( setting( "database" ), "", "" );
+	$dbh = DBI->connect(
+		setting( "db" ),
+		setting( "db_user" ),
+		setting( "db_pass" ),
+	);
+}
+
+sub END
+{
+	$dbh->disconnect()
+		if $dbh;
 }
 
 sub get
