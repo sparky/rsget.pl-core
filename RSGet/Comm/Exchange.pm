@@ -9,6 +9,8 @@ use strict;
 use warnings;
 use Carp;
 use IO::Socket;
+use Storable qw(nfreeze thaw);
+use Compress::Zlib qw(compress uncompress);
 
 # {{{ sub new -- create new socket handler
 sub new
@@ -24,6 +26,7 @@ sub new
 	$socket->blocking( 0 );
 
 	$self->{socket} = $socket;
+	$self->{max_size} ||= 64 << 10;
 
 	return bless $self, $class;
 }
@@ -108,6 +111,58 @@ sub DESTROY # {{{
 {
 	my $self = shift;
 	$self->{socket}->close();
+}
+# }}}
+
+# {{{ sub obj2data -- convert object into sendable data
+sub obj2data
+{
+	my $self = shift;
+	my $obj = shift;
+
+	my $data = nfreeze( $obj );
+	$data = compress( $data, 9 )
+		if $self->{compress};
+
+    if ( my $cipher = $self->{cipher} ) {
+		my $block_size = $cipher->blocksize;
+		if ( my $tail_size = ( length $data ) % $block_size ) {
+			$data .= "\0" x ( $block_size - $tail_size);
+		}
+		# mark data as encrypted
+		my $encrypted = 'c';
+		for ( my $i = 0; $i < length $data; $i += $block_size ) {
+			$encrypted .= $cipher->encrypt( substr $data, $i, $block_size );
+		}
+		return $encrypted;
+    } else {
+		return $data;
+	}
+}
+# }}}
+
+# {{{ sub data2obj -- extract object from received data
+sub data2obj
+{
+	my $self = shift;
+	my $data = shift;
+	
+	if ( "c" eq substr $data, 0, 1 ) {
+		my $encrypted_data = substr $data, 1;
+		my $cipher = $self->{cipher}
+			or croak "Data encrypted but cipher not specified.";
+		my $block_size = $cipher->blocksize;
+		$data = '';
+		for ( my $i = 0; $i < length $encrypted_data; $i += $block_size ) {
+			$data .= $cipher->decrypt( substr $encrypted_data, $i, $block_size );
+		}
+	}
+
+	if ( "x" eq substr $data, 0, 1 ) {
+		$data = uncompress( $data );
+	}
+
+	return thaw( $data );
 }
 # }}}
 
