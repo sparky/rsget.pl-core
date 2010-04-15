@@ -1,0 +1,47 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use Term::ReadLine;
+use POSIX;
+
+my $term = new Term::ReadLine 'rsget.pl';
+my $out = $term->OUT;
+my $attr = $term->Attribs;
+
+sigaction SIGALRM, new POSIX::SigAction sub {
+	printf $out "\r%d\n", time;
+	redisplay();
+	alarm 2;
+};
+alarm 2;
+
+my @_tstrs = (Term::ReadLine::Gnu::XS::tgetstr('cr'),	# carriage return
+		Term::ReadLine::Gnu::XS::tgetstr('ce'),	# clear to EOL
+		Term::ReadLine::Gnu::XS::tgetstr('le'));	# cursor left
+
+# TODO: support multi-line prompt
+sub redisplay {
+	# remove prompt start/end mark from prompt string
+	my $prompt = $attr->{prompt};
+	my $s = Term::ReadLine::Gnu::RL_PROMPT_START_IGNORE;
+	$prompt =~ s/$s//g;
+	$s = Term::ReadLine::Gnu::RL_PROMPT_END_IGNORE;
+	$prompt =~ s/$s//g;
+
+	my $oldfh = select($out); $| = 1; select($oldfh);
+	print $out ($_tstrs[0],	# carriage return
+		$_tstrs[1],	# clear to EOL
+		$prompt, $attr->{line_buffer} );
+	print $out ($_tstrs[2]	# cursor left
+		x (length($attr->{line_buffer}) - $attr->{point}));
+	$oldfh = select($out); $| = 0; select($oldfh);
+}
+
+
+
+while ( defined ($_ = $term->readline('rsget.pl> ')) ) {
+	last if lc $_ eq "exit";
+
+	print "\$_: [$_]\n";
+}
