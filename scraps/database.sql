@@ -180,17 +180,23 @@ CREATE TABLE log (
 -- getters
 CREATE TABLE plugin (
 	-- plugin name
-	name		TEXT NOT NULL UNIQUE,
+	name		TEXT NOT NULL PRIMARY KEY,
 
 	-- md5 of plugin body
-	md5		CHAR(32) UNIQUE,
+	md5		CHAR(32),
 
 	-- whole plugin body
-	body		TEXT NOT NULL UNIQUE,
+	body		TEXT NOT NULL,
 
 	-- last updated time
 	time		INTEGER NOT NULL,
 
 	-- supported uris
 	uris		TEXT
+);
+
+-- config options
+CREATE TABLE config (
+	name		TEXT NOT NULL PRIMARY KEY,
+	value		TEXT NOT NULL
 );
