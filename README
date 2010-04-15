@@ -76,7 +76,7 @@ See 'rsget.pl --help [command]' or 'rsget.pl --help-all' for more information.
 - add link list to daemon:
   $ rsget.pl addlist <file.list>
    or
-  $ rsget.pl add <flie.list>
+  $ rsget.pl add <file.list>
 
 - start core (do not fork), and download some links, (exit after):
   $ rsget.pl core -- add <http://..>
@@ -98,3 +98,42 @@ See 'rsget.pl --help [command]' or 'rsget.pl --help-all' for more information.
 #   X-Forwarded-For: XX.XX.XXX.XXX
 #   Cache-Control: bypass-client=XX.XX.XX.XXX
 
+
+
+* configuration:
+- first cmdline arguments are read and based on it config file is opened
+- config file is opened and read but cmdline arguments aren't overwritten
+- in case of core: read options from database and replace config file arguments
+- after that values can be changed manually, those are saved in database
+
+ priority:
+  1. changed values
+  2. command line arguments
+  3. database options
+  4. config file
+  5. defaults
+
+
+* communication methods:
+  There are multiple methods for communication between core and clients.
+- direct -- both core and client are started as one process. Client code is
+	executed by core every certain amount of time. Client must not block.
+	e.g. clients: addlink, addlist, non-interactive console output
+
+- internal -- core and client are started at the same time, but as different
+	threads. They communicate with each other using shared memory.
+	e.g. clients: tk, readline, curses
+		-- those use event loop, so direct comm isn't possible
+
+- local -- client communicates with already running core using unix socket.
+	e.g. clients: cgi
+		-- cgi runs in bursts, so core cannot be attached to it
+
+- remote -- client communicates over tcp with core running somewhere else.
+	e.g. clients: any of the above, allowing remote cgi communication
+		could be dangerous though
+
+ If multiple communication methods are configured in core it tries to allow
+communication over any of them.
+ Client tries comm starting with best method specified and descends until
+finding one that works. Order is: direct (best), internal, local, remote.
