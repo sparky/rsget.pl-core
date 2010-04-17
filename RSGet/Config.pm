@@ -9,29 +9,37 @@ use strict;
 use warnings;
 #use RSGet::Common;
 
+my %cmdline_options;
+my %database_options;
+my %cfile_options;
+
 my %cache;
 
 sub _get_raw
 {
-	my $user = shift;
 	my $name = shift;
+	my $user = shift;
 
 	my $macro = undef;
 	if ( $user ) {
 		my $mname = "$user.$name";
 		$macro = $cache{ $mname } //=
-			RSGet::DB::get( "config", "value", { name => $mname } )
+			$cmdline_options{ $mname }
 			//
-			configfile_get( $mname )
+			$database_options{ $mname }
+			//
+			$cfile_options{ $mname }
 			//
 			undef;
 	}
 	if ( not $macro ) {
-		my $mname = ".$name";
+		my $mname = $name;
 		$macro = $cache{ $mname } //=
-			RSGet::DB::get( "config", "value", { name => $mname } )
+			$cmdline_options{ $mname }
 			//
-			configfile_get( $mname )
+			$database_options{ $mname }
+			//
+			$cfile_options{ $mname }
 			//
 			undef;
 	}
@@ -41,46 +49,85 @@ sub _get_raw
 
 sub _expand
 {
+	my $term = shift;
 	my $user = shift;
 	my $local = shift;
-	my $term = shift;
 
-	while ( $term =~ /%{([a-zA-Z0-9\._-]+)}/ ) {
-		my $name = $1;
-		my $value = $local->{ $name } // _get_raw( $user, $name );
-		unless ( defined $value ) {
-			warn "RSGet::Config::expand: Macro $term is not defined.\n";
-			$value = "";
-		}
-		$term =~ s#%{$name}#$value#;
-	}
+	$term =~ s/%{([a-zA-Z0-9_-]+)}/get( $1, $user, $local )/eg;
 
 	return $term;
 }
 
 sub get
 {
+	my $name = shift;
 	my $user = shift;
 	my $local = shift;
-	my $name = shift;
 
-	my $value = _get_raw( $user, $name );
-	if ( wantarray ) {
-		return () unless defined $value;
-		my @out;
-		foreach my $term ( split /\s+/, $value ) {
-			push @out, _expand( $user, $local, $term );
+	if ( $local ) {
+		my $value = $local->{ $name } // _get_raw( $name, $user );
+		if ( wantarray ) {
+			return () unless defined $value;
+			my @out;
+			foreach my $term ( split /\s+/, $value ) {
+				push @out, _expand( $term, $user, $local );
+			}
+			return @out;
+		} else {
+			return undef unless defined $value;
+			return _expand( $value, $user, $local );
 		}
-		return @out;
-	} else {
-		return undef unless defined $value;
-		return _expand( $user, $local, $value );
 	}
 }
 
 sub clear_cache
 {
 	%cache = ();
+}
+
+
+
+
+sub parse_args
+{
+	my $argnum = 0;
+	my $help;
+	while ( my $arg = shift @ARGV ) {
+		$argnum++;
+		if ( $arg =~ /^-?-h(elp)?$/ ) {
+			$help = 1;
+		} elsif ( $arg =~ s/^--(.*?)=// ) {
+			set( $1, $arg, "command line, argument $argnum" );
+		} elsif ( $arg =~ s/^--(.*)// ) {
+			my $key = $1;
+			my $var = shift @ARGV;
+			die "value missing for '$key'" unless defined $var;
+			my $a = $argnum++;
+			set( $key, $var, "command line, argument $a-$argnum" );
+		} else {
+			set( "list_file", $arg, "command line, argument $argnum" );
+		}
+	}
+}
+
+sub read_config
+{
+	my $cfg = shift;
+	return unless -r $cfg;
+	my $line = 0;
+	open F_IN, "<", $cfg;
+	while ( <F_IN> ) {
+		$line++;
+		next if /^\s*(?:#.*)?$/;
+		chomp;
+		if ( my ( $key, $value ) = /^\s*([a-z_]+)\s*=\s*(.*?)\s*$/ ) {
+			$value =~ s/\${([a-zA-Z0-9_]+)}/$ENV{$1} || ""/eg;
+			set( $key, $value, "config file, line $line" );
+			next;
+		}
+		warn "Incorrect config line: $_\n";
+	}
+	close F_IN;
 }
 
 1;
