@@ -18,7 +18,7 @@ sub dispatch
 	$opts{name} = $name;
 	$opts{user} = $user;
 
-	my @hook = RSGet::Config::get( $user, \%opts, "hook.$name" );
+	my @hook = RSGet::Config::get( "hook-$name", $user, \%opts );
 	return unless @hook;
 
 	# TODO: don't block
