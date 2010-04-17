@@ -47,45 +47,6 @@ sub set
 	$settings{ $name } = [ $value, $where_defined ];
 }
 
-sub read_config
-{
-	my $cfg = shift;
-	return unless -r $cfg;
-	my $line = 0;
-	open F_IN, "<", $cfg;
-	while ( <F_IN> ) {
-		$line++;
-		next if /^\s*(?:#.*)?$/;
-		chomp;
-		if ( my ( $key, $value ) = /^\s*([a-z_]+)\s*=\s*(.*?)\s*$/ ) {
-			$value =~ s/\${([a-zA-Z0-9_]+)}/$ENV{$1} || ""/eg;
-			set( $key, $value, "config file, line $line" );
-			next;
-		}
-		warn "Incorrect config line: $_\n";
-	}
-	close F_IN;
-}
 
-sub parse_args
-{
-	my $argnum = 0;
-	while ( my $arg = shift @ARGV ) {
-		$argnum++;
-		if ( $arg =~ /^-?-h(elp)?$/ ) {
-			$help = 1;
-		} elsif ( $arg =~ s/^--(.*?)=// ) {
-			set( $1, $arg, "command line, argument $argnum" );
-		} elsif ( $arg =~ s/^--(.*)// ) {
-			my $key = $1;
-			my $var = shift @ARGV;
-			die "value missing for '$key'" unless defined $var;
-			my $a = $argnum++;
-			set( $key, $var, "command line, argument $a-$argnum" );
-		} else {
-			set( "list_file", $arg, "command line, argument $argnum" );
-		}
-	}
-}
 
 # vim:ts=4:sw=4
