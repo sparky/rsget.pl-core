@@ -1,4 +1,4 @@
-package RSGet::Tools;
+package RSGet::Common;
 # This file is an integral part of rsget.pl downloader.
 #
 # 2009-2010 (c) Przemysław Iskra <sparky@pld-linux.org>
@@ -217,7 +217,7 @@ sub dump_to_file
 sub cat
 {
 	my $name = shift;
-	open $fin, "<", $name
+	open my $fin, "<", $name
 		or return undef;
 
 	local $/ = undef;
