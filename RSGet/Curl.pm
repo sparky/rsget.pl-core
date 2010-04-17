@@ -36,6 +36,9 @@ my %curl_proxy_type = (
 	socks5host => 7,	# CURLPROXY_SOCKS5_HOSTNAME
 );
 
+# *** TODO ***
+# use mortal objects for storing curl containers
+#
 # list of ccs active right now
 my %active_curl;
 
