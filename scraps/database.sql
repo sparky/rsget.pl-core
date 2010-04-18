@@ -100,7 +100,7 @@ CREATE TABLE uri (
 	-- name as returned by web page or started download
 	file_name	TEXT,
 
-	-- larger number meens file name is more likely to be incorrect
+	-- larger number means file name is more likely to be incorrect
 	-- 0 for name as returned by Content-Disposition
 	-- 1 for full name from web page
 	-- 2 for incomplete name
@@ -112,6 +112,9 @@ CREATE TABLE uri (
 	-- predicted minimal and maximal file size
 	size_min	INTEGER,
 	size_max	INTEGER,
+
+	-- as returned by headers
+	size		INTEGER,
 
 	-- additional information from web page
 	info		TEXT,

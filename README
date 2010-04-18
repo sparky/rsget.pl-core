@@ -3,6 +3,7 @@ Experimental rsget.pl core. A shape of new things to come.
 The goal is to adopt rsget.pl to server-like environment, possibly destroying
 any compatibility with earlier versions.
 
+
 Remarks:
 - only daemon mode
 - xmlrpc or similar communication method
@@ -11,6 +12,7 @@ Remarks:
 - no integrated input/output interfaces
 - store data in SQL database (will support at least SQlite3, PgSQL and MySQL)
 - multi-user support
+
 
 Salvaged clients:
 - output-only terminal visualization
@@ -29,6 +31,7 @@ Clients planned in future:
 - port cgi to mod_perl (for speed)
 - kde/gnome tray icon (inform about completed downloads, ask captcha)
 
+
 Other ideas:
 - create http plugin repository, to easily update plugins without
   svn client
@@ -36,6 +39,11 @@ Other ideas:
 - store downloaded plugins in database
 - simple text-based communication (could be useful for some more advanced
     hooks)
+- (direct download) If URI is not of any supported service, send http head
+  request. In case of mime type other than text/* or image/* allow
+  downloading the file.
+- (direct ftp download) Any ftp:// URI can be accessed directly only,
+  does cURL support head-like request ?
 
 
 * $ rsget.pl --help
