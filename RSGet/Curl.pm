@@ -117,27 +117,27 @@ sub new
 	$curl->setopt( CURLOPT_CONNECTTIMEOUT, 20 );
 	$curl->setopt( CURLOPT_SSL_VERIFYPEER, 0 );
 
-	if ( my $post = $opts{post} ) {
-		$curl->setopt( CURLOPT_POST, 1 );
-		if ( ref $post ) {
-			if ( ref $post eq "HASH" ) {
-				$post = join "&",
-					map { uri_escape( $_ ) . "=" . uri_escape( $post->{$_} ) }
-					sort keys %$post;
-			} else {
-				warn "POST is neither string nor HASH\n";
-			}
-		}
-		$curl->setopt( CURLOPT_POSTFIELDS, $post );
-		$curl->setopt( CURLOPT_POSTFIELDSIZE, length $post );
-	}
-
 	$curl->setopt( CURLOPT_HEADERFUNCTION, \&_write_head );
 	$curl->setopt( CURLOPT_WRITEHEADER, $cc );
 
 	if ( $opts{head} ) {
 		$curl->setopt( CURLOPT_NOBODY, 1 );
 	} else {
+		if ( my $post = $opts{post} ) {
+			$curl->setopt( CURLOPT_POST, 1 );
+			if ( ref $post ) {
+				if ( ref $post eq "HASH" ) {
+					$post = join "&",
+						map { uri_escape( $_ ) . "=" . uri_escape( $post->{$_} ) }
+						sort keys %$post;
+				} else {
+					warn "POST is neither string nor HASH\n";
+				}
+			}
+			$curl->setopt( CURLOPT_POSTFIELDS, $post );
+			$curl->setopt( CURLOPT_POSTFIELDSIZE, length $post );
+		}
+
 		$curl->setopt( CURLOPT_WRITEFUNCTION, \&_write_body );
 		$curl->setopt( CURLOPT_WRITEDATA, $cc );
 	}
