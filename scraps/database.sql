@@ -71,6 +71,20 @@ CREATE TABLE file (
 	-- exact file size
 	size		INTEGER,
 
+	-- best file_name returned so far
+	file_name	TEXT,
+
+	-- same as uri( file_name_strength )
+	file_name_strength	INTEGER,
+
+	-- simplified best name, to be able to quickly find clones
+	file_name_simplified	TEXT,
+
+	-- largest size_min of all uri
+	size_min	INTEGER,
+	-- smallest size_max of all uri
+	size_max	INTEGER,
+
 	-- id of group file belongs to
 	group_id	INTEGER NOT NULL,
 
