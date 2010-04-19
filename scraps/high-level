@@ -1,0 +1,30 @@
+# Pseudocode for high-level functions
+
+*** Add links ***
+
+01. find best getter (Premium > GVAIL > Direct)
+02. unify link
+03. link exists ?
+  YES) mark and abort
+  NO) continue
+04. wait until can start check
+05. check link
+06. file exists ?
+  NO) mark error and abort
+  YES) continue
+07. look for clones
+08. clone exists ?
+  NO) jump to 09
+  1) add
+  multiple) ask
+09. autocommit and no clones ?
+  YES) commit
+  NO) ask to fix clones
+10. commit ?
+  YES) commit
+  NO) discard
+11. trigger downloads
+
+
+*** Start next download ***
+# this will a hard one
