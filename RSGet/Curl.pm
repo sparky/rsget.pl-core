@@ -8,6 +8,7 @@ package RSGet::Curl;
 use strict;
 use warnings;
 use RSGet::Common;
+use RSGet::MortalObject;
 use WWW::Curl::Easy 4.00;
 use WWW::Curl::Multi;
 use URI::Escape;
@@ -36,11 +37,8 @@ my %curl_proxy_type = (
 	socks5host => 7,	# CURLPROXY_SOCKS5_HOSTNAME
 );
 
-# *** TODO ***
-# use mortal objects for storing curl containers
-#
 # list of ccs active right now
-my %active_curl;
+my $active_curl = RSGet::MortalObject->new( die_after => 60 );
 
 # we run everything through this object
 my $curl_multi = new WWW::Curl::Multi;
@@ -56,26 +54,23 @@ my $curl_multi = new WWW::Curl::Multi;
 # - file_handle
 sub new
 {
+	my $class = shift;
 	my $uri = shift;
 	my $callback = shift;
 	my %opts = @_;
 
 	my $curl = new WWW::Curl::Easy;
 
-	my $id = 1;
-	++$id while exists $active_curl{ $id };
-	$active_curl{ $id } = 0;
-
 	# curl container
 	my $cc = {
 		curl => $curl,
-		id => $id,
-		last_update => time,
 		callback => $callback,
 		head => "",
 	};
+	bless $cc, $class;
+	my $id = $active_curl->add( $cc );
 
-	# we need this ID to track curl back to $cc ($active_curl{ $id })
+	# we need this ID to track curl back to $cc ($active_curl->get( $id ))
 	$curl->setopt( CURLOPT_PRIVATE, $id );
 
 	if ( $opts{interface} ) {
@@ -118,7 +113,7 @@ sub new
 	$curl->setopt( CURLOPT_SSL_VERIFYPEER, 0 );
 
 	$curl->setopt( CURLOPT_HEADERFUNCTION, \&_write_head );
-	$curl->setopt( CURLOPT_WRITEHEADER, $cc );
+	$curl->setopt( CURLOPT_WRITEHEADER, $id );
 
 	if ( $opts{head} ) {
 		$curl->setopt( CURLOPT_NOBODY, 1 );
@@ -139,7 +134,7 @@ sub new
 		}
 
 		$curl->setopt( CURLOPT_WRITEFUNCTION, \&_write_body );
-		$curl->setopt( CURLOPT_WRITEDATA, $cc );
+		$curl->setopt( CURLOPT_WRITEDATA, $id );
 	}
 
 	if ( my $fw = $opts{file_handle} ) {
@@ -149,8 +144,9 @@ sub new
 		}
 	}
 
-	$active_curl{ $id } = $cc;
 	$curl_multi->add_handle( $curl );
+
+	return $id;
 }
 # }}}
 
@@ -173,8 +169,8 @@ sub _make_headers # {{{
 
 sub _write_head # {{{
 {
-	my ( $chunk, $cc ) = @_;
-	$cc->{last_update} = time;
+	my ( $chunk, $id ) = @_;
+	my $cc = $active_curl->get( $id );
 	$cc->{head} .= $chunk;
 	return length $chunk;
 }
@@ -182,8 +178,8 @@ sub _write_head # {{{
 
 sub _write_body # {{{
 {
-	my ( $chunk, $cc ) = @_;
-	$cc->{last_update} = time;
+	my ( $chunk, $id ) = @_;
+	my $cc = $active_curl->get( $id );
 	if ( my $fw = $cc->{file_handle} ) {
 		$fw->push( $chunk );
 	} else {
@@ -196,11 +192,8 @@ sub _write_body # {{{
 
 sub finish # {{{
 {
-	my $id = shift;
+	my $cc = shift;
 	my $error_code = shift;
-
-	my $cc = $active_curl{ $id };
-	delete $active_curl{ $id };
 
 	my $curl = $cc->{curl};
 	delete $cc->{curl}; # remove circular dep
@@ -241,23 +234,29 @@ sub finish # {{{
 }
 # }}}
 
+sub DESTROY
+{
+	my $cc = shift;
+	my $curl = $cc->{curl};
+	if ( $curl ) {
+		$curl_multi->remove_handle( $curl );
+		finish( $cc, "timeout" );
+	}
+}
+
 sub maybe_abort # {{{
 {
-	my $time = time;
-	my $stall_time = $time - 120;
-	foreach my $id ( keys %active_curl ) {
-		my $cc = $active_curl{ $id };
+	my $all = $active_curl->hash();
+	while ( my ( $id, $cc ) = each %$all ) {
+		# if abort
+		# my $cc = $active_curl->del( $id );
+		#
 		#my $get_obj = $supercurl->{get_obj};
 		#if ( $get_obj->{_abort} ) {
 		#	my $curl = $supercurl->{curl};
 		#	$curl_multi->remove_handle( $curl );
-		#	finish( $id, "aborted" );
+		#	finish( $cc, "aborted" );
 		#}
-		if ( $cc->{last_update} < $stall_time ) {
-			my $curl = $cc->{curl};
-			$curl_multi->remove_handle( $curl );
-			finish( $id, "timeout" );
-		}
 	}
 }
 # }}}
@@ -272,7 +271,7 @@ sub perform # {{{
 	while ( my ($id, $rv) = $curl_multi->info_read() ) {
 		next unless $id;
 
-		finish( $id, $rv );
+		finish( $active_curl->del( $id ), $rv );
 	}
 }
 # }}}
