@@ -117,6 +117,52 @@ sub del
 	return $h->{obj};
 }
 
+# return ids of all objects in group
+# my $ids = $group->ids();
+# my @ids = $group->ids();
+# returns undef or empty list if there are none
+sub ids
+{
+	my $self = shift;
+
+	my @ids = keys %{ $self->{group} };
+	return unless @ids;
+	return @ids
+		if wantarray;
+	return \@ids;
+}
+
+# return all objects in group
+# my $objs = $group->all();
+# my @objs = $group->all();
+# returns undef or empty list if there are none
+sub all
+{
+	my $self = shift;
+
+	my @all = map { $_->{obj} } values %{ $self->{group} };
+	return unless @all;
+	return @all
+		if wantarray;
+	return \@all;
+}
+
+# return all id => object pairs in group
+# my $hash = $group->hash();
+# my %hash = $group->hash();
+# returns undef or empty hash if there are none
+sub hash
+{
+	my $self = shift;
+
+	my $group = $self->{group};
+	my %hash = map { $_ => $group->{$_}->{obj} } keys %$group;
+	return unless %hash;
+	return %hash
+		if wantarray;
+	return \%hash;
+}
+
 # update objects
 # should be called once every second
 sub update
