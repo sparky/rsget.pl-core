@@ -44,6 +44,8 @@ Other ideas:
   downloading the file.
 - (direct ftp download) Any ftp:// URI can be accessed directly only,
   does cURL support head-like request ?
+- filename_fix -- function similar to unify, but fixes file name returned
+  by Content-Disposition (e.g. remove .html_ from RS names)
 
 
 * $ rsget.pl --help
