@@ -70,10 +70,24 @@ sub showfile
 
 	my $print = "\033[0;0f$file:\033[0K\n";
 	foreach ( my $y = 0; $y < $height; $y += 2 ) {
+		my $lastc1 = -1;
+		my $lastc2 = -1;
 		foreach my $x ( 0..($width-1) ) {
 			my $c1 = $pimg->getPixel( $x, $y + 0 ) || 0;
 			my $c2 = $pimg->getPixel( $x, $y + 1 ) || 0;
-			$print .= "\033[48;5;${c1}m\033[38;5;${c2}m\342\226\205";
+			if ( $lastc1 != $c1 ) {
+				$lastc1 = $c1;
+				$print .= "\033[48;5;${c1}m";
+			}
+			if ( $c1 == $c2 ) {
+				$print .= " ";
+			} else {
+				if ( $lastc2 != $c2 ) {
+					$lastc2 = $c2;
+					$print .= "\033[38;5;${c2}m";
+				}
+				$print .= "\342\226\205";
+			}
 		}
 		$print .= "\033[0m\033[0K\n";
 	}
