@@ -8,8 +8,10 @@
 -- user information
 CREATE TABLE user (
 	id		INTEGER PRIMARY KEY,
+
 	-- user name
-	name		TEXT NOT NULL,
+	name		TEXT NOT NULL UNIQUE,
+
 	-- password, as plain text
 	pass		TEXT,
 
@@ -50,6 +52,11 @@ CREATE TABLE file_group (
 
 	-- disable whole group
 	flags		INTEGER NOT NULL,
+
+	-- uri of last web page from which links to this group were added.
+	-- this way web interface will be able to suggest best group
+	-- for new links
+	last_referer	TEXT,
 
 	FOREIGN KEY(user_id) REFERENCES user(id)
 );
