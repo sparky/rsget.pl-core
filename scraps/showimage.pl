@@ -11,6 +11,9 @@ use warnings;
 use GD;
 use Term::Size;
 
+# preserve aspect
+my $aspect = 0;
+
 my @palette;
 sub make_base
 {
@@ -47,18 +50,33 @@ die "Last index must be 255\n" unless $#palette == 255;
 sub showfile
 {
 	my $file = shift;
-	my $width = shift;
-	my $height = 2 * shift;
-	$height-=4;
+	my $scrw = shift;
+	my $scrh = 2 * shift;
+	$scrh -= 4;
 
 	my $img = GD::Image->new( $file );
 	return unless $img;
 
-	my $w = $img->width;
-	my $h = $img->height;
+	my $width = $img->width;
+	my $height = $img->height;
 
-	$height = $h if $h < $height;
-	$width = $w if $w < $width;
+	if ( $aspect ) {
+		if ( $width > $scrw ) {
+			my $fix = $scrw / $width;
+			$width = $scrw;
+			$height = int ($img->height * $fix);
+			$height++ if $height % 2;
+		}
+		if ( $height > $scrh ) {
+			my $fix = $scrh / $img->height;
+			$width = int ( 0.5 + $fix * $img->width );
+			$height = $scrh;
+		}
+		sleep 1;
+	} else{
+		$width = $scrw if $width > $scrw;
+		$height = $scrh if $height > $scrh;
+	}
 
 	my $pimg = GD::Image->newPalette( $width, $height );
 	foreach my $c ( @palette ) {
@@ -66,7 +84,7 @@ sub showfile
 	}
 
 	$pimg->filledRectangle( 0, 0, $width, $height, 7 );
-	$pimg->copyResampled( $img, 0, 0, 0, 0, $width, $height, $w, $h );
+	$pimg->copyResampled( $img, 0, 0, 0, 0, $width, $height, $img->width, $img->height );
 
 	my $print = "\033[0;0f$file:\033[0K\n";
 	foreach ( my $y = 0; $y < $height; $y += 2 ) {
