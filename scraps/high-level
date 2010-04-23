@@ -1,6 +1,6 @@
 # Pseudocode for high-level functions
 
-*** Add links ***
+*** Add links (link adder) ***
 
 01. find best getter (Premium > GVAIL > Direct)
 02. unify link
@@ -26,5 +26,19 @@
 11. trigger downloads
 
 
-*** Start next download ***
-# this will a hard one
+
+*** Detect clone (link adder) ***
+
+01. search database for files with
+    db size_min <= this size_max and
+    db size_max >= this size_min
+	old: max |========| min
+	new:   max |=======| min
+02. search new list for the same thing
+03. any links found ?
+  NO) return
+04. simplify guessed name
+05. remove any links where simplified name doesn't match
+06. return all links left
+
+
