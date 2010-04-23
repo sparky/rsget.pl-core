@@ -147,3 +147,20 @@ See 'rsget.pl --help [command]' or 'rsget.pl --help-all' for more information.
 communication over any of them.
  Client tries comm starting with best method specified and descends until
 finding one that works. Order is: direct (best), internal, local, remote.
+
+
+* starting new download
+ must take into account:
+  - downloads running right now
+  - available interfaces
+  - used getter (or service identifier or available getter)
+  - user quota (for that service)
+  - whether there are other uris for this file
+  - whether service supports continuing downloads
+
+ special considerations:
+  - some user may have his own premium account, not shared with other users
+  - interfaces may be different for each users (should I allow this?)
+  - getter may support continuing download on some files only
+
+ and on top of all that, it must be quick !
