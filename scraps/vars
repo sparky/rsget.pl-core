@@ -1,0 +1,26 @@
+# variables which are to volatile to include them in the database tables
+
+# how user can access their files:
+#  local rsget:  file:///path/to/done/
+#  remote rsget:  http://server/path/to/done/
+#  faster remote:  rsync://server/module/path/
+[user]:[backend].uri = TEXT
+
+# quota used by each user
+# separate for each service
+# (service normally equals getter, but some getters may support multiple services)
+[user]:core.quota.[service] = INT
+
+# additional information for uri (like passwords)
+[user]:core.list.uri.[uriid].[varname] = TEXT
+
+## it may be very slow to retrieve all vars recursively,
+## better set them recursively instead
+
+# additional information for file (like passwords)
+[user]:core.list.file.[fileid].[varname] = TEXT
+
+# additional information for file group (like passwords)
+[user]:core.list.group.[groupid].[varname] = TEXT
+
+
