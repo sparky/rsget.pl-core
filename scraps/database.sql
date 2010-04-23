@@ -15,12 +15,6 @@ CREATE TABLE user (
 	-- password, as plain text
 	pass		TEXT,
 
-	-- how user can access their files:
-	--  local rsget:  file:///path/to/done/
-	--  remote rsget:  http://server/path/to/done/
-	--  faster remote:  rsync://server/module/path/
-	uri		TEXT,
-
 	-- pause, disable everything
 	flags		INTEGER NOT NULL
 );
@@ -44,11 +38,8 @@ CREATE TABLE file_group (
 	-- lower numbers for higher priority
 	priority	REAL NOT NULL,
 
-	-- XXX: I don't remember this one
-	line		INTEGER NOT NULL,
-
-	-- quota used, in kb ? or maybe in seconds
-	quota		INTEGER NOT NULL,
+	-- position of file_group in parent group
+	position	INTEGER NOT NULL,
 
 	-- disable whole group
 	flags		INTEGER NOT NULL,
@@ -57,6 +48,11 @@ CREATE TABLE file_group (
 	-- this way web interface will be able to suggest best group
 	-- for new links
 	last_referer	TEXT,
+
+	-- time (epoch) of last change in this file_group
+	-- [file/group added/removed, changed some internal value]
+	last_update	INTEGER NOT NULL,
+
 
 	FOREIGN KEY(user_id) REFERENCES user(id)
 );
@@ -98,8 +94,12 @@ CREATE TABLE file (
 	-- lower number for higher priority
 	priority	REAL NOT NULL,
 
-	-- XXX: I don't remember this one either
-	line		INTEGER NOT NULL,
+	-- position of file in parent file_group
+	position	INTEGER NOT NULL,
+
+	-- time (epoch) of last change in this file
+	last_update	INTEGER NOT NULL,
+
 
 	FOREIGN KEY(group_id) REFERENCES file_group(id)
 );
@@ -152,8 +152,11 @@ CREATE TABLE uri (
 	-- uri priority within file
 	priority	REAL NOT NULL,
 
-	-- wtf wa i thinking ?
-	line		INTEGER NOT NULL,
+	-- position of uri in file
+	position	INTEGER NOT NULL,
+
+	-- time (epoch) of last change in this uri
+	last_update	INTEGER NOT NULL,
 
 	
 	FOREIGN KEY(file_id) REFERENCES file(id)
@@ -174,9 +177,9 @@ CREATE TABLE file_part (
 	start		INTEGER NOT NULL,
 	stop		INTEGER,
 
-	-- XXX: probably useless
-	data_before	BLOB,
-	data_after	BLOB,
+	-- time (epoch) of last change in this file_part
+	last_update	INTEGER NOT NULL,
+
 
 	FOREIGN KEY(uri_id) REFERENCES uri(id),
 	FOREIGN KEY(file_id) REFERENCES file(id)
@@ -219,8 +222,13 @@ CREATE TABLE plugin (
 	uris		TEXT
 );
 
--- config options
+-- config options and other variables
 CREATE TABLE config (
 	name		TEXT NOT NULL PRIMARY KEY,
-	value		TEXT NOT NULL
+	value		TEXT NOT NULL,
+
+	-- which user does that belong to
+	user_id		INTEGER,
+
+	FOREIGN KEY(user_id) REFERENCES user(id)
 );
