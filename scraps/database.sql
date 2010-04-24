@@ -5,6 +5,14 @@
 -- Try to figure out databases and relations between them.
 --
 
+-- common columns:
+-- * flags
+	-- 0 - active
+	-- 1 - done
+	-- 2 - disabled, slow stop
+	-- 3 - disabled, inmediate stop
+	-- 4 - error
+
 -- user information
 CREATE TABLE user (
 	id		INTEGER PRIMARY KEY,
@@ -15,9 +23,10 @@ CREATE TABLE user (
 	-- password, as plain text
 	pass		TEXT,
 
-	-- pause, disable everything
+	-- see: common flags
 	flags		INTEGER NOT NULL
 );
+
 
 -- file group, defines special relations between multiple files
 CREATE TABLE file_group (
@@ -41,7 +50,7 @@ CREATE TABLE file_group (
 	-- position of file_group in parent group
 	position	INTEGER NOT NULL,
 
-	-- disable whole group
+	-- see: common flags
 	flags		INTEGER NOT NULL,
 
 	-- uri of last web page from which links to this group were added.
@@ -56,6 +65,7 @@ CREATE TABLE file_group (
 
 	FOREIGN KEY(user_id) REFERENCES user(id)
 );
+
 
 -- output file information
 -- save file node so we'll be able to find it if it's renamed
@@ -91,6 +101,9 @@ CREATE TABLE file (
 	-- id of group file belongs to
 	group_id	INTEGER NOT NULL,
 
+	-- see: common flags
+	flags		INTEGER NOT NULL,
+
 	-- lower number for higher priority
 	priority	REAL NOT NULL,
 
@@ -105,7 +118,7 @@ CREATE TABLE file (
 );
 
 
-
+-- file source
 CREATE TABLE uri (
 	id		INTEGER PRIMARY KEY,
 
@@ -146,7 +159,7 @@ CREATE TABLE uri (
 	-- options like download password or video quality
 	options		TEXT, 
 
-	-- done, disabled, error ?
+	-- see: common flags
 	flags		INTEGER NOT NULL,
 
 	-- uri priority within file
@@ -210,7 +223,7 @@ CREATE TABLE plugin (
 	name		TEXT NOT NULL PRIMARY KEY,
 
 	-- md5 of plugin body
-	md5		CHAR(32),
+	md5		CHAR(32) NOT NULL,
 
 	-- whole plugin body
 	body		TEXT NOT NULL,
@@ -221,6 +234,7 @@ CREATE TABLE plugin (
 	-- supported uris
 	uris		TEXT
 );
+
 
 -- config options and other variables
 CREATE TABLE config (
