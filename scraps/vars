@@ -23,6 +23,11 @@
 # additional information for file group (like passwords)
 [user]:core.list.group.[groupid].[varname] = TEXT
 
+# uri of last web page from which links to this group were added.
+# this way web interface will be able to suggest best group
+# for new links
+[user]:cgi.list.group.[groupid].last_referer = TEXT
+
 
 # configuration options
 

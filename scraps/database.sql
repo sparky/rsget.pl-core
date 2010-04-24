@@ -53,11 +53,6 @@ CREATE TABLE file_group (
 	-- see: common flags
 	flags		INTEGER NOT NULL,
 
-	-- uri of last web page from which links to this group were added.
-	-- this way web interface will be able to suggest best group
-	-- for new links
-	last_referer	TEXT,
-
 	-- time (epoch) of last change in this file_group
 	-- [file/group added/removed, changed some internal value]
 	last_update	INTEGER NOT NULL,
