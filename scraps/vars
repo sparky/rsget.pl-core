@@ -24,3 +24,27 @@
 [user]:core.list.group.[groupid].[varname] = TEXT
 
 
+# configuration options
+
+
+core.config.dir = TEXT
+
+core.db.type = TEXT
+core.db.user = TEXT
+core.db.pass = TEXT
+core.db.prefix = TEXT
+
+[user]:core.filewrite.partial = TEXT
+[user]:core.filewrite.done = TEXT
+
+
+# include or exclude plugins
+core.plugin.select = LIST
+## following setting will include all plugins,
+## remove all Video plugins from the list
+## and include Video/YouTube again
+# core.plugin.select = .*, !Video/.*, Video/YouTube
+
+# set RS password
+core.plugin.Premium.RapidShare.user = TEXT
+core.plugin.Premium.RapidShare.pass = TEXT
