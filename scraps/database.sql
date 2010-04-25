@@ -138,6 +138,9 @@ CREATE TABLE uri (
 	-- 4 for incomplete name with some chars changed
 	file_name_strength	INTEGER,
 
+	-- size as returned by web page
+	size_approx	TEXT,
+
 	-- predicted minimal and maximal file size
 	size_min	INTEGER,
 	size_max	INTEGER,
