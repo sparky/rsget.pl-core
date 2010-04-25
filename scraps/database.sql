@@ -14,7 +14,7 @@
 	-- 4 - error
 
 -- user information
-CREATE TABLE user (
+CREATE TABLE %{core.db.prefix}user (
 	id		INTEGER PRIMARY KEY,
 
 	-- user name
@@ -29,7 +29,7 @@ CREATE TABLE user (
 
 
 -- file group, defines special relations between multiple files
-CREATE TABLE file_group (
+CREATE TABLE %{core.db.prefix}file_group (
 	id		INTEGER PRIMARY KEY,
 
 	-- group name
@@ -58,13 +58,13 @@ CREATE TABLE file_group (
 	last_update	INTEGER NOT NULL,
 
 
-	FOREIGN KEY(user_id) REFERENCES user(id)
+	FOREIGN KEY(user_id) REFERENCES %{core.db.prefix}user(id)
 );
 
 
 -- output file information
 -- save file node so we'll be able to find it if it's renamed
-CREATE TABLE file (
+CREATE TABLE %{core.db.prefix}file (
 	id		INTEGER PRIMARY KEY,
 
 	-- file name
@@ -109,12 +109,12 @@ CREATE TABLE file (
 	last_update	INTEGER NOT NULL,
 
 
-	FOREIGN KEY(group_id) REFERENCES file_group(id)
+	FOREIGN KEY(group_id) REFERENCES %{core.db.prefix}file_group(id)
 );
 
 
 -- file source
-CREATE TABLE uri (
+CREATE TABLE %{core.db.prefix}uri (
 	id		INTEGER PRIMARY KEY,
 
 	-- link as specified by user
@@ -170,12 +170,12 @@ CREATE TABLE uri (
 	last_update	INTEGER NOT NULL,
 
 	
-	FOREIGN KEY(file_id) REFERENCES file(id)
+	FOREIGN KEY(file_id) REFERENCES %{core.db.prefix}file(id)
 );
 
 
 -- information about data chunk within file
-CREATE TABLE file_part (
+CREATE TABLE %{core.db.prefix}file_part (
 	id		INTEGER PRIMARY KEY,
 
 	-- originating uri
@@ -192,13 +192,13 @@ CREATE TABLE file_part (
 	last_update	INTEGER NOT NULL,
 
 
-	FOREIGN KEY(uri_id) REFERENCES uri(id),
-	FOREIGN KEY(file_id) REFERENCES file(id)
+	FOREIGN KEY(uri_id) REFERENCES %{core.db.prefix}uri(id),
+	FOREIGN KEY(file_id) REFERENCES %{core.db.prefix}file(id)
 );
 
 
 -- log messages
-CREATE TABLE log (
+CREATE TABLE %{core.db.prefix}log (
 	id		INTEGER PRIMARY KEY,
 
 	-- time in seconds
@@ -216,7 +216,7 @@ CREATE TABLE log (
 
 
 -- getters
-CREATE TABLE plugin (
+CREATE TABLE %{core.db.prefix}plugin (
 	-- plugin name
 	name		TEXT NOT NULL PRIMARY KEY,
 
@@ -235,12 +235,12 @@ CREATE TABLE plugin (
 
 
 -- config options and other variables
-CREATE TABLE config (
+CREATE TABLE %{core.db.prefix}config (
 	name		TEXT NOT NULL PRIMARY KEY,
 	value		TEXT NOT NULL,
 
 	-- which user does that belong to
 	user_id		INTEGER,
 
-	FOREIGN KEY(user_id) REFERENCES user(id)
+	FOREIGN KEY(user_id) REFERENCES %{core.db.prefix}user(id)
 );
