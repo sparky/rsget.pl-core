@@ -243,11 +243,14 @@ CREATE TABLE %{core.db.prefix}plugin (
 
 -- config options and other variables
 CREATE TABLE %{core.db.prefix}config (
-	name		TEXT NOT NULL PRIMARY KEY,
+	-- which user does that belong to
+	user		TEXT,
+
+	-- variable name
+	name		TEXT NOT NULL,
+
+	-- variable value
 	value		TEXT NOT NULL,
 
-	-- which user does that belong to
-	user_id		INTEGER,
-
-	FOREIGN KEY(user_id) REFERENCES %{core.db.prefix}user(id)
+	FOREIGN KEY(user) REFERENCES %{core.db.prefix}user(name)
 );
