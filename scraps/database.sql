@@ -123,6 +123,12 @@ CREATE TABLE %{core.db.prefix}uri (
 	-- link after performing unify()
 	resolved_link	TEXT, -- unique ?
 
+	-- getter
+	plugin_id	INTEGER,
+
+	-- service returned by getter (normally same as getter name)
+	service		TEXT,
+
 	-- key to file table
 	file_id		INTEGER,
 
@@ -170,6 +176,7 @@ CREATE TABLE %{core.db.prefix}uri (
 	last_update	INTEGER NOT NULL,
 
 	
+	FOREIGN KEY(plugin_id) REFERENCES %{core.db.prefix}plugin(id),
 	FOREIGN KEY(file_id) REFERENCES %{core.db.prefix}file(id)
 );
 
