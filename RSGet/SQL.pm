@@ -1,4 +1,4 @@
-package RSGet::DB;
+package RSGet::SQL;
 # This file is an integral part of rsget.pl downloader.
 #
 # 2010 (c) Przemysław Iskra <sparky@pld-linux.org>
@@ -10,36 +10,48 @@ use warnings;
 use RSGet::Common;
 use RSGet::Config;
 
-def_settings(
-	db => {
+RSGet::Config::register_settings(
+	"core.sql.type" => {
 		desc => "Place where rsget.pl can store all information."
 			. " Must be DBI compatible name.",
-		default => "dbi:SQLite:dbname=%{configdir}/rsget.db",
+		default => "dbi:SQLite:dbname=%{core.config.dir}/rsget.db",
 	},
-	db_user => {
+	"core.sql.user" => {
 		desc => "Database user.",
 		default => "",
 	},
-	db_pass => {
+	"core.sql.pass" => {
 		desc => "Database password.",
 		default => "",
 	},
-	db_prefix => {
+	"core.sql.prefix" => {
 		desc => "Table prefix, like schema (with prefix 'rsget.' tables will be"
 			. "	called 'rsget.tablename').",
-		default => "rsget_",
+		default => "",
+		novalue => "rsget_",
+	},
+	"core.sql.precommand" => {
+		desc => "Command executed just after connecting to database.",
+		default => undef,
 	},
 );
 
 my $dbh;
+my $table_prefix;
 sub init
 {
 	$dbh = DBI->connect(
-		setting( "db" ),
-		setting( "db_user" ),
-		setting( "db_pass" ),
+		RSGet::Config::get( "core.sql.type" ),
+		RSGet::Config::get( "core.sql.user" ),
+		RSGet::Config::get( "core.sql.pass" ),
 		{ AutoCommit => 0 }
 	);
+
+	my $pre = RSGet::Config::get( "core.sql.precommand" );
+	$dbh->do( $pre )
+		if $pre;
+
+	$table_prefix = RSGet::Config::get( "core.sql.prefix" );
 }
 
 sub END
@@ -94,7 +106,7 @@ sub _make_where($)
 #
 sub get
 {
-	my $table = shift;
+	my $table = $table_prefix . shift;
 	my $condition = shift;
 	my $keys = shift;
 
@@ -138,7 +150,7 @@ sub get
 #
 sub set
 {
-	my $table = shift;
+	my $table = $table_prefix . shift;
 	my $condition = shift;
 	my $values = shift;
 
@@ -190,7 +202,7 @@ sub set
 
 sub del
 {
-	my $table = shift;
+	my $table = $table_prefix . shift;
 	my $condition = shift;
 
 	return unless $dbh;

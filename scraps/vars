@@ -29,15 +29,24 @@
 [user]:cgi.list.group.[groupid].last_referer = TEXT
 
 
-# configuration options
+#***** configuration options *****
 
-
+# where to look for configuration files
 core.config.dir = TEXT
 
-core.db.type = TEXT
-core.db.user = TEXT
-core.db.pass = TEXT
-core.db.prefix = TEXT
+# variables passed to DBI->connect()
+# my $dbh = DBI->connect( %{core.sql.type}, %{core.sql.user}, %{core.sql.pass} );
+# for more information see: man DBI
+core.sql.type = TEXT
+core.sql.user = TEXT
+core.sql.pass = TEXT
+
+# table name prefix, e.g. schema
+core.sql.prefix = TEXT
+
+# SQL command executed just after connecting to database
+# e.g. CREATE SCHEMA
+core.sql.precommand = TEXT
 
 [user]:core.filewrite.partial = TEXT
 [user]:core.filewrite.done = TEXT
