@@ -75,33 +75,34 @@ sub _make_where($)
 
 # simple database get, gets exactly 1 object
 #
-# my $ret = RSGet::DB::get( "table", "key", { cond => "ble" } );
+# my $ret = RSGet::DB::get( "table", { cond => "ble" }, "key" );
 #  -> prep: SELECT key FROM table WHERE cond = ? LIMIT 1
 #  -> exec: "ble"
 #
-# my $ret = RSGet::DB::get( "table", "key", { cond => undef } );
+# my $ret = RSGet::DB::get( "table", { cond => undef }, "key" );
 #  -> prep: SELECT key FROM table WHERE cond IS NULL LIMIT 1
 #  -> exec: ()
 #
-# my ($ret1, $ret2) = RSGet::DB::get( "table", "key1, key2", {
-# 			cond1 => "one", cond2 => "two"  } );
+# my ($ret1, $ret2) = RSGet::DB::get( "table",
+#		{ cond1 => "one", cond2 => "two"  }, "key1, key2" );
 #  -> prep: SELECT key1, key2 FROM table WHERE cond1 = ? AND cond2 = ? LIMIT 1
 #  -> exec: "one", "two"
 #
-# my %ret = RSGet::DB::get( "table", "*", { conditions } )
-#  -> prep: SELECT * FROM table WHERE conditions LIMIT 1
-#  -> exec: conditions
+# my %ret = RSGet::DB::get( "table", { [conditions] }, "*" )
+#  -> prep: SELECT * FROM table WHERE [conditions] LIMIT 1
+#  -> exec: [conditions]
 #
 sub get
 {
 	my $table = shift;
-	my $keys = shift;
 	my $condition = shift;
+	my $keys = shift;
 
 	return unless $dbh;
 
 	my ( $where, @where_param ) = _make_where( $condition );
 
+	$keys = join ", ", @$keys if ref $keys;
 	my $sth = $dbh->prepare( "SELECT $keys FROM $table $where LIMIT 1" );
 	$sth->execute( @where_param );
 
@@ -124,7 +125,7 @@ sub get
 }
 
 
-# my $ret = RSGet::DB::set( "table", { value => "v", value2 => "v2" }, { key => "k" } );
+# my $ret = RSGet::DB::set( "table", { key => "k" }, { value => "v", value2 => "v2" } );
 #  -> prep: SELECT value FROM table WHERE key = ?
 #  -> exec: "k"
 #  -> value == "v" and value2 == "v2" ? return
@@ -138,8 +139,8 @@ sub get
 sub set
 {
 	my $table = shift;
-	my $values = shift;
 	my $condition = shift;
+	my $values = shift;
 
 	return unless $dbh;
 
