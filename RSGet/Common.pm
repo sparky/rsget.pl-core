@@ -147,34 +147,6 @@ sub data_file
 	return undef;
 }
 
-# add settings to default hash
-sub def_settings
-{
-	my %s = @_;
-	my %options = (
-		desc => "Setting description.",
-		default => "Default value.",
-		allowed => "RegExp that defines allowed values.",
-		dynamic => "May be changed after start.",
-		type => "Type of the setting.",
-		user => "May be modified by user.",
-	);
-	foreach my $k ( keys %s ) {
-		my $v = $s{ $k };
-		if ( ref $v ne "HASH" ) {
-			die "Setting '$k' is not a HASH\n";
-		}
-		if ( not $v->{desc} ) {
-			die "Setting '$k' is missing description\n";
-		}
-		foreach ( keys %$v ) {
-			die "Setting '$k' has unknown option: $_\n"
-				unless exists $options{ $_ };
-		}
-		$main::def_settings{ $k } = $v;
-	}
-}
-
 # retrieve global setting
 sub setting
 {
