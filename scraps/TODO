@@ -1,0 +1,11 @@
+* Figure-out best directory structure:
+  - core
+  - code common for core and clients
+  - clients
+  - code common for multiple clients
+
+  RSGet/Core
+  RSGet/_Common
+  RSGet/_CliCommon
+  RSGet/Gtk
+  RSGet/...
