@@ -7,8 +7,6 @@ package RSGet::Config;
 
 use strict;
 use warnings;
-#use RSGet::Common;
-require RSGet::SQL;
 
 RSGet::Config::register_settings(
 	core_config_dir => {
@@ -19,95 +17,187 @@ RSGet::Config::register_settings(
 		desc => "Main config file.",
 		default => "%{core_config_dir}/config",
 	},
+	# escape secuences
+	p => {
+		default => "%",
+	},
+	s => {
+		default => "\$",
+	},
+	n => {
+		default => "\n",
+	},
+	nil => {
+		default => "",
+	},
 );
+
+# initalized ?
+my $init = 0;
 
 # registered settings
 my %registered;
 
-# options default, set, reset
+# most actual options possible
 my %options;
 
-# add settings to default hash
+use constant {
+	OPT_USER	=> 0,
+	OPT_KEY		=> 1,
+	OPT_VALUE	=> 2,
+	OPT_PRIO	=> 3,
+	OPT_ORIGIN	=> 4,
+};
+
+# prioroty (from highest to lowest)
+use constant {
+	PRIO_RUNTIME	=> 0,	# runtime changed
+	PRIO_ARGS		=> 1,	# commandline arguments
+	PRIO_DYNAMIC	=> 2,	# dynamic config
+	PRIO_STATIC		=> 3,	# static config file
+	PRIO_DEFAULT	=> 4,	# default value
+};
+
+# {{{ sub register_settings: add settings to register hash
+use constant _regdata => {
+	desc	=> "Setting description.",
+	default	=> "Default value.",
+	allowed	=> "RegExp that defines allowed values.",
+	dynamic	=> "May be changed after start.",
+	type	=> "Type of the setting.",
+	user	=> "May be modified by user.",
+	novalue	=> "Option is set to this value if no argument is specified.",
+};
+
+sub register_settings
 {
-	my %options = (
-		desc => "Setting description.",
-		default => "Default value.",
-		allowed => "RegExp that defines allowed values.",
-		dynamic => "May be changed after start.",
-		type => "Type of the setting.",
-		user => "May be modified by user.",
-		novalue => "Option is set to this value if no argument is specified.",
-	);
-
-	sub register_settings
-	{
-		while ( my ($k, $v ) = splice @_, 0, 2 ) {
-			die "Setting '$k' is not a HASH\n"
-				unless ref $v eq "HASH";
-			foreach ( keys %$v ) {
-				die "Setting '$k' has unknown option: $_\n"
-					unless exists $options{ $_ };
-			}
-
-			$registered{ $k } = $v;
-
-			_set( $k, $v->{default}, 10, "default setting" )
-				if defined $v->{default};
+	while ( my ($k, $v) = splice @_, 0, 2 ) {
+		die "Setting for '$k' is not a HASH\n"
+			unless ref $v eq "HASH";
+		foreach ( keys %$v ) {
+			die "Setting '$k' has unknown option: $_\n"
+				unless exists _regdata->{ $_ };
 		}
+
+		$registered{ $k } = $v;
+
+		_set( undef, $k, $v->{default}, PRIO_DEFAULT,
+			"default setting" );
 	}
 }
+# }}}
 
-
-# get value of one macro
-sub _get_raw
+# {{{ sub reqister_dynaconfig: register object used to read and write config
+# $dynaconfig object must have 2 methods:
+#	->set( $user, $key, $value );
+#	->getall();
+my $dynaconfig;
+sub reqister_dynaconfig
 {
-	my $name = shift;
-	my $user = shift;
-
-	my $macro = undef;
-	if ( $user ) {
-		my $mname = "$user:$name";
-		$macro = $options{ $mname };
-	}
-	$macro = $options{ $name }
-		unless $macro;
-
-	return $macro;
+	$dynaconfig = shift;
+	_init_dynaconfig()
+		if $init;
 }
+# }}}
 
-# get and expand one macro
+# {{{ sub get: get and expand one macro
 sub get
 {
-	my $name = shift;
 	my $user = shift;
+	my $key = shift;
 	my $local = shift;
 
 	my $value;
 	if ( $local ) {
-		$value = $local->{ $name };
+		$value = $local->{ $key };
 	}
 	if ( not defined $value ) {
-		$value = _get_raw( $name, $user );
+		my $macro = undef;
+		if ( $user ) {
+			my $ukey = $user . ":" . $key;
+			$macro = $options{ $ukey };
+		}
+		$macro = $options{ $key }
+			unless $macro;
+	
+		$value = $macro->[OPT_VALUE];
 	}
 
 	return undef unless defined $value;
-	return expand( $value, $user, $local );
+	return expand( $user, $value, $local );
 }
+# }}}
 
-
-# expand string containing some macros
-sub expand
+# {{{ sub expand: expand string containing some macros
+sub _expand_exec
 {
-	my $term = shift;
+	my $type = shift;
 	my $user = shift;
+	my $term = shift;
 	my $local = shift;
 
-	$term =~ s/%{([a-zA-Z0-9_-]+)}/get( $1, $user, $local )/eg;
+	if ( $user ) {
+		warn "Users are not permited to execute code.\n";
+		return "";
+	}
+	$term = expand( $user, $term, $local );
+	if ( $type eq "%" ) {
+		warn "Executing perl '$term'.\n";
+		my $ret = eval $term;
+		warn "Failed: $@"
+			if $@;
+		$ret = "" unless defined $ret;
+		return $ret;
+	} elsif ( $type eq "\$" ) {
+		warn "Executing command '$term'.\n";
+		open my $read, $term ." |";
+		my $value = "";
+		while ( <$read> ) {
+			$value .= $_;
+		}
+		close $read;
+		chomp $value;
+		warn "Failed: $?"
+			if $?;
+		return $value;
+	} else {
+		die "_expand_exec type is '$type'.\n";
+	}
+
+}
+
+sub _expand_term
+{
+	my $type = shift;
+	if ( $type eq "%" ) {
+		goto &get;
+	} elsif ( $type eq "\$" ) {
+		my $user = shift;
+		my $term = shift;
+		my $local = shift;
+		return expand( $user, $ENV{ $term }, $local );
+			if exists $ENV{ $term };
+		warn "Environment variable $term is not set.\n";
+		return "";
+	} else {
+		die "_expand_term type is '$type'.\n";
+	}
+}
+
+sub expand
+{
+	my $user = shift;
+	my $term = shift;
+	my $local = shift;
+
+	$term =~ s/([%\$])\((.*?)\)/_expand_exec( $1, $user, $2, $local )/eg;
+	$term =~ s/([%\$]){([a-zA-Z0-9_]+)}/_expand_term( $1, $user, $2, $local )/eg;
 
 	return $term;
 }
+# }}}
 
-# interpret string as list and expand each term
+# {{{ sub expand_list: interpret string as list and expand each term
 sub expand_list
 {
 	my $term = shift;
@@ -115,88 +205,157 @@ sub expand_list
 	my $local = shift;
 
 	my @list = map {
-			expand( $_, $user, $local )
+			expand( $user, $_, $local )
 		} split /\s*,\s*/, $term;
 
 	return \@list unless wantarray;
 	return @list;
 }
+# }}}
 
-# set variable, with all additional information
-sub _set_arg
+# {{{ sub _set: set variable, with all additional information
+sub _set
 {
-	my ( $key, $value, $priority, $origin ) = @_;
+	my ( $user, $key, $value, $priority, $origin ) = @_;
 
-	if ( $options{ $key } and $options{ $key }->[2] < $priority ) {
+	my $reg = $registered{ $key };
+
+	# set only if priority is same or higher
+	if ( $options{ $key } and $options{ $key }->[OPT_PRIO] < $priority ) {
 		return;
 	}
-	$options{ $key } = [ $key, $value, $priority, $origin ];
-}
 
-# change variable at runtime, new value will be saved in SQL
+	# those may someday become keywords
+	if ( not $reg and not $key =~ m/^_/ ) {
+		warn "Configuration option $key is not registered."
+			. " Prefix your own variables with _.\n";
+	}
+
+	if ( $user and $reg and not $reg->{user} ) {
+		die "Configuration option $key may not be changed for user.\n";
+	}
+
+	$options{ $key } = [ $user, $key, $value, $priority, $origin ];
+
+	return 1;
+}
+# }}}
+
+# {{{ sub set: change variable at runtime, new value will be saved in SQL
 sub set
 {
-	my ( $key, $value, $user ) = @_;
+	my ( $user, $key, $value ) = @_;
 
-	_set_arg( $key, $value, -1, "changed at runtime; " . localtime )
-		or return;
+	_set( $user, $key, $value, PRIO_RUNTIME,
+		"changed at runtime; " . localtime )
+			or return;
 	
-	RSGet::SQL::set( "config",
-		{ name => $key, user => $user },
-		{ value => $value } );
-}
+	unless ( $dynaconfig ) {
+		warn "dynaconfig not registered, cannot save configuration\n";
+		return;
+	}
 
+	$dynaconfig->set( $user, $key, $value );
+}
+# }}}
+
+# {{{ sub _init_parse_args
 sub _init_parse_args
 {
-	my @args = @_;
-	my $argnum = 0;
-	my $help;
-	while ( my $arg = shift @args ) {
-		$argnum++;
-		if ( $arg =~ /^-?-h(elp)?$/ ) {
-			$help = 1;
-		} elsif ( $arg =~ s/^--(.*?)=// ) {
-			_set_arg( $1, $arg, 0, "command line, argument $argnum" );
-		} elsif ( $arg =~ s/^--// ) {
-			my $key = $arg;
-			my $var = shift @args;
-			die "value missing for '$key'" unless defined $var;
-			my $a = $argnum++;
-			_set_arg( $key, $var, 0, "command line, argument $a-$argnum" );
-		} else {
-			_set_arg( "list_file", $arg, 0, "command line, argument $argnum" );
-		}
+	while ( my $arg = shift @_ ) {
+		my ( $key, $value, $origin ) = @$arg;
+		my $user = ( $key =~ s/^(\S+?):// );
+		$key =~ tr/-/_/;
+
+		_set( $user, $key, $value, PRIO_ARGS, $origin );
 	}
 }
+# }}}
 
-sub read_config
+sub _read_config # {{{
 {
-	my $cfg = shift;
-	return unless -r $cfg;
+	my $file = shift;
+	die "Config file $file is not readable.\n" unless -r $file;
 
 	my $line = 0;
-	open my $F_IN, "<", $cfg;
+	open my $F_IN, "<", $file;
 	while ( <$F_IN> ) {
 		$line++;
+
+		# remove useless lines
 		next if /^\s*(?:#.*)?$/;
 		chomp;
-		if ( my ( $key, $value ) = /^\s*([a-z_]+)\s*=\s*(.*?)\s*$/ ) {
-			$value =~ s/\${([a-zA-Z0-9_]+)}/exists $ENV{$1} ? $ENV{$1} : ""/eg;
-			_set_arg( $key, $value, 1, "config file $cfg, line $line" );
+
+		# starts with expand ?
+		my $expand = 0;
+		$expand = 1 if s/^\s*expand\s+//;
+
+		if ( my ( $key, $value ) = /^\s*(\S+)\s*=\s*(.*?)\s*$/ ) {
+			# set variable
+			my $user = ( $key =~ s/^(\S+):// );
+			$value = expand( undef, $value )
+				if $expand;
+
+			_set( $user, $key, $value, 	PRIO_STATIC,
+				"config file $file, line $line" );
+
+			next;
+		} elsif ( /^include\s*(.*?)\s*$/ ) {
+			# include another file
+			my $file = $1;
+			$file = expand( undef, $file )
+				if $expand;
+
+			# if file doesn't start with / prepend %{config_dir}
+			unless ( $file =~ m#^/# ) {
+				$file = RSGet::Config::get( undef, "core_config_dir" )
+					. "/" . $file;
+			}
+
+			# let's do it, will die if file does not exist
+			_read_config( $file );
+
 			next;
 		}
-		warn "Incorrect config line: $_\n";
+		warn "$file: Incorrect config line: $_\n";
 	}
 	close $F_IN;
 }
+# }}}
 
-sub init
+sub _init_parse_config # {{{
 {
+	my $file = RSGet::Config::get( undef, "core_config_file" );
+	if ( -r $file ) {
+		_read_config( $file );
+	} else {
+		warn "Config file $file is not readable.\n";
+		return;
+	}
+}
+# }}}
+
+sub _init_dynaconfig # {{{
+{
+	my $all = $dynaconfig->getall();
+
+	foreach my $conf ( @$all ) {
+		# $conf -> $user, $key, $value, $origin
+		my @conf = @$conf;
+		splice @conf, OPT_PRIO, 0, PRIO_DYNAMIC; # set priority to 1
+		_set( @conf );
+	}
+} # }}}
+
+sub init # {{{
+{
+	return if $init;
 	_init_parse_args( @_ );
 	_init_parse_config();
-	RSGet::SQL::init();
-	_init_sql_config();
-}
+	_init_dynaconfig()
+		if $dynaconfig;
+	$init = 1;
+} # }}}
 
 1;
 
