@@ -140,6 +140,7 @@ sub _expand_exec
 		warn "Users are not permited to execute code.\n";
 		return "";
 	}
+	local $_;
 	$term = expand( $user, $term, $local );
 	if ( $type eq "%" ) {
 		warn "Executing perl '$term'.\n";
