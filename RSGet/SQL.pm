@@ -65,6 +65,8 @@ sub END
 sub _make_where($)
 {
 	my $cond = shift;
+	return ( "" )
+		unless $cond;
 
 	my @param;
 	my @where;
@@ -213,6 +215,17 @@ sub del
 	my $sth = $dbh->prepare( "DELETE FROM $table $where" );
 	$sth->execute( @where_param );
 	$dbh->commit();
+}
+
+sub dbh
+{
+	return $dbh;
+}
+
+sub prepare
+{
+	return unless $dbh;
+	return $dbh->prepare( shift );
 }
 
 1;
