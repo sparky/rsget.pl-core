@@ -175,7 +175,7 @@ sub _expand_term
 		my $user = shift;
 		my $term = shift;
 		my $local = shift;
-		return expand( $user, $ENV{ $term }, $local );
+		return expand( $user, $ENV{ $term }, $local )
 			if exists $ENV{ $term };
 		warn "Environment variable $term is not set.\n";
 		return "";
