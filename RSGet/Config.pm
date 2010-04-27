@@ -9,13 +9,13 @@ use strict;
 use warnings;
 
 RSGet::Config::register_settings(
-	core_config_dir => {
+	config_dir => {
 		desc => "Main config directory.",
-		default => "$ENV{HOME}/.rsget.pl",
+		default => '${HOME}/.rsget.pl',
 	},
-	core_config_file => {
+	config_file => {
 		desc => "Main config file.",
-		default => "%{core_config_dir}/config",
+		default => '%{config_dir}/config',
 	},
 	# escape secuences
 	p => {
@@ -72,10 +72,10 @@ use constant _regdata => {
 sub register_settings
 {
 	while ( my ($k, $v) = splice @_, 0, 2 ) {
-		die "Setting for '$k' is not a HASH\n"
+		die "RSGet::Config: Setting for '$k' is not a HASH\n"
 			unless ref $v eq "HASH";
 		foreach ( keys %$v ) {
-			die "Setting '$k' has unknown option: $_\n"
+			die "RSGet::Config: Setting '$k' has unknown option: $_\n"
 				unless exists _regdata->{ $_ };
 		}
 
@@ -123,7 +123,10 @@ sub get
 		$value = $macro->[OPT_VALUE];
 	}
 
-	return undef unless defined $value;
+	unless ( defined $value ) {
+		warn "RSGet::Config: %{$key} not defined\n";
+		return undef;
+	}
 	return expand( $user, $value, $local );
 }
 # }}}
@@ -137,20 +140,20 @@ sub _expand_exec
 	my $local = shift;
 
 	if ( $user ) {
-		warn "Users are not permited to execute code.\n";
+		warn "RSGet::Config: Users are not permited to execute code.\n";
 		return "";
 	}
 	local $_;
 	$term = expand( $user, $term, $local );
 	if ( $type eq "%" ) {
-		warn "Executing perl '$term'.\n";
+		warn "RSGet::Config: Executing perl '$term'.\n";
 		my $ret = eval $term;
-		warn "Failed: $@"
+		warn "RSGet::Config: Failed: $@"
 			if $@;
 		$ret = "" unless defined $ret;
 		return $ret;
 	} elsif ( $type eq "\$" ) {
-		warn "Executing command '$term'.\n";
+		warn "RSGet::Config: Executing command '$term'.\n";
 		open my $read, $term ." |";
 		my $value = "";
 		while ( <$read> ) {
@@ -158,11 +161,11 @@ sub _expand_exec
 		}
 		close $read;
 		chomp $value;
-		warn "Failed: $?"
+		warn "RSGet::Config: Failed: $?"
 			if $?;
 		return $value;
 	} else {
-		die "_expand_exec type is '$type'.\n";
+		die "RSGet::Config: _expand_exec type is '$type'.\n";
 	}
 
 }
@@ -171,17 +174,19 @@ sub _expand_term
 {
 	my $type = shift;
 	if ( $type eq "%" ) {
-		goto &get;
+		my $ret = &get;
+		return "" unless defined $ret;
+		return $ret;
 	} elsif ( $type eq "\$" ) {
 		my $user = shift;
 		my $term = shift;
 		my $local = shift;
 		return expand( $user, $ENV{ $term }, $local )
 			if exists $ENV{ $term };
-		warn "Environment variable $term is not set.\n";
+		warn "RSGet::Config: Environment variable $term is not set.\n";
 		return "";
 	} else {
-		die "_expand_term type is '$type'.\n";
+		die "RSGet::Config: _expand_term type is '$type'.\n";
 	}
 }
 
@@ -228,12 +233,11 @@ sub _set
 
 	# those may someday become keywords
 	if ( not $reg and not $key =~ m/^_/ ) {
-		warn "Configuration option $key is not registered."
-			. " Prefix your own variables with _.\n";
+		warn "RSGet::Config: Configuration option $key is not registered.\n";
 	}
 
 	if ( $user and $reg and not $reg->{user} ) {
-		die "Configuration option $key may not be changed for user.\n";
+		die "RSGet::Config: Configuration option $key may not be changed for user.\n";
 	}
 
 	$options{ $key } = [ $user, $key, $value, $priority, $origin ];
@@ -252,7 +256,7 @@ sub set
 			or return;
 	
 	unless ( $dynaconfig ) {
-		warn "dynaconfig not registered, cannot save configuration\n";
+		warn "RSGet::Config: dynaconfig not registered, cannot save configuration\n";
 		return;
 	}
 
@@ -276,7 +280,7 @@ sub _init_parse_args
 sub _read_config # {{{
 {
 	my $file = shift;
-	die "Config file $file is not readable.\n" unless -r $file;
+	die "RSGet::Config: Config file $file is not readable.\n" unless -r $file;
 
 	my $line = 0;
 	open my $F_IN, "<", $file;
@@ -309,7 +313,7 @@ sub _read_config # {{{
 
 			# if file doesn't start with / prepend %{config_dir}
 			unless ( $file =~ m#^/# ) {
-				$file = RSGet::Config::get( undef, "core_config_dir" )
+				$file = RSGet::Config::get( undef, "config_dir" )
 					. "/" . $file;
 			}
 
@@ -318,7 +322,7 @@ sub _read_config # {{{
 
 			next;
 		}
-		warn "$file: Incorrect config line: $_\n";
+		warn "RSGet::Config: $file: Incorrect config line: $_\n";
 	}
 	close $F_IN;
 }
@@ -326,11 +330,11 @@ sub _read_config # {{{
 
 sub _init_parse_config # {{{
 {
-	my $file = RSGet::Config::get( undef, "core_config_file" );
+	my $file = RSGet::Config::get( undef, "config_file" );
 	if ( -r $file ) {
 		_read_config( $file );
 	} else {
-		warn "Config file $file is not readable.\n";
+		warn "RSGet::Config: Config file $file is not readable.\n";
 		return;
 	}
 }
