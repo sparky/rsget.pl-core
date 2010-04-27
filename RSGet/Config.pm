@@ -101,7 +101,7 @@ sub reqister_dynaconfig
 # }}}
 
 # {{{ sub get: get and expand one macro
-sub get
+sub _get_raw
 {
 	my $user = shift;
 	my $key = shift;
@@ -123,13 +123,39 @@ sub get
 		$value = $macro->[OPT_VALUE];
 	}
 
-	unless ( defined $value ) {
-		warn "RSGet::Config: %{$key} not defined\n";
-		return undef;
-	}
-	return expand( $user, $value, $local );
+	return $value;
 }
 # }}}
+
+
+# {{{ sub get: get and expand one macro
+sub get
+{
+	my @arg = @_;
+	my $value = &_get_raw;
+
+	unless ( defined $value ) {
+		warn "RSGet::Config: %{$arg[1]} not defined\n";
+		return undef;
+	}
+	return expand( $arg[0], $value, $arg[2] );
+}
+# }}}
+
+# {{{ sub get_list: get and list-expand one macro
+sub get_list
+{
+	my @arg = @_;
+	my $value = &_get_raw;
+
+	unless ( defined $value ) {
+		warn "RSGet::Config: %{$arg[1]} not defined\n";
+		return ();
+	}
+	return _expand_list( $arg[0], $value, $arg[2] );
+}
+# }}}
+
 
 # {{{ sub expand: expand string containing some macros
 sub _expand_exec
@@ -203,11 +229,11 @@ sub expand
 }
 # }}}
 
-# {{{ sub expand_list: interpret string as list and expand each term
-sub expand_list
+# {{{ sub _expand_list: interpret string as list and expand each term
+sub _expand_list
 {
-	my $term = shift;
 	my $user = shift;
+	my $term = shift;
 	my $local = shift;
 
 	my @list = map {
