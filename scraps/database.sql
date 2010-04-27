@@ -247,7 +247,7 @@ CREATE TABLE %{core.db.prefix}config (
 	user		TEXT,
 
 	-- variable name
-	name		TEXT NOT NULL,
+	key		TEXT NOT NULL,
 
 	-- variable value
 	value		TEXT NOT NULL,
