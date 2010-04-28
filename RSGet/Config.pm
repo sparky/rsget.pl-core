@@ -78,6 +78,8 @@ sub register_settings
 			die "RSGet::Config: Setting '$k' has unknown option: $_\n"
 				unless exists _regdata->{ $_ };
 		}
+		die "RSGet::Config: Setting '$k' has no default value.\n"
+			unless exists $v->{default};
 
 		$registered{ $k } = $v;
 
@@ -87,12 +89,12 @@ sub register_settings
 }
 # }}}
 
-# {{{ sub reqister_dynaconfig: register object used to read and write config
+# {{{ sub register_dynaconfig: register object used to read and write config
 # $dynaconfig object must have 2 methods:
 #	->set( $user, $key, $value );
 #	->getall();
 my $dynaconfig;
-sub reqister_dynaconfig
+sub register_dynaconfig
 {
 	$dynaconfig = shift;
 	_init_dynaconfig()
