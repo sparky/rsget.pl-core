@@ -2,8 +2,6 @@
 use strict;
 use warnings;
 use RSGet::Config;
-use RSGet::SQL;
-use RSGet::ConfigSQL;
 
 RSGet::Config::register_settings(
 	test => {
@@ -32,11 +30,23 @@ RSGet::Config::register_settings(
 	},
 );
 RSGet::Config::init();
-RSGet::SQL::init();
 
-RSGet::Config::register_dynaconfig(
-	new RSGet::ConfigSQL
-);
+{
+	my $dynaconfig;
+
+	if ( 0 ) {
+		require RSGet::ConfigFile;
+		$dynaconfig = new RSGet::ConfigFile;
+	} else {
+		# sqlite is awfully slow
+		require RSGet::SQL;
+		require RSGet::ConfigSQL;
+		RSGet::SQL::init();
+		$dynaconfig = new RSGet::ConfigSQL;
+	}
+
+	RSGet::Config::register_dynaconfig( $dynaconfig );
+}
 
 my @macros = qw(test_macro test_env test_perl test_cmd foo test_l);
 foreach ( @macros ) {
@@ -53,5 +63,10 @@ my @l = RSGet::Config::get_list( undef, "test_list" );
 print "list:\n- ";
 print join "\n- ", @l;
 print "\n.\n";
+
+# speed test
+foreach my $i ( 0..10000 ) {
+	RSGet::Config::set( undef, "test", 'test: %{p}{test}b' . $i );
+}
 
 # vim:ts=4:sw=4
