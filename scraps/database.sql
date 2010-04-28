@@ -14,11 +14,11 @@
 	-- 4 - error
 
 -- user information
-CREATE TABLE %{core.db.prefix}user (
+CREATE TABLE IF NOT EXISTS %{sql_prefix}user (
 	id		INTEGER PRIMARY KEY,
 
 	-- user name
-	name		TEXT NOT NULL UNIQUE,
+	name		TEXT NOT NULL,
 
 	-- password, as plain text
 	pass		TEXT,
@@ -29,7 +29,7 @@ CREATE TABLE %{core.db.prefix}user (
 
 
 -- file group, defines special relations between multiple files
-CREATE TABLE %{core.db.prefix}file_group (
+CREATE TABLE IF NOT EXISTS %{sql_prefix}file_group (
 	id		INTEGER PRIMARY KEY,
 
 	-- group name
@@ -58,13 +58,13 @@ CREATE TABLE %{core.db.prefix}file_group (
 	last_update	INTEGER NOT NULL,
 
 
-	FOREIGN KEY(user_id) REFERENCES %{core.db.prefix}user(id)
+	FOREIGN KEY(user_id) REFERENCES %{sql_prefix}user(id)
 );
 
 
 -- output file information
 -- save file node so we'll be able to find it if it's renamed
-CREATE TABLE %{core.db.prefix}file (
+CREATE TABLE IF NOT EXISTS %{sql_prefix}file (
 	id		INTEGER PRIMARY KEY,
 
 	-- file name
@@ -109,12 +109,12 @@ CREATE TABLE %{core.db.prefix}file (
 	last_update	INTEGER NOT NULL,
 
 
-	FOREIGN KEY(group_id) REFERENCES %{core.db.prefix}file_group(id)
+	FOREIGN KEY(group_id) REFERENCES %{sql_prefix}file_group(id)
 );
 
 
 -- file source
-CREATE TABLE %{core.db.prefix}uri (
+CREATE TABLE IF NOT EXISTS %{sql_prefix}uri (
 	id		INTEGER PRIMARY KEY,
 
 	-- link as specified by user
@@ -176,13 +176,13 @@ CREATE TABLE %{core.db.prefix}uri (
 	last_update	INTEGER NOT NULL,
 
 	
-	FOREIGN KEY(plugin_id) REFERENCES %{core.db.prefix}plugin(id),
-	FOREIGN KEY(file_id) REFERENCES %{core.db.prefix}file(id)
+	FOREIGN KEY(plugin_id) REFERENCES %{sql_prefix}plugin(id),
+	FOREIGN KEY(file_id) REFERENCES %{sql_prefix}file(id)
 );
 
 
 -- information about data chunk within file
-CREATE TABLE %{core.db.prefix}file_part (
+CREATE TABLE IF NOT EXISTS %{sql_prefix}file_part (
 	id		INTEGER PRIMARY KEY,
 
 	-- originating uri
@@ -199,13 +199,13 @@ CREATE TABLE %{core.db.prefix}file_part (
 	last_update	INTEGER NOT NULL,
 
 
-	FOREIGN KEY(uri_id) REFERENCES %{core.db.prefix}uri(id),
-	FOREIGN KEY(file_id) REFERENCES %{core.db.prefix}file(id)
+	FOREIGN KEY(uri_id) REFERENCES %{sql_prefix}uri(id),
+	FOREIGN KEY(file_id) REFERENCES %{sql_prefix}file(id)
 );
 
 
 -- log messages
-CREATE TABLE %{core.db.prefix}log (
+CREATE TABLE IF NOT EXISTS %{sql_prefix}log (
 	id		INTEGER PRIMARY KEY,
 
 	-- time in seconds
@@ -223,9 +223,9 @@ CREATE TABLE %{core.db.prefix}log (
 
 
 -- getters
-CREATE TABLE %{core.db.prefix}plugin (
+CREATE TABLE IF NOT EXISTS %{sql_prefix}plugin (
 	-- plugin name
-	name		TEXT NOT NULL PRIMARY KEY,
+	name		VARCHAR(32) NOT NULL PRIMARY KEY,
 
 	-- md5 of plugin body
 	md5		CHAR(32) NOT NULL,
@@ -242,7 +242,7 @@ CREATE TABLE %{core.db.prefix}plugin (
 
 
 -- config options and other variables
-CREATE TABLE %{core.db.prefix}config (
+CREATE TABLE IF NOT EXISTS %{sql_prefix}config (
 	-- which user does that belong to
 	user		TEXT,
 
@@ -251,7 +251,5 @@ CREATE TABLE %{core.db.prefix}config (
 	name		TEXT NOT NULL,
 
 	-- variable value
-	value		TEXT NOT NULL,
-
-	FOREIGN KEY(user) REFERENCES %{core.db.prefix}user(name)
+	value		TEXT NOT NULL
 );
