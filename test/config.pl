@@ -2,6 +2,8 @@
 use strict;
 use warnings;
 use RSGet::Config;
+use RSGet::SQL;
+use RSGet::ConfigSQL;
 
 RSGet::Config::register_settings(
 	test => {
@@ -30,14 +32,19 @@ RSGet::Config::register_settings(
 	},
 );
 RSGet::Config::init();
+RSGet::SQL::init();
 
-RSGet::Config::set( undef, "foo", 'test: %{p}{test}' );
+RSGet::Config::register_dynaconfig(
+	new RSGet::ConfigSQL
+);
 
 my @macros = qw(test_macro test_env test_perl test_cmd foo test_l);
 foreach ( @macros ) {
 	my $v = RSGet::Config::get( undef, $_ );
 	print "$_: $v\n";
 }
+
+RSGet::Config::set( undef, "foo", 'test: %{p}{test}' . $$ );
 
 my $e = RSGet::Config::expand( undef, "[ %{p} %{test} %{foo} %{something} ]" );
 print "expand: $e\n";
