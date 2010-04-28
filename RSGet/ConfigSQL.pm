@@ -7,6 +7,7 @@ package RSGet::ConfigSQL;
 
 use strict;
 use warnings;
+use RSGet::Config;
 use RSGet::SQL;
 
 sub new
@@ -46,8 +47,9 @@ sub getall
 {
 	my $self = shift;
 
+	my $prefix = RSGet::Config::get( undef, "sql_prefix" );
 	return RSGet::SQL::dbh->selectall_arrayref(
-		"SELECT user, name, value, 'database' FROM $$self"
+		"SELECT user, name, value, 'database' FROM $prefix$$self"
 	);
 }
 
