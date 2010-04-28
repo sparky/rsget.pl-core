@@ -7,7 +7,6 @@ package RSGet::ConfigSQL;
 
 use strict;
 use warnings;
-use RSGet::Config;
 use RSGet::SQL;
 
 sub new
@@ -28,6 +27,18 @@ sub set
 		$$self,
 		{ user => $user, key => $key },
 		{ value => $value }
+	);
+}
+
+sub get
+{
+	my $self = shift;
+	my ( $user, $key ) = @_;
+
+	return RSGet::SQL::get(
+		$$self,
+		{ user => $user, key => $key },
+		"value"
 	);
 }
 
