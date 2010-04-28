@@ -7,13 +7,13 @@ package RSGet::Curl;
 
 use strict;
 use warnings;
-use RSGet::Common;
+use RSGet::Config;
 use RSGet::MortalObject;
 use WWW::Curl::Easy 4.00;
 use WWW::Curl::Multi;
 use URI::Escape;
 
-def_settings(
+RSGet::Config::register_settings(
 	user_agent => {
 		desc => "User agent header string sent to server.",
 		default => 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.0.10) Gecko/2009042316 Firefox/3.0.10',
@@ -34,6 +34,7 @@ my %curl_proxy_type = (
 	socks4 => 4,	# CURLPROXY_SOCKS4
 	socks4a => 6,	# CURLPROXY_SOCKS4a
 	socks5 => 5,	# CURLPROXY_SOCKS5
+	socks => 5,		# CURLPROXY_SOCKS5
 	socks5host => 7,	# CURLPROXY_SOCKS5_HOSTNAME
 );
 
@@ -154,7 +155,8 @@ sub _make_headers # {{{
 {
 	my $add = shift;
 	my %headers = %curl_http_headers;
-	$headers{user_agent} = setting( "user_agent" );
+	# TODO: user-ize user_agent
+	$headers{user_agent} = RSGet::Config::get( undef, "user_agent" );
 	$headers{ keys %$add } = values %$add;
 
 	my @headers;
@@ -263,16 +265,18 @@ sub maybe_abort # {{{
 
 sub perform # {{{
 {
-	my $running = scalar keys %active_curl;
-	return unless $running;
+	my @running = $active_curl->ids();
+	return 0 unless @running;
 	my $act = $curl_multi->perform();
-	return if $act == $running;
+	return $act if $act == scalar @running;
 
 	while ( my ($id, $rv) = $curl_multi->info_read() ) {
 		next unless $id;
 
 		finish( $active_curl->del( $id ), $rv );
 	}
+
+	return $act;
 }
 # }}}
 
