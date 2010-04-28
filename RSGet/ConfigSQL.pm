@@ -10,16 +10,11 @@ use warnings;
 use RSGet::Config;
 use RSGet::SQL;
 
-#RSGet::Config::register_settings(
-#);
-
-# initalized ?
-my $init = 0;
-
 sub new
 {
 	my $class = shift;
-	my $self = \"config";
+	my $table = shift || "config";
+	my $self = \$table;
 
 	return bless $self, $class;
 }
@@ -41,19 +36,8 @@ sub getall
 	my $self = shift;
 
 	return RSGet::SQL::dbh->selectall_arrayref(
-	(
 		"SELECT user, key, value, 'database' FROM $$self"
 	);
-}
-
-sub init
-{
-	return if $init;
-	RSGet::Config::register_dynaconfig(
-		new RSGet::ConfigSQL
-	);
-
-	$init = 1;
 }
 
 1;
