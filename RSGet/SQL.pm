@@ -7,32 +7,32 @@ package RSGet::SQL;
 
 use strict;
 use warnings;
-use RSGet::Common;
+use DBI;
 use RSGet::Config;
 
 RSGet::Config::register_settings(
-	"core.sql.type" => {
+	sql_type => {
 		desc => "Place where rsget.pl can store all information."
 			. " Must be DBI compatible name.",
-		default => "dbi:SQLite:dbname=%{core.config.dir}/rsget.db",
+		default => "dbi:SQLite:dbname=%{config_dir}/sqlite.db",
 	},
-	"core.sql.user" => {
+	sql_user => {
 		desc => "Database user.",
 		default => "",
 	},
-	"core.sql.pass" => {
+	sql_pass => {
 		desc => "Database password.",
 		default => "",
 	},
-	"core.sql.prefix" => {
+	sql_prefix => {
 		desc => "Table prefix, like schema (with prefix 'rsget.' tables will be"
 			. "	called 'rsget.tablename').",
 		default => "",
 		novalue => "rsget_",
 	},
-	"core.sql.precommand" => {
+	sql_precommand => {
 		desc => "Command executed just after connecting to database.",
-		default => undef,
+		default => "",
 	},
 );
 
@@ -41,17 +41,17 @@ my $table_prefix;
 sub init
 {
 	$dbh = DBI->connect(
-		RSGet::Config::get( "core.sql.type" ),
-		RSGet::Config::get( "core.sql.user" ),
-		RSGet::Config::get( "core.sql.pass" ),
+		RSGet::Config::get( undef, "sql_type" ),
+		RSGet::Config::get( undef, "sql_user" ),
+		RSGet::Config::get( undef, "sql_pass" ),
 		{ AutoCommit => 0 }
 	);
 
-	my $pre = RSGet::Config::get( "core.sql.precommand" );
+	my $pre = RSGet::Config::get( undef, "sql_precommand" );
 	$dbh->do( $pre )
-		if $pre;
+		if defined $pre and length $pre;
 
-	$table_prefix = RSGet::Config::get( "core.sql.prefix" );
+	$table_prefix = RSGet::Config::get( undef, "sql_prefix" );
 }
 
 sub END
@@ -182,7 +182,6 @@ sub set
 		return if $all_eq;
 		
 		my $values = join ", ", map "$_ = ?", @values_keys;
-		$dbh->begin_work();
 		my $sth = $dbh->prepare( "UPDATE $table SET $values $where" );
 		$sth->execute( @values_values, @where_param );
 		$dbh->commit();
@@ -193,7 +192,6 @@ sub set
 		my $keys = join ", ", @keys;
 		my $holders = join ", ", ("?") x scalar @keys;
 
-		$dbh->begin_work();
 		my $sth = $dbh->prepare( "INSERT INTO $table( $keys ) VALUES ($holders)" );
 		$sth->execute( @values );
 		$dbh->commit();
@@ -211,7 +209,6 @@ sub del
 
 	my ( $where, @where_param ) = _make_where( $condition );
 
-	$dbh->begin_work();
 	my $sth = $dbh->prepare( "DELETE FROM $table $where" );
 	$sth->execute( @where_param );
 	$dbh->commit();
