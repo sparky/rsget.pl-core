@@ -247,7 +247,8 @@ CREATE TABLE %{core.db.prefix}config (
 	user		TEXT,
 
 	-- variable name
-	key		TEXT NOT NULL,
+	-- warning: 'key' word is not allowed in MySQL
+	name		TEXT NOT NULL,
 
 	-- variable value
 	value		TEXT NOT NULL,

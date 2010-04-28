@@ -25,7 +25,7 @@ sub set
 
 	RSGet::SQL::set(
 		$$self,
-		{ user => $user, key => $key },
+		{ user => $user, name => $key },
 		{ value => $value }
 	);
 }
@@ -37,7 +37,7 @@ sub get
 
 	return RSGet::SQL::get(
 		$$self,
-		{ user => $user, key => $key },
+		{ user => $user, name => $key },
 		"value"
 	);
 }
@@ -47,7 +47,7 @@ sub getall
 	my $self = shift;
 
 	return RSGet::SQL::dbh->selectall_arrayref(
-		"SELECT user, key, value, 'database' FROM $$self"
+		"SELECT user, name, value, 'database' FROM $$self"
 	);
 }
 
