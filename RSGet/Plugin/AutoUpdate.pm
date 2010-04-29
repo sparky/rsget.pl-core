@@ -64,7 +64,7 @@ sub _process
 		} else {
 			my $m = md5_hex( $body );
 			if ( $m ne $md5 ) {
-				warn "Error whie updating plugin $name: md5 does not match.\n";
+				warn "Error while updating plugin $name: md5 does not match.\n";
 			} else {
 				#my @plugin = RSGet::Plugin::preprocess( $name, $body );
 				RSGet::SQL::set( "plugin", { name => $name },
