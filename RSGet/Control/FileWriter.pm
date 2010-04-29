@@ -53,7 +53,7 @@ sub _file_open
 
 	my $fh;
 	if ( -r $name ) {
-		open \$fh, "+<:raw", $name;
+		open $fh, "+<:raw", $name;
 	} else {
 		$fh = _file_create( $name, $file->{size} );
 	}
