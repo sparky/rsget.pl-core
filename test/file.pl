@@ -22,18 +22,26 @@ sub file
 	return new RSGet::Control::FileWriter $file, $pos;
 }
 
-my @files;
-push @files, file( 0 );
-push @files, file( 110_000_001 );
-push @files, file( 220_000_002 );
-push @files, file( 330_000_003 );
+my $f1 = file( 0 );
+my $f2 = file( 110_000_001 );
+my $f3 = file( 220_000_002 );
+my $f4 = file( 330_000_003 );
 
-my $data = "\001" x 4000;
+my $data1 = "\001" x 4001;
+my $data2 = "\002" x 4002;
+my $data3 = "\003" x 4003;
+my $data4 = "\004" x 4004;
 my $pos = 0;
-while ( ++$pos < 27000 ) {
-	foreach my $f ( @files ) {
-		$f->push( $data );
-	}
+while ( ++$pos < 27495 ) {
+	$f1->push( $data1 );
+	$f2->push( $data2 );
+	$f3->push( $data3 );
+	$f4->push( $data4 );
+
+	print "1: $f1->{position}\n";
+	print "2: $f2->{position}\n";
+	print "3: $f3->{position}\n";
+	print "4: $f4->{position}\n";
 }
 
 
