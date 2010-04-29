@@ -8,9 +8,9 @@ package RSGet::Control::FileWriter;
 use strict;
 use warnings;
 #use RSGet::Common;
-use RSGet::SQL;
-use File::Copy;
-use File::Path;
+#use RSGet::SQL;
+#use File::Copy;
+#use File::Path;
 use Fcntl qw(SEEK_SET);
 
 my %files;
@@ -20,66 +20,94 @@ sub file_get
 	my $name = shift;
 	my $size = shift;
 
+	my $file = $files{ $name };
+	return $file if $file and $file->{size} == $size;
 
+	$file = {
+		name => $name,
+		size => $size,
+		id => $name,
+	};
+
+	return $file;
 }
 
-sub file_create
+sub _file_create
 {
 	my $name = shift;
 	my $size = shift;
 
 	open my $fh, "+>:raw", $name;
-	seek $fh, $size - 1, SEEK_SET;
-	print $fh "\0";
+	if ( $size > 0 ) {
+		seek $fh, $size - 1, SEEK_SET;
+		print $fh "\0";
+	}
 
 	return $fh;
 }
 
-sub file_reopen
+sub _file_open
 {
-	my $name = shift;
-	my $size = shift;
+	my $file = shift;
+	my $name = $file->{name};
 
-	open my $fh, "+<:raw", $name;
-	return $fh;
+	my $fh;
+	if ( -r $name ) {
+		open \$fh, "+<:raw", $name;
+	} else {
+		$fh = _file_create( $name, $file->{size} );
+	}
+
+	$file->{handle} = $fh;
+
+	return;
+}
+
+sub _file_register
+{
+	my $file = shift;
+
+	unless ( $file->{users} ) {
+		_file_open( $file );
+	}
+
+	++$file->{users};
+	$files{ $file->{id} } = $file;
+
+	return $file;
+}
+
+sub _file_unregister
+{
+	my $file = shift;
+
+	return if --$file->{users};
+
+	close $file->{handle};
+	delete $files{ $file->{id} };
+
+	return;
 }
 
 # return new FileWriter
 # multiple file-writers can be connected to the same file
-# my $fw = new FileWriter $name, $size, $position;
+# my $fw = new FileWriter $file, $position;
 sub new
 {
 	my $class = shift;
-	my $name = shift;
-	my $size = shift;
+	my $file = shift;
 	my $position = shift;
-	#my $file = file_get( $name, $size );
 
 	my $self = {
+		file => _file_register( $file ),
+		position => $position,
 	};
 
 	return bless $self, $class;
 }
 
-sub start
-{
-	my $self = shift;
 
-	open my $handle, "+<:raw", $file_name;
-	my $file = {
-		handle => $handle,
-		users => 1,
-		id => $file_name,
-	};
-	$files{ $file->{id} } = $file;
-}
-
-sub seek
-{
-	my $self = shift;
-	$self->{position} = shift;
-}
-
+# add new data to file
 sub push
 {
 	my $self = shift;
@@ -88,25 +116,16 @@ sub push
 	seek $fh, $self->{position}, SEEK_SET;
 	print $fh $_[0];
 
-	$self->{position} += length $_[0];
-}
+	my $l = length $_[0];
+	$self->{position} += $l;
 
-sub end
-{
-	my $self = shift;
-
-	if ( --$self->{file}->{users} ) {
-		return;
-	}
-
-	close $self->{file}->{handle};
-	delete $files{ $self->{file}->{id} };
+	return $l;
 }
 
 sub DESTROY
 {
 	my $self = shift;
-	$self->end();
+	_file_unregister( $self->{file} );
 }
 
 
