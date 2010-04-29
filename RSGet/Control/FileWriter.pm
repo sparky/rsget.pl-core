@@ -1,4 +1,4 @@
-package RSGet::FileWriter;
+package RSGet::Control::FileWriter;
 # This file is an integral part of rsget.pl downloader.
 #
 # 2010 (c) Przemysław Iskra <sparky@pld-linux.org>
@@ -7,17 +7,53 @@ package RSGet::FileWriter;
 
 use strict;
 use warnings;
-use RSGet::Common;
-use RSGet::DB;
+#use RSGet::Common;
+use RSGet::SQL;
 use File::Copy;
 use File::Path;
 use Fcntl qw(SEEK_SET);
 
 my %files;
 
+sub file_get
+{
+	my $name = shift;
+	my $size = shift;
+
+
+}
+
+sub file_create
+{
+	my $name = shift;
+	my $size = shift;
+
+	open my $fh, "+>:raw", $name;
+	seek $fh, $size - 1, SEEK_SET;
+	print $fh "\0";
+
+	return $fh;
+}
+
+sub file_reopen
+{
+	my $name = shift;
+	my $size = shift;
+
+	open my $fh, "+<:raw", $name;
+	return $fh;
+}
+
+# return new FileWriter
+# multiple file-writers can be connected to the same file
+# my $fw = new FileWriter $name, $size, $position;
 sub new
 {
 	my $class = shift;
+	my $name = shift;
+	my $size = shift;
+	my $position = shift;
+	#my $file = file_get( $name, $size );
 
 	my $self = {
 	};
