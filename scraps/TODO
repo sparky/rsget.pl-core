@@ -9,3 +9,10 @@
   RSGet/_CliCommon
   RSGet/Gtk
   RSGet/...
+
+* FileWriter
+  - find file
+  - find best position to start
+  - check whether it is worth to start if cannot continue
+  - quickly check whether data written intersects with some old data
+  - if new data doesn't match separate it from the file
