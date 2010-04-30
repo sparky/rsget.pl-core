@@ -42,3 +42,21 @@
 06. return all links left
 
 
+*** File Writer ***
+
+# get file by id
+my $file = new RSGet::Control::File $file_id;
+
+# find best start position
+my $pos1 = $file->startat();
+
+## set curl start position at $pos1
+## -> curl actually starts at $pos2
+
+# get file writer	
+my $out = new RSGet::Control::FilePart $file, $pos2;
+
+# direct access to file no longer needed
+undef $file;
+
+$out->push( $data );
