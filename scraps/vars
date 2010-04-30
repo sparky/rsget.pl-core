@@ -11,6 +11,10 @@
 # (service normally equals getter, but some getters may support multiple services)
 [user]:core.quota.[service] = INT
 
+# if some part of file was extracted (e.g. data didn't match while
+# downloading from multiple sources), this indicates destination file
+[user]:core.file.[fileid].last_extracted_id = INTEGER
+
 # additional information for uri (like passwords)
 [user]:core.list.uri.[uriid].[varname] = TEXT
 
