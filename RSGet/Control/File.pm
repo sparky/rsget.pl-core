@@ -12,7 +12,7 @@ use warnings;
 #use File::Copy;
 #use File::Path;
 use Fcntl qw(SEEK_SET);
-use WeakRef;
+use Scalar::Util qw(weaken);
 
 my %objs;
 
@@ -133,7 +133,7 @@ sub _file_register
 sub _file_find
 {
 	my $self = shift;
-	my $inode = (stat $fh)[1];
+	my $inode = (lstat $fh)[1];
 }
 
 
