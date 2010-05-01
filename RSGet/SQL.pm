@@ -43,7 +43,7 @@ RSGet::Config::register_settings(
 );
 
 my $dbh;
-my $table_prefix;
+our $prefix;
 sub init
 {
 	$dbh = DBI->connect(
@@ -57,7 +57,7 @@ sub init
 	$dbh->do( $pre )
 		if defined $pre and length $pre;
 
-	$table_prefix = RSGet::Config::get( undef, "sql_prefix" );
+	$prefix = RSGet::Config::get( undef, "sql_prefix" );
 }
 
 sub END
@@ -118,7 +118,7 @@ Simple database get, gets exactly 1 object.
 =cut
 sub get
 {
-	my $table = $table_prefix . shift;
+	my $table = $prefix . shift;
 	my $condition = shift;
 	my $keys = shift;
 
@@ -132,16 +132,19 @@ sub get
 
 	if ( $keys eq "*" ) {
 		my $hash = $sth->fetchrow_hashref();
+		$sth->finish();
 		return %$hash
 			if wantarray;
 		return $hash;
 	} elsif ( $keys =~ /,/ ) {
 		my $array = $sth->fetchrow_arrayref();
+		$sth->finish();
 		return @$array
 			if wantarray;
 		return $array;
 	} else {
 		my @array = $sth->fetchrow_array();
+		$sth->finish();
 		return @array
 			if wantarray;
 		return $array[0];
@@ -167,7 +170,7 @@ Set values in 1 object. Where-hash must match exactly 1 object.
 =cut
 sub set
 {
-	my $table = $table_prefix . shift;
+	my $table = $prefix . shift;
 	my $condition = shift;
 	my $values = shift;
 
@@ -184,6 +187,7 @@ sub set
 		my $sth = $dbh->prepare( "SELECT $keys FROM $table $where LIMIT 1" );
 		$sth->execute( @where_param );
 		$row = $sth->fetchrow_hashref();
+		$sth->finish();
 	}
 
 	if ( $row ) {
@@ -199,6 +203,7 @@ sub set
 		my $values = join ", ", map "$_ = ?", @values_keys;
 		my $sth = $dbh->prepare( "UPDATE $table SET $values $where" );
 		$sth->execute( @values_values, @where_param );
+		$sth->finish();
 		$dbh->commit();
 	} else {
 		my @keys = ( @values_keys, keys %$condition );
@@ -209,6 +214,7 @@ sub set
 
 		my $sth = $dbh->prepare( "INSERT INTO $table( $keys ) VALUES ($holders)" );
 		$sth->execute( @values );
+		$sth->finish();
 		$dbh->commit();
 	}
 }
@@ -222,7 +228,7 @@ Delete something from table.
 =cut
 sub del
 {
-	my $table = $table_prefix . shift;
+	my $table = $prefix . shift;
 	my $condition = shift;
 
 	return unless $dbh;
@@ -231,6 +237,7 @@ sub del
 
 	my $sth = $dbh->prepare( "DELETE FROM $table $where" );
 	$sth->execute( @where_param );
+	$sth->finish();
 	$dbh->commit();
 }
 

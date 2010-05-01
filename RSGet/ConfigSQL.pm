@@ -47,9 +47,8 @@ sub getall
 {
 	my $self = shift;
 
-	my $prefix = RSGet::Config::get( undef, "sql_prefix" );
 	return RSGet::SQL::dbh->selectall_arrayref(
-		"SELECT user, name, value, 'database' FROM $prefix$$self"
+		"SELECT user, name, value, 'database' FROM $RSGet::SQL::prefix$$self"
 	);
 }
 

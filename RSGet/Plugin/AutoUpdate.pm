@@ -23,9 +23,8 @@ RSGet::Config::register_settings(
 
 sub update
 {
-	my $prefix = RSGet::Config::get( undef, "sql_prefix" );
 	my $arr = RSGet::SQL::dbh->selectall_arrayref(
-		"SELECT name, md5 FROM ${prefix}plugin"
+		"SELECT name, md5 FROM ${RSGet::SQL::prefix}plugin"
 	);
 	my %plugins = map { $_->[0], $_->[1] } @$arr;
 
