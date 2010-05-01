@@ -89,20 +89,20 @@ sub _make_where($)
 
 # simple database get, gets exactly 1 object
 #
-# my $ret = RSGet::DB::get( "table", { cond => "ble" }, "key" );
+# my $ret = RSGet::SQL::get( "table", { cond => "ble" }, "key" );
 #  -> prep: SELECT key FROM table WHERE cond = ? LIMIT 1
 #  -> exec: "ble"
 #
-# my $ret = RSGet::DB::get( "table", { cond => undef }, "key" );
+# my $ret = RSGet::SQL::get( "table", { cond => undef }, "key" );
 #  -> prep: SELECT key FROM table WHERE cond IS NULL LIMIT 1
 #  -> exec: ()
 #
-# my ($ret1, $ret2) = RSGet::DB::get( "table",
+# my ($ret1, $ret2) = RSGet::SQL::get( "table",
 #		{ cond1 => "one", cond2 => "two"  }, "key1, key2" );
 #  -> prep: SELECT key1, key2 FROM table WHERE cond1 = ? AND cond2 = ? LIMIT 1
 #  -> exec: "one", "two"
 #
-# my %ret = RSGet::DB::get( "table", { [conditions] }, "*" )
+# my %ret = RSGet::SQL::get( "table", { [conditions] }, "*" )
 #  -> prep: SELECT * FROM table WHERE [conditions] LIMIT 1
 #  -> exec: [conditions]
 #
@@ -139,7 +139,7 @@ sub get
 }
 
 
-# my $ret = RSGet::DB::set( "table", { key => "k" }, { value => "v", value2 => "v2" } );
+# my $ret = RSGet::SQL::set( "table", { key => "k" }, { value => "v", value2 => "v2" } );
 #  -> prep: SELECT value FROM table WHERE key = ?
 #  -> exec: "k"
 #  -> value == "v" and value2 == "v2" ? return
