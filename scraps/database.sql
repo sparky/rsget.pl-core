@@ -53,9 +53,12 @@ CREATE TABLE IF NOT EXISTS %{sql_prefix}file_group (
 	-- see: common flags
 	flags		INTEGER NOT NULL,
 
+	-- creation time
+	time_start	INTEGER NOT NULL,
+
 	-- time (epoch) of last change in this file_group
 	-- [file/group added/removed, changed some internal value]
-	last_update	INTEGER NOT NULL,
+	time_update	INTEGER NOT NULL,
 
 
 	FOREIGN KEY(user_id) REFERENCES %{sql_prefix}user(id)
@@ -105,8 +108,11 @@ CREATE TABLE IF NOT EXISTS %{sql_prefix}file (
 	-- position of file in parent file_group
 	position	INTEGER NOT NULL,
 
+	-- creation time
+	time_start	INTEGER NOT NULL,
+
 	-- time (epoch) of last change in this file
-	last_update	INTEGER NOT NULL,
+	time_update	INTEGER NOT NULL,
 
 
 	FOREIGN KEY(group_id) REFERENCES %{sql_prefix}file_group(id)
@@ -172,8 +178,11 @@ CREATE TABLE IF NOT EXISTS %{sql_prefix}uri (
 	-- position of uri in file
 	position	INTEGER NOT NULL,
 
+	-- creation time
+	time_start	INTEGER NOT NULL,
+
 	-- time (epoch) of last change in this uri
-	last_update	INTEGER NOT NULL,
+	time_update	INTEGER NOT NULL,
 
 	
 	FOREIGN KEY(plugin_id) REFERENCES %{sql_prefix}plugin(id),
@@ -195,8 +204,11 @@ CREATE TABLE IF NOT EXISTS %{sql_prefix}file_part (
 	start		INTEGER NOT NULL,
 	stop		INTEGER,
 
+	-- creation time
+	time_start	INTEGER NOT NULL,
+
 	-- time (epoch) of last change in this file_part
-	last_update	INTEGER NOT NULL,
+	time_update	INTEGER NOT NULL,
 
 
 	FOREIGN KEY(uri_id) REFERENCES %{sql_prefix}uri(id),
@@ -208,6 +220,9 @@ CREATE TABLE IF NOT EXISTS %{sql_prefix}file_part (
 CREATE TABLE IF NOT EXISTS %{sql_prefix}log (
 	id		INTEGER PRIMARY KEY,
 
+	-- which user does that belong to
+	user_id		INTEGER,
+
 	-- time in seconds
 	time		INTEGER NOT NULL,
 
@@ -218,14 +233,18 @@ CREATE TABLE IF NOT EXISTS %{sql_prefix}log (
 	header		TEXT NOT NULL,
 
 	-- actual text
-	line		TEXT NOT NULL
+	line		TEXT NOT NULL,
+
+	FOREIGN KEY(user_id) REFERENCES %{sql_prefix}user(id)
 );
 
 
 -- getters
 CREATE TABLE IF NOT EXISTS %{sql_prefix}plugin (
+	id		INTEGER PRIMARY KEY,
+
 	-- plugin name
-	name		VARCHAR(32) NOT NULL PRIMARY KEY,
+	name		VARCHAR(32) NOT NULL,
 
 	-- md5 of plugin body
 	md5		CHAR(32) NOT NULL,
