@@ -15,7 +15,7 @@ require Exporter;
 	cat
 	s2string bignum de_ml hadd hprint p isotime require_prog
 	irand randid jstime def_settings setting verbose
-	data_file dump_to_file randomize);
+	data_file dump_to_file);
 @EXPORT_OK = qw();
 
 # user that is actually downloading
@@ -74,14 +74,6 @@ sub hprint(%)
 		}
 		p "$k => $v";
 	}
-}
-
-# randomize order of an array
-sub randomize
-{
-	# not really good, but works
-	# violates qsort requirements for stable comparator
-	return sort { 0.5 <=> rand } @_;
 }
 
 # return some random integer from interval $_[0]..$_[1]
