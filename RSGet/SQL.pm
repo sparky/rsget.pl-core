@@ -5,6 +5,12 @@ package RSGet::SQL;
 #		This program is free software,
 # you may distribute it under GPL v2 or newer.
 
+=head1 RSGet::SQL
+
+ Hooks for simple SQL manipulation, and access methods for advanced use.
+
+=cut
+
 use strict;
 use warnings;
 use DBI;
@@ -87,25 +93,29 @@ sub _make_where($)
 	return $where, @param;
 }
 
-# simple database get, gets exactly 1 object
-#
-# my $ret = RSGet::SQL::get( "table", { cond => "ble" }, "key" );
-#  -> prep: SELECT key FROM table WHERE cond = ? LIMIT 1
-#  -> exec: "ble"
-#
-# my $ret = RSGet::SQL::get( "table", { cond => undef }, "key" );
-#  -> prep: SELECT key FROM table WHERE cond IS NULL LIMIT 1
-#  -> exec: ()
-#
-# my ($ret1, $ret2) = RSGet::SQL::get( "table",
-#		{ cond1 => "one", cond2 => "two"  }, "key1, key2" );
-#  -> prep: SELECT key1, key2 FROM table WHERE cond1 = ? AND cond2 = ? LIMIT 1
-#  -> exec: "one", "two"
-#
-# my %ret = RSGet::SQL::get( "table", { [conditions] }, "*" )
-#  -> prep: SELECT * FROM table WHERE [conditions] LIMIT 1
-#  -> exec: [conditions]
-#
+=head2 get
+
+something = RSGet::SQL::get( TABLE, WHEREHASH, KEYS );
+
+Simple database get, gets exactly 1 object.
+
+ my $ret = RSGet::SQL::get( "table", { cond => "ble" }, "key" );
+  -> prep: SELECT key FROM table WHERE cond = ? LIMIT 1
+  -> exec: "ble"
+
+ my $ret = RSGet::SQL::get( "table", { cond => undef }, "key" );
+  -> prep: SELECT key FROM table WHERE cond IS NULL LIMIT 1
+  -> exec: ()
+
+ my ($ret1, $ret2) = RSGet::SQL::get( "table",
+		{ cond1 => "one", cond2 => "two"  }, "key1, key2" );
+  -> prep: SELECT key1, key2 FROM table WHERE cond1 = ? AND cond2 = ? LIMIT 1
+  -> exec: "one", "two"
+
+ my %ret = RSGet::SQL::get( "table", { [conditions] }, "*" )
+  -> prep: SELECT * FROM table WHERE [conditions] LIMIT 1
+  -> exec: [conditions]
+=cut
 sub get
 {
 	my $table = $table_prefix . shift;
@@ -138,18 +148,23 @@ sub get
 	}
 }
 
+=head2 set
 
-# my $ret = RSGet::SQL::set( "table", { key => "k" }, { value => "v", value2 => "v2" } );
-#  -> prep: SELECT value FROM table WHERE key = ?
-#  -> exec: "k"
-#  -> value == "v" and value2 == "v2" ? return
-#  -> exists ?
-#  ->   prep: UPDATE table SET value = ?, value2 = ? WHERE key = ?
-#  ->   exec: "v", "v2", "k"
-#  -> else
-#  ->   prep: INSERT INTO table( value, value2, key ) VALUES ( ?, ?, ? )
-#  ->   exec: "v", "v2", "k",
-#
+RSGet::SQL::set( TABLE, WHEREHASH, VALUEHASH );
+
+Set values in 1 object. Where-hash must match exactly 1 object.
+
+ my $ret = RSGet::SQL::set( "table", { key => "k" }, { value => "v", value2 => "v2" } );
+  -> prep: SELECT value FROM table WHERE key = ?
+  -> exec: "k"
+  -> value == "v" and value2 == "v2" ? return
+  -> exists ?
+  ->   prep: UPDATE table SET value = ?, value2 = ? WHERE key = ?
+  ->   exec: "v", "v2", "k"
+  -> else
+  ->   prep: INSERT INTO table( value, value2, key ) VALUES ( ?, ?, ? )
+  ->   exec: "v", "v2", "k",
+=cut
 sub set
 {
 	my $table = $table_prefix . shift;
@@ -198,8 +213,13 @@ sub set
 	}
 }
 
-# delete something
+=head2 del
 
+RSGet::SQL::del( TABLE, WHEREHASH );
+
+Delete something from table.
+
+=cut
 sub del
 {
 	my $table = $table_prefix . shift;
@@ -214,6 +234,11 @@ sub del
 	$dbh->commit();
 }
 
+=head2 dbh
+
+return $dbh
+
+=cut
 sub dbh
 {
 	return $dbh;
