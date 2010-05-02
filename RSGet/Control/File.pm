@@ -12,7 +12,7 @@ use warnings;
 #use File::Copy;
 #use File::Path;
 use Fcntl qw(SEEK_SET);
-use Scalar::Util qw(weaken);
+use Scalar::Util qw(max min weaken);
 
 my %objs;
 
@@ -52,13 +52,91 @@ sub startat
 
 }
 
-# is there any data at that position
-sub isdata
+=head2 sub _nomatch_parts
+
+return all parts that have data at that position, but it does not match.
+
+In ideal situation should always return empty list;
+
+=cut
+sub _nomatch_parts
 {
 	my $self = shift;
-	my $pos = shift;
-	my $len = shift;
+	my $pos_start = shift;
+	# data at $_[0]
+	
+	return () unless length $_[0];
 
+	my $pos_stop = $pos_start + length $_[0];
+	my $fh = $self->{handle};
+	my @nomatch_parts;
+
+	# If there is some data at that position already make sure it matches.
+	foreach my $part ( @{ $self->{parts} } ) {
+
+		# Check whether this part and new data intersects.
+		# There is '=' in comparisions because without it intersection
+		# length could be 0. It would detect itself.
+		next if $part->{start} >= $pos_stop;
+		next if $part->{stop} <= $pos_start;
+
+		# Boundries of the intersection.
+		my $cmp_start = max $pos_start, $part->{start};
+		my $cmp_stop = min $pos_stop, $part->{stop};
+		my $cml_len = $cmp_stop - $cmp_start;
+
+		# Extract intersection data from new data.
+		my $data_new = substr $_[0], ($cmp_start - $pos_start), $cmp_len;
+
+		# Extract intersection data from file.
+		my $data_file;
+		seek $fh, $cmp_start, SEEK_SET;
+		read $fh, $data_file, $cmp_len;
+
+		# If data matches then it's all ok.
+		next if $data_new eq $data_file;
+
+		push @nomatch_part, $part;
+	}
+
+	return @nomatch_parts;
+}
+
+sub pushdata
+{
+	my $self = shift;
+	my $part = shift;
+	my $pos_start = $part->{start};
+	#my $data = shift;
+
+	if ( my @nomatch_parts = $self->_nomatch_parts( $pos_start, $_[0] ) ) {
+		my $extract_old = 1;
+		$extract_old = 0 if scalar @nomatch_parts > 1;
+
+		if ( $extract_old ) {
+			my @active = grep { $_->{active} } @nomatch_parts;
+			$extract_old = 0 if @active;
+		}
+
+		# XXX: extraction can take a lot of time, must think up some way
+		# to do it asynchronously
+		if ( $extract_old ) {
+			# extract old parts (saving to new file)
+			# later will continue saving in this file
+			#XXX
+		} else {
+			# extract this part to new file and continue saving there
+			#XXX
+			$self = newfile();
+		}
+	}
+
+	# now that we can, write new data to file
+	my $fh = $self->{handle};
+	seek $fh, $pos_start, SEEK_SET;
+	print $fh $_[0];
+
+	return $part->{start} = $pos_start + length $_[0];
 }
 
 # set name and size
