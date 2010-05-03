@@ -12,6 +12,7 @@
 	-- 2 - disabled, slow stop
 	-- 3 - disabled, inmediate stop
 	-- 4 - error
+	-- 5 - file needs fix
 
 -- user information
 CREATE TABLE IF NOT EXISTS %{sql_prefix}user (
@@ -213,6 +214,24 @@ CREATE TABLE IF NOT EXISTS %{sql_prefix}file_part (
 
 	FOREIGN KEY(uri_id) REFERENCES %{sql_prefix}uri(id),
 	FOREIGN KEY(file_id) REFERENCES %{sql_prefix}file(id)
+);
+
+-- chunks of data that should be written to file, but there was some error
+CREATE TABLE IF NOT EXISTS %{sql_prefix}file_part_chunk (
+	id		INTEGER PRIMARY KEY,
+
+	-- destination file part
+	file_part_id		INTEGER NOT NULL,
+
+	-- start and stop positions of data chunk within file
+	start		INTEGER NOT NULL,
+	stop		INTEGER NOT NULL,
+
+	-- the actual data
+	data		BLOB NOT NULL,
+
+
+	FOREIGN KEY(file_part_id) REFERENCES %{sql_prefix}file_part(id)
 );
 
 
