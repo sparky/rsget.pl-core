@@ -40,8 +40,8 @@ sub update
 
 sub _process
 {
-	my $error = shift;
 	my $obj = shift;
+	return if $obj->{error};
 
 	my $time = time;
 
