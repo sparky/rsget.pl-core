@@ -12,7 +12,8 @@ use warnings;
 #use File::Copy;
 #use File::Path;
 use Fcntl qw(SEEK_SET);
-use Scalar::Util qw(max min weaken);
+use Scalar::Util qw(weaken);
+use List::Util qw(max min);
 
 my %objs;
 
@@ -83,7 +84,7 @@ sub _nomatch_parts
 		# Boundries of the intersection.
 		my $cmp_start = max $pos_start, $part->{start};
 		my $cmp_stop = min $pos_stop, $part->{stop};
-		my $cml_len = $cmp_stop - $cmp_start;
+		my $cmp_len = $cmp_stop - $cmp_start;
 
 		# Extract intersection data from new data.
 		my $data_new = substr $$dataref, ($cmp_start - $pos_start), $cmp_len;
@@ -96,7 +97,7 @@ sub _nomatch_parts
 		# If data matches then it's all ok.
 		next if $data_new eq $data_file;
 
-		push @nomatch_part, $part;
+		push @nomatch_parts, $part;
 	}
 
 	return \@nomatch_parts;
@@ -140,7 +141,7 @@ sub _nomatch_dbchunks
 		# Boundries of the intersection.
 		my $cmp_start = max $pos_start, $chunk->{start};
 		my $cmp_stop = min $pos_stop, $chunk->{stop};
-		my $cml_len = $cmp_stop - $cmp_start;
+		my $cmp_len = $cmp_stop - $cmp_start;
 
 		# Extract intersection data from new data.
 		my $data_new = substr $$dataref,
@@ -153,7 +154,7 @@ sub _nomatch_dbchunks
 		# If data matches then it's all ok.
 		next if $data_new eq $data_chunk;
 
-		$nomatch_part{ $chunk->{file_part_id} } = 1;
+		$nomatch_parts{ $chunk->{file_part_id} } = 1;
 	}
 	$sth->finish();
 
@@ -299,7 +300,7 @@ sub _file_register
 sub _file_find
 {
 	my $self = shift;
-	my $inode = (lstat $fh)[1];
+	#my $inode = (lstat $fh)[1];
 }
 
 
