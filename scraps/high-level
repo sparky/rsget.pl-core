@@ -54,9 +54,36 @@ my $pos1 = $file->startat();
 ## -> curl actually starts at $pos2
 
 # get file writer	
-my $out = new RSGet::Control::FilePart $file, $pos2;
+my $out = new RSGet::Control::FilePart $file, $name, $size, $pos2, $stop;
 
 # direct access to file no longer needed
 undef $file;
 
 $out->push( $data );
+
+
+*** on data error (file writer) ***
+
+1. start dumping all new data to DB
+(in separate process)
+2. find best fallback solution
+3. move non-matching parts to another file (as specified in fallback)
+4. restore dumped data drom DB and delete it
+(in main process)
+5. reopen files and allow writing directly
+
+
+*** find best start position (file writer) ***
+
+* to start new part all currently active parts must be at least 15 seconds old
+  (so we can be more or less sure about their download speeds)
+* save possible stop position where appropriate (e.g.
+  MegaShares offers tickets, which limit ammount of downloaded
+  data, so we know where we're going to stop)
+1. Discard any chunks smaller than %{file_chunk_size_min}.
+2. Mark dead areas (parts of file not being downloaded right now)
+3. Is there any dead area?
+  YES) Start %{file_chunk_size_shared} before first dead area, if there is one.
+  NO) continue
+4. Start in the middle of slowest active area, but only if it would take more
+  than %{file_chunk_time_min} seconds to download it.
