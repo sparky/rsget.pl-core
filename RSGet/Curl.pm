@@ -183,7 +183,7 @@ sub _write_body # {{{
 	my ( $chunk, $id ) = @_;
 	my $cc = $active_curl->get( $id );
 	if ( my $fw = $cc->{file_handle} ) {
-		$fw->push( $chunk );
+		$fw->push( \$chunk );
 	} else {
 		$cc->{body} = "" unless defined $cc->{body};
 		$cc->{body} .= $chunk;
@@ -202,7 +202,8 @@ sub finish # {{{
 
 	$cc->{eurl} = $curl->getinfo( CURLINFO_EFFECTIVE_URL );
 	$cc->{content_type} = $curl->getinfo( CURLINFO_CONTENT_TYPE );
-	$cc->{error} = $curl->errbuf;
+	$cc->{error} = $error_code;
+	$cc->{error_msg} = $curl->errbuf;
 
 	# destroy curl before destroying getter
 	$curl = undef;
@@ -232,7 +233,7 @@ sub finish # {{{
 	}
 
 	my $cb = $cc->{callback};
-	&$cb( $error_code, $cc );
+	&$cb( $cc );
 }
 # }}}
 
