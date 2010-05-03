@@ -36,34 +36,7 @@ sub push
 {
 	my $self = shift;
 
-	my $pos = $self->{position};
-	my $len = length $_[0];
-
-	my $file = $self->{file};
-
-	# find intersection with existing data
-	if ( my ( $ipos, $ilen ) = $file->isdata( $pos, $len ) ) {
-
-		my $data_new = substr $_[0], ($ipos - $pos), $ilen;
-
-		my $data_file;
-		seek $fh, $ipos, SEEK_SET;
-		read $fh, $data, $ilen;
-
-		if ( $data_new ne $data_file ) {
-			# data doesn't match - remove one of those non-matching parts
-			# XXX: extract
-			#$file->extract();
-		}
-	}
-
-	my $fh = $self->{file}->{handle};
-	seek $fh, $self->{position}, SEEK_SET;
-	print $fh $_[0];
-
-	$self->{position} += $l;
-
-	return $l;
+	return $self->{file}->push( $self, $_[0] );
 }
 
 sub DESTROY
