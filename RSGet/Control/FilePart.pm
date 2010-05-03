@@ -9,20 +9,36 @@ use strict;
 use warnings;
 #use RSGet::Common;
 #use RSGet::SQL;
-#use File::Copy;
-#use File::Path;
-use Fcntl qw(SEEK_SET);
 
-# create new file part
+=head2 sub new
+
+create new file part
+
+=cut
 sub new
 {
 	my $class = shift;
 	my $file_id = shift;
-	my $pos = shift;
+
+	# name of the file
+	my $name = shift;
+
+	# total file size (optional?)
+	my $size = shift;
+
+	# start position of this part
+	my $position = shift;
+
+	# probable end of this part (optional)
+	my $probable_stop = shift;
 
 }
 
-# get old file part
+=head2 sub old
+
+get old file part
+
+=cut
 sub old
 {
 	my $class = shift;
@@ -42,7 +58,7 @@ sub push
 sub DESTROY
 {
 	my $self = shift;
-	_file_unregister( $self->{file} );
+	$self-{file}->finishpart( $self );
 }
 
 
