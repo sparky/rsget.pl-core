@@ -16,7 +16,7 @@
 
 -- user information
 CREATE TABLE IF NOT EXISTS %{sql_prefix}user (
-	id		INTEGER PRIMARY KEY,
+	id		INTEGER NOT NULL PRIMARY KEY,
 
 	-- user name
 	name		TEXT NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS %{sql_prefix}user (
 
 -- file group, defines special relations between multiple files
 CREATE TABLE IF NOT EXISTS %{sql_prefix}file_group (
-	id		INTEGER PRIMARY KEY,
+	id		INTEGER NOT NULL PRIMARY KEY,
 
 	-- group name
 	name		TEXT,
@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS %{sql_prefix}file_group (
 -- output file information
 -- save file node so we'll be able to find it if it's renamed
 CREATE TABLE IF NOT EXISTS %{sql_prefix}file (
-	id		INTEGER PRIMARY KEY,
+	id		INTEGER NOT NULL PRIMARY KEY,
 
 	-- file name
 	name		TEXT,
@@ -122,7 +122,7 @@ CREATE TABLE IF NOT EXISTS %{sql_prefix}file (
 
 -- file source
 CREATE TABLE IF NOT EXISTS %{sql_prefix}uri (
-	id		INTEGER PRIMARY KEY,
+	id		INTEGER NOT NULL PRIMARY KEY,
 
 	-- link as specified by user
 	link		TEXT NOT NULL, -- unique ?
@@ -193,7 +193,7 @@ CREATE TABLE IF NOT EXISTS %{sql_prefix}uri (
 
 -- information about data chunk within file
 CREATE TABLE IF NOT EXISTS %{sql_prefix}file_part (
-	id		INTEGER PRIMARY KEY,
+	id		INTEGER NOT NULL PRIMARY KEY,
 
 	-- originating uri
 	uri_id		INTEGER NOT NULL,
@@ -218,7 +218,7 @@ CREATE TABLE IF NOT EXISTS %{sql_prefix}file_part (
 
 -- chunks of data that should be written to file, but there was some error
 CREATE TABLE IF NOT EXISTS %{sql_prefix}file_part_chunk (
-	id		INTEGER PRIMARY KEY,
+	id		INTEGER NOT NULL PRIMARY KEY,
 
 	-- destination file part
 	file_part_id		INTEGER NOT NULL,
@@ -237,7 +237,7 @@ CREATE TABLE IF NOT EXISTS %{sql_prefix}file_part_chunk (
 
 -- log messages
 CREATE TABLE IF NOT EXISTS %{sql_prefix}log (
-	id		INTEGER PRIMARY KEY,
+	id		INTEGER NOT NULL PRIMARY KEY,
 
 	-- which user does that belong to
 	user_id		INTEGER,
@@ -260,7 +260,7 @@ CREATE TABLE IF NOT EXISTS %{sql_prefix}log (
 
 -- getters
 CREATE TABLE IF NOT EXISTS %{sql_prefix}plugin (
-	id		INTEGER PRIMARY KEY,
+	id		INTEGER NOT NULL PRIMARY KEY,
 
 	-- plugin name
 	name		VARCHAR(32) NOT NULL,
