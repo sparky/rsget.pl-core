@@ -87,3 +87,23 @@ $out->push( $data );
   NO) continue
 4. Start in the middle of slowest active area, but only if it would take more
   than %{file_chunk_time_min} seconds to download it.
+
+
+*** on data error, find best fallback (file writer) ***
+
+1. check whether there are conflicts of data from the same URI
+ YES) - this is veeeery bad
+  2. file has multiple URIs ?
+    YES) mark this one as unreliable, and disable it completely
+    NO) - this is the only URI
+     3. mark URI as "cannot continue"
+     4. remove all data downloaded so far
+     5. restart downloading at the beggining
+ NO)
+  2. group all parts by uri
+  3. is one of those groups much smaller ?
+    YES) move it to another file, and disable if not active
+    NO) - keep checking
+  4. is the other group inactive ?
+    YES) move it to another file, and disable
+    NO) - no more ideas, pick random one to remove ?
