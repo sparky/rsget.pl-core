@@ -63,11 +63,11 @@ sub _nomatch_parts
 {
 	my $self = shift;
 	my $pos_start = shift;
-	# data at $_[0]
+	my $dataref = shift;
 	
-	return () unless length $_[0];
+	return undef unless length $$dataref;
 
-	my $pos_stop = $pos_start + length $_[0];
+	my $pos_stop = $pos_start + length $$dataref;
 	my $fh = $self->{handle};
 	my @nomatch_parts;
 
@@ -86,7 +86,7 @@ sub _nomatch_parts
 		my $cml_len = $cmp_stop - $cmp_start;
 
 		# Extract intersection data from new data.
-		my $data_new = substr $_[0], ($cmp_start - $pos_start), $cmp_len;
+		my $data_new = substr $$dataref, ($cmp_start - $pos_start), $cmp_len;
 
 		# Extract intersection data from file.
 		my $data_file;
@@ -99,44 +99,132 @@ sub _nomatch_parts
 		push @nomatch_part, $part;
 	}
 
-	return @nomatch_parts;
+	return \@nomatch_parts;
 }
 
-sub pushdata
+=head2 sub _nomatch_dbchunks
+
+return all parts that have data at that position, but it does not match.
+
+In ideal situation should always return empty list;
+
+=cut
+sub _nomatch_dbchunks
+{
+	my $self = shift;
+	my $pos_start = shift;
+	my $dataref = shift;
+	
+	return undef unless length $$dataref;
+
+	my $pos_stop = $pos_start + length $$dataref;
+	my %nomatch_parts;
+
+	my $sth = RSGet::SQL::prepare(
+		"SELECT start, stop, file_part_id, file_id, data " .
+		"FROM file_part_chunk, file_part " .
+		"WHERE file_part_chunk.file_part_id = file_part.id AND file_part.file_id = ? " .
+		"AND file_part_chunk.start < ? AND file_part_chunk.stop > ?"
+	);
+	$sth->execute( $self->{id}, $pos_stop, $pos_start );
+
+	# If there is some data at that position already make sure it matches.
+	foreach my $chunk ( $sth->fetchrow_hashref() ) {
+
+		# Check whether this part and new data intersects.
+		# There is '=' in comparisions because without it intersection
+		# length could be 0. It would detect itself.
+		next if $chunk->{start} >= $pos_stop;
+		next if $chunk->{stop} <= $pos_start;
+
+		# Boundries of the intersection.
+		my $cmp_start = max $pos_start, $chunk->{start};
+		my $cmp_stop = min $pos_stop, $chunk->{stop};
+		my $cml_len = $cmp_stop - $cmp_start;
+
+		# Extract intersection data from new data.
+		my $data_new = substr $$dataref,
+			($cmp_start - $pos_start), $cmp_len;
+
+		# Extract chunk of data chunk
+		my $data_chunk = substr $chunk->{data},
+			($chunk->{start} - $pos_start), $cmp_len;
+
+		# If data matches then it's all ok.
+		next if $data_new eq $data_chunk;
+
+		$nomatch_part{ $chunk->{file_part_id} } = 1;
+	}
+	$sth->finish();
+
+	return keys %nomatch_parts;
+}
+
+
+sub push
 {
 	my $self = shift;
 	my $part = shift;
+	my $dataref = shift;
 	my $pos_start = $part->{start};
-	#my $data = shift;
 
-	if ( my @nomatch_parts = $self->_nomatch_parts( $pos_start, $_[0] ) ) {
-		my $extract_old = 1;
-		$extract_old = 0 if scalar @nomatch_parts > 1;
+	my $fh = $self->{handle};
 
-		if ( $extract_old ) {
-			my @active = grep { $_->{active} } @nomatch_parts;
-			$extract_old = 0 if @active;
-		}
+	# dump to database if we can't write to file
+	if ( not $fh or $self->{shunt} ) {
+		return $self->dbdump( $part, $dataref );
+	}
 
-		# XXX: extraction can take a lot of time, must think up some way
-		# to do it asynchronously
-		if ( $extract_old ) {
-			# extract old parts (saving to new file)
-			# later will continue saving in this file
-			#XXX
-		} else {
-			# extract this part to new file and continue saving there
-			#XXX
-			$self = newfile();
-		}
+	if ( my $nomatch_parts = $self->_nomatch_parts( $pos_start, $dataref ) ) {
+		# there was error, start dumping everything to database
+		$self->{shunt} = 1;
+
+		my $stop = $self->dbdump( $part, $dataref );
+
+		# start fixer process
+		$self->fixer( 
+			failed => $part,
+			nomatch => $nomatch_parts,
+		);
+
+		return $stop;
 	}
 
 	# now that we can, write new data to file
-	my $fh = $self->{handle};
 	seek $fh, $pos_start, SEEK_SET;
-	print $fh $_[0];
+	print $fh $$dataref;
 
-	return $part->{start} = $pos_start + length $_[0];
+	return $part->{start} = $pos_start + length $$dataref;
+}
+
+sub dbdump
+{
+	my $self = shift;
+	my $part = shift;
+	my $dataref = shift;
+	my $pos_start = $part->{start};
+	my $pos_stop = $part->{start} = $pos_start + length $$dataref;
+
+	my $sth = RSGet::SQL::prepare(
+		"INSERT INTO ${RSGet::SQL::prefix}file_part_chunk" .
+		"(file_part_id, start, stop, data) " .
+		"VALUES(?, ?, ?, ?)"
+	);
+	$sth->execute( $part->{id}, $pos_start, $pos_stop, $$dataref );
+	$sth->finish();
+
+	return $pos_stop;
+}
+
+sub fixer
+{
+	my $self = shift;
+	my %info = @_;
+
+	# XXX: unimplemented
+	#
+	# 1. prevent this process from doing anything to the file
+	# 2. start fixer process which will do what should be done
 }
 
 # set name and size
