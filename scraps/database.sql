@@ -203,10 +203,14 @@ CREATE TABLE IF NOT EXISTS %{sql_prefix}file_part (
 
 	-- start and stop positions of data part within file
 	start		INTEGER NOT NULL,
-	stop		INTEGER,
+	stop		INTEGER NOT NULL,
 
 	-- creation time
 	time_start	INTEGER NOT NULL,
+
+	-- data added for the last time (this will allow calculating
+	-- download speed)
+	time_data	INTEGER NOT NULL,
 
 	-- time (epoch) of last change in this file_part
 	time_update	INTEGER NOT NULL,
