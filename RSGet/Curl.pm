@@ -9,6 +9,7 @@ use strict;
 use warnings;
 use RSGet::Config;
 use RSGet::MortalObject;
+use RSGet::Mux;
 use WWW::Curl::Easy 4.00;
 use WWW::Curl::Multi;
 use URI::Escape;
@@ -147,6 +148,9 @@ sub new
 
 	$curl_multi->add_handle( $curl );
 
+	# make sure we're on exec list
+	RSGet::Mux::add_short( curl => \&_perform );
+
 	return $id;
 }
 # }}}
@@ -264,10 +268,13 @@ sub maybe_abort # {{{
 }
 # }}}
 
-sub perform # {{{
+sub _perform # {{{
 {
 	my @running = $active_curl->ids();
-	return 0 unless @running;
+	unless ( @running ) {
+		RSGet::Mux::remove_short( "curl" );
+		return;
+	}
 	my $act = $curl_multi->perform();
 	return $act if $act == scalar @running;
 
