@@ -54,7 +54,7 @@ sub _run_short
 			&$func();
 		};
 		if ( $@ ) {
-			warn "Short interval: Function $fname died\n";
+			warn "RSGet::Mux::_run_short: Function $fname died\n";
 		}
 	}
 }
@@ -76,7 +76,7 @@ sub _run_long
 		&$func();
 	};
 	if ( $@ ) {
-		warn "Long interval: Function $fname died\n";
+		warn "RSGet::Mux::_run_long: Function $fname died\n";
 		return 0;
 	}
 
@@ -94,6 +94,10 @@ sub main_loop
 	my $count = 10;
 	while (1) {
 		$start_short = time;
+		if ( not %interval_short and not %interval_long ) {
+			warn "RSGet::Mux::main_loop: nothing to call, returning\n";
+			return;
+		}
 		if ( ++$count > 10 and not @run_long ) {
 			$count = 0;
 			@run_long = sort keys %interval_long;
