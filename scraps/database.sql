@@ -297,3 +297,30 @@ CREATE TABLE IF NOT EXISTS %{sql_prefix}config (
 	-- variable value
 	value		TEXT NOT NULL
 );
+
+
+-- page dumping ground, used to save pages for subsequent error reports
+-- XXX: how about temporary table ?
+CREATE TABLE IF NOT EXISTS %{sql_prefix}page_dump (
+	-- originating uri
+	uri_id		INTEGER NOT NULL,
+
+	-- for grouping all page dumps from same download thread
+	-- (one uri may have multiple threads)
+	download_thread	INTEGER NOT NULL,
+
+	-- in that thread, what number this page has
+	page_num	INTEGER NOT NULL,
+
+	-- creation time
+	time_start	INTEGER NOT NULL,
+
+	-- mime type
+	mime		TEXT NOT NULL,
+
+	-- page body, may be zero-length, but not null
+	body		TEXT NOT NULL,
+
+
+	FOREIGN KEY(uri_id) REFERENCES %{sql_prefix}uri(id)
+);
