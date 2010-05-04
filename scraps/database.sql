@@ -13,6 +13,8 @@
 	-- 3 - disabled, inmediate stop
 	-- 4 - error
 	-- 5 - file needs fix
+	-- 6 - temporary (not added to real list yet)
+	-- ? - running ?
 
 -- user information
 CREATE TABLE IF NOT EXISTS %{sql_prefix}user (
