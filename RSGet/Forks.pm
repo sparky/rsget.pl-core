@@ -150,16 +150,19 @@ sub _dead_kid
 	my $func;
 	if ( exists $fork->{_} ) {
 		_read( $fork );
+
 		if ( $func = $fork->{readline} ) {
-			while ( $fork->{_} =~ s/^(.*?)\n//s ) {
-				_call( readline => $func, $pid, $1 );
-			}
 			if ( length $fork->{_} ) {
-				_call( readline => $func, $pid, $fork->{_} );
+				while ( $fork->{_} =~ s/^(.*?)\n//s ) {
+					_call( readline => $func, $pid, $1 );
+				}
+				_call( readline => $func, $pid, $fork->{_} )
+					if length $fork->{_};
 			}
 			undef $fork->{_};
-		} elsif ( $func = $func->{read} ) {
-			_call( read => $func, $pid, $fork->{_} );
+		} elsif ( $func = $fork->{read} ) {
+			_call( read => $func, $pid, $fork->{_} )
+				if length $fork->{_};
 			undef $fork->{_};
 		}
 	}
@@ -193,15 +196,17 @@ sub _process_kid
 	my $fho = $fork->{to_child};
 	if ( exists $fork->{_} ) {
 		_read( $fork );
-		if ( $func = $fork->{readline} ) {
-			while ( $fork->{_} =~ s/^(.*?)\n//s ) {
-				my $ret = _call( readline => $func, $pid, $1 );
+		if ( length $fork->{_} ) {
+			if ( $func = $fork->{readline} ) {
+				while ( $fork->{_} =~ s/^(.*?)\n//s ) {
+					my $ret = _call( readline => $func, $pid, $1 );
+					print $fho $ret if $fho and defined $ret;
+				}
+			} elsif ( $func = $fork->{read} ) {
+				my $ret = _call( read => $func, $pid, $fork->{_} );
+				$fork->{_} = "";
 				print $fho $ret if $fho and defined $ret;
 			}
-		} elsif ( $func = $func->{read} ) {
-			my $ret = _call( read => $func, $pid, $fork->{_} );
-			$fork->{_} = "";
-			print $fho $ret if $fho and defined $ret;
 		}
 	}
 
