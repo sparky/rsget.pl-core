@@ -65,6 +65,8 @@ sub add
 	$forks{ $pid } = \%opts;
 
 	_update_mux();
+
+	return;
 }
 
 
@@ -75,8 +77,6 @@ Wait for pid, but don't execute anything just yet.
 =cut
 sub _sig_chld
 {
-	warn "RSGet::Forks::_sig_chld @_\n";
-
 	# get pids and $? from the dead kids, but don't do finish kids just yet,
 	# because we don't want to call at_exit code while doing something else
 	while ( 1 ) {
@@ -130,7 +130,7 @@ sub _call
 		return &$func( @_ );
 	};
 	if ( $@ ) {
-		warn "RSGet::Forks::_call: Function $fname died\n";
+		warn "RSGet::Forks::_call: Function $fname died: $@\n";
 	}
 	return;
 }
@@ -148,10 +148,15 @@ sub _dead_kid
 	}
 
 	my $func;
-	if ( $fork->{_} ) {
+	if ( exists $fork->{_} ) {
 		_read( $fork );
 		if ( $func = $fork->{readline} ) {
-			_call( readline => $func, $pid, $fork->{_} );
+			while ( $fork->{_} =~ s/^(.*?)\n//s ) {
+				_call( readline => $func, $pid, $1 );
+			}
+			if ( length $fork->{_} ) {
+				_call( readline => $func, $pid, $fork->{_} );
+			}
 			undef $fork->{_};
 		} elsif ( $func = $func->{read} ) {
 			_call( read => $func, $pid, $fork->{_} );
@@ -186,11 +191,11 @@ sub _process_kid
 
 	my $func;
 	my $fho = $fork->{to_child};
-	if ( $fork->{_} ) {
+	if ( exists $fork->{_} ) {
 		_read( $fork );
 		if ( $func = $fork->{readline} ) {
 			while ( $fork->{_} =~ s/^(.*?)\n//s ) {
-				my $ret = _call( readline => $func, $pid, $_ );
+				my $ret = _call( readline => $func, $pid, $1 );
 				print $fho $ret if $fho and defined $ret;
 			}
 		} elsif ( $func = $func->{read} ) {
@@ -203,6 +208,9 @@ sub _process_kid
 	if ( $func = $fork->{check} ) {
 		my $ret = _call( check => $func, $pid );
 		print $fho $ret if $fho and defined $ret;
+	}
+	if ( $fho ) {
+		$fho->flush();
 	}
 }
 
