@@ -1,14 +1,20 @@
-#!/usr/bin/perl
+package RSGet::Term::Image;
+# This file is an integral part of rsget.pl downloader.
 #
 # 2010 (c) Przemysław Iskra <sparky@pld-linux.org>
-#
-# In future this code may be used to display captcha images on console.
-#
-# Requires: 256 color terminal with UTF-8 char coding.
-#
+#		This program is free software,
+# you may distribute it under GPL v2 or newer.
+
 use strict;
 use warnings;
 use GD;
+
+=head1 RSGet::Term::Image
+
+This code may be used to display captcha images on console.
+
+Requires: 256 color terminal with UTF-8 char coding.
+=cut
 
 # TODO 1: convert encoding to terminal output enc
 # TODO 2: consider replacing with some ASCII char if pixel not available
@@ -53,6 +59,22 @@ sub _make_palette
 	die "Last index must be 255\n" unless $#palette == 255;
 }
 
+=head2 RSGet::Term::Image::img2lines( DATA, WIDTH, HEIGHT, PRESERVE_ASPECT )
+
+Converts image data to 256-color ANSI lines.
+
+DATA may be a filehandle, file data or a file name (anything GD::Image->new
+can handle)
+
+WIDTH and HEIGHT are numeric, to limit maximum output size. Image will be
+scaled down if needed, but won't be scaled up.
+
+PRESERVE_ASPECT is a bool, tells to keep image aspect when scaling.
+
+  my ( $w, $h ) = Term::Size::chars();
+  my $lines = img2lines( $file, $w, $h, 0 );
+  print join "\n", @$lines;
+=cut
 sub img2lines
 {
 	my $file = shift;
@@ -123,22 +145,6 @@ sub img2lines
 	return \@lines;
 }
 
+1;
 
-# TEST
-
-use IO::Handle;
-use Term::Size;
-
-foreach my $file ( @ARGV ) {
-	my ( $w, $h ) = Term::Size::chars();
-	$h--;
-	my $lines = img2lines( $file, $w, $h, 0 );
-	next unless $lines;
-
-	print "\033[0;0f",
-		( join "\033[0K\n", @$lines ),
-		"\033[0K\n\033[0J$file";
-	STDOUT->flush();
-
-	sleep 1;
-}
+# vim: ts=4:sw=4:fdm=marker
