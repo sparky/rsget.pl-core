@@ -54,7 +54,7 @@ sub _run_short
 			&$func();
 		};
 		if ( $@ ) {
-			warn "RSGet::Mux::_run_short: Function $fname died\n";
+			warn "RSGet::Mux::_run_short: Function $fname died: $@\n";
 		}
 	}
 }
@@ -76,7 +76,7 @@ sub _run_long
 		&$func();
 	};
 	if ( $@ ) {
-		warn "RSGet::Mux::_run_long: Function $fname died\n";
+		warn "RSGet::Mux::_run_long: Function $fname died: $@\n";
 		return 0;
 	}
 
