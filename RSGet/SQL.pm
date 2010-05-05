@@ -64,6 +64,8 @@ sub END
 {
 	if ( $dbh ) {
 		$dbh->commit();
+		$dbh->{AutoCommit} = 1;
+		$dbh->do( "VACUUM" );
 		$dbh->disconnect();
 	}
 }
