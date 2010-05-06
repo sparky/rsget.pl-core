@@ -91,7 +91,12 @@ sub on_line
 my $i = 0;
 sub makenum
 {
+	my $pid = shift;
 	++$i;
+	if ( $i > 10 ) {
+		kill 1, $pid;
+		return;
+	}
 	return "makenum: $i\n";
 }
 
