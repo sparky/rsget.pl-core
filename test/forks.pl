@@ -53,11 +53,28 @@ sub start4
 	);
 }
 
+sub start5
+{
+	use IPC::Open2;
+
+	my ($out, $in);
+	my $pid = open2( $in, $out, 'cat');
+
+	RSGet::Forks::add( $pid,
+		from_child => $in,
+		to_child => $out,
+		readline => \&on_line,
+		check => \&makenum,
+		at_exit => \&bye,
+	);
+}
+
 my @tests = (
 	\&start1,
 	\&start2,
 	\&start3,
 	\&start4,
+	\&start5,
 );
 
 
@@ -67,6 +84,15 @@ sub on_line
 	my $line = shift;
 
 	print "$pid: $line\n";
+
+	return;
+}
+
+my $i = 0;
+sub makenum
+{
+	++$i;
+	return "makenum: $i\n";
 }
 
 sub bye
