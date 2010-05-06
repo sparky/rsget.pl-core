@@ -10,6 +10,7 @@ use warnings;
 use RSGet::Mux;
 use Fcntl;
 use POSIX ":sys_wait_h";
+use IO::Handle;
 
 =head1 RSGet::Forks
 
@@ -126,13 +127,16 @@ sub _call
 {
 	my $fname = shift;
 	my $func = shift;
+	my $ret;
 	eval {
-		return &$func( @_ );
+		$ret = &$func( @_ );
 	};
 	if ( $@ ) {
 		warn "RSGet::Forks::_call: Function $fname died: $@\n";
+		return;
+	} else {
+		return $ret;
 	}
-	return;
 }
 
 # finish kid
