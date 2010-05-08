@@ -8,25 +8,39 @@ package RSGet::Comm::Exchange;
 use strict;
 use warnings;
 use Carp;
+use IO::Handle;
 use IO::Socket;
 use Storable qw(nfreeze thaw);
 use Compress::Zlib qw(compress uncompress);
+
+=head1 RSGet::Comm::Exchange
+
+Few functions to exchange perl data types between multiple processes.
+
+Unfinished. I don't even like the name.
+
+=cut
 
 # {{{ sub new -- create new socket handler
 sub new
 {
 	my $class = shift;
-	my $socket = shift;
+	my $handle_in = shift or die "No handle\n";
+	my $handle_out = shift;
+	$handle_out = $handle_in unless $handle_out;
+	$handle_in->blocking( 0 );
+	$handle_in->binmode();
+	$handle_out->binmode();
+
 	my $self = {
+		max_size => 64 << 10,
+		@_,
 		read_buf => '',
-		@_
+		handle_in => $handle_in,
+		handle_out => $handle_out,
+		use_recv => $handle_in->can( "recv" ),
+		use_send => $handle_out->can( "send" ),
 	};
-
-	# TODO: make sure $socket is of type IO::Socket.*
-	$socket->blocking( 0 );
-
-	$self->{socket} = $socket;
-	$self->{max_size} ||= 64 << 10;
 
 	return bless $self, $class;
 }
@@ -39,12 +53,18 @@ sub _socket_read
 {
 	my $self = shift;
 	my $size = shift;
-	my $fh = $self->{socket};
+	my $fh = $self->{handle_in};
 
 	if ( $size > length $self->{read_buf} ) {
 		my $read_size = $size - length $self->{read_buf};
 		my $msg = '';
-		$fh->recv( $msg, $read_size );
+		if ( $self->{use_recv} ) {
+			warn "Receiving $read_size bytes of data";
+			$fh->recv( $msg, $read_size );
+		} else {
+			warn "Reading $read_size bytes of data";
+			$fh->read( $msg, $read_size );
+		}
 
 		$self->{read_buf} .= $msg;
 
@@ -92,12 +112,19 @@ sub socket_pull
 sub socket_push
 {
 	my $self = shift;
-	# my $data = shift; -- don't copy, for speed
 
-	my $fh = $self->{socket};
+	my $fh = $self->{handle_out};
 
 	eval {
-		$fh->send( pack ("N", length $_[0]) . $_[0] );
+		my $len = pack "N", length $_[0];
+		if ( $self->{use_send} ) {
+			# must use send for sockets, because using print could kill us
+			$fh->send( $len );
+			$fh->send( $_[0] );
+		} else {
+			$fh->print( $len );
+			$fh->print( $_[0] );
+		}
 		$fh->flush();
 	};
 	if ( $@ ) {
@@ -110,7 +137,10 @@ sub socket_push
 sub DESTROY # {{{
 {
 	my $self = shift;
-	$self->{socket}->close();
+	my $in = $self->{handle_in};
+	my $out = $self->{handle_out};
+	$in->close();
+	$out->close() if $in != $out;
 }
 # }}}
 
