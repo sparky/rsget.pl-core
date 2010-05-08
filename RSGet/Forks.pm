@@ -196,6 +196,12 @@ sub _process_kid
 	my $pid = shift;
 	my $fork = shift;
 
+	# find out whether that pid is still alive
+	unless ( kill 0, $pid ) {
+		warn "RSGet::Forks::_process_kid $pid is dead, but we didn't get the code\n";
+		return _dead_kid( $pid, undef );
+	}
+
 	my $func;
 	my $fho = $fork->{to_child};
 	if ( exists $fork->{_} ) {
