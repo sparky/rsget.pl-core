@@ -8,6 +8,7 @@ package RSGet::MortalObject;
 use strict;
 use warnings;
 use RSGet::Common;
+use RSGet::Mux;
 
 # This is object holder, which will destroy the object if it doesn't
 # receive heartbeat for some amount of time. It is used to prevent leaking
@@ -74,7 +75,17 @@ sub add
 	$holder->{kill_at} = $time + $ka
 		if defined $ka;
 
+	if ( $opts{warn_after} ) {
+		if ( $obj->can( "_warn_inactive" ) ) {
+			$holder->{warn_after} = $opts{warn_after};
+		} else {
+			warn "Object $obj does not accept inactivity warnings\n";
+		}
+	}
+
 	$group->{ $id } = $holder;
+
+	RSGet::Mux::add_long( mo => \&_update );
 
 	return $id;
 }
@@ -165,22 +176,30 @@ sub hash
 
 # update objects
 # should be called once every second
-sub update
+sub _update
 {
 	my $time = time;
 
+	my $alive = 0;
 	foreach my $group ( values %group ) {
 		foreach my $id ( keys %$group ) {
 			my $h = $group->{ $id };
-			if ( $h->{last} + $h->{die_after} < $time ) {
+			my $inactive = $time - $h->{last};
+			if ( $inactive > $h->{die_after} ) {
 				p "Mortal $id died\n" if verbose( 4 );
 				delete $group->{ $id };
-			} elsif ( $h->{kill_after} and $h->{kill_after} < $time ) {
+			} elsif ( $h->{kill_at} and $h->{kill_at} < $time ) {
 				p "Mortal $id killed\n" if verbose( 4 );
 				delete $group->{ $id };
+			} elsif ( $h->{warn_after} and $inactive > $h->{warn_after} ) {
+				$h->_warn_inactive( $inactive );
+			} else {
+				$alive = 1;
 			}
 		}
 	}
+
+	RSGet::Mux::remove_long( "mo" ) unless $alive;
 	#RSGet::Line::status( 'mortals' => scalar keys %holders );
 }
 
