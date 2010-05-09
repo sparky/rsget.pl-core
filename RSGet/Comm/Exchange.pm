@@ -29,8 +29,10 @@ sub new
 	my $handle_out = shift;
 	$handle_out = $handle_in unless $handle_out;
 	$handle_in->blocking( 0 );
-	$handle_in->binmode();
-	$handle_out->binmode();
+	if ( $handle_in->can( "binmode" ) ) {
+		$handle_in->binmode();
+		$handle_out->binmode();
+	}
 
 	my $self = {
 		max_size => 64 << 10,
