@@ -12,9 +12,16 @@ use Fcntl;
 use POSIX ":sys_wait_h";
 use IO::Handle;
 
+
 =head1 RSGet::Forks
 
 This code takes care of our forks.
+
+=head2 TODO
+
+ 1. use IO::Select ?
+ 2. child stderr handling
+ 3. fork for us !
 
 =cut
 
