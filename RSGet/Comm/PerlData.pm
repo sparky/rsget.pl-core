@@ -95,6 +95,34 @@ sub data2obj # {{{
 }
 # }}}
 
+# deserialize data
+sub _data2obj # {{{
+{
+	my $self = shift;
+	my $data = shift;
+	
+	if ( "c" eq substr $data, 0, 1 ) {
+		my $encrypted_data = substr $data, 1;
+		my $cipher = $self->{cipher}
+			or die "Data encrypted but cipher not specified.";
+		my $block_size = $cipher->blocksize;
+		$data = '';
+		for ( my $i = 0; $i < length $encrypted_data; $i += $block_size ) {
+			$data .= $cipher->decrypt( substr $encrypted_data, $i, $block_size );
+		}
+	} else {
+		if ( $self->{cipher} ) {
+			die "Received not-encoded data\n";
+		}
+	}
+
+	if ( "x" eq substr $data, 0, 1 ) {
+		$data = uncompress( $data );
+	}
+
+	return thaw( $data );
+}
+# }}}
 
 =head2 my $data = $s->obj2data( OBJ )
 
@@ -126,35 +154,6 @@ sub obj2data # {{{
 	my $len = pack "N", length $data;
 
 	return $len . $data;
-}
-# }}}
-
-# deserialize data
-sub _data2obj # {{{
-{
-	my $self = shift;
-	my $data = shift;
-	
-	if ( "c" eq substr $data, 0, 1 ) {
-		my $encrypted_data = substr $data, 1;
-		my $cipher = $self->{cipher}
-			or die "Data encrypted but cipher not specified.";
-		my $block_size = $cipher->blocksize;
-		$data = '';
-		for ( my $i = 0; $i < length $encrypted_data; $i += $block_size ) {
-			$data .= $cipher->decrypt( substr $encrypted_data, $i, $block_size );
-		}
-	} else {
-		if ( $self->{cipher} ) {
-			die "Received not-encoded data\n";
-		}
-	}
-
-	if ( "x" eq substr $data, 0, 1 ) {
-		$data = uncompress( $data );
-	}
-
-	return thaw( $data );
 }
 # }}}
 
