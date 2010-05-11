@@ -3,32 +3,48 @@ use strict;
 use warnings;
 use RSGet::Mux;
 use RSGet::Forks;
-use RSGet::Comm::Exchange;
+use RSGet::Comm::PerlData;
 use Data::Dumper;
+use IPC::Open3;
+use IO::Handle;
+use Fcntl;
 
-pipe my $parent_in, my $child_out;
-pipe my $child_in, my $parent_out;
-
-my $pid = fork;
-
+my $pid = open3( my $ch_in, my $ch_out, my $ch_err, "-" );
 
 unless ( $pid ) {
 	# kid
-	close $parent_in;
-	close $parent_out;
+	my $flags = 0;
+	fcntl \*STDIN, F_GETFL, $flags
+			or die "Couldn't get flags for fh: $!";
+	$flags |= O_NONBLOCK;
+	fcntl \*STDIN, F_SETFL, $flags
+			or die "Couldn't set flags for fh: $!";
 
-	my $io = new RSGet::Comm::Exchange $child_in, $child_out;
+	my $io = new RSGet::Comm::PerlData;
 	
 	#$io->socket_push( "ble" );
 	sleep 1;
 
-	$io->socket_push( $io->obj2data( { a => 1, b => [ 0, 2 ] } ) );
+	print $io->obj2data( { a => 1, b => [ 0, 2 ] } );
+	STDOUT->flush();
 	sleep 1;
 
-	my $obj = $io->socket_pull();
-	return unless defined $obj;
-	my $o = $io->data2obj( $obj );
-	print "fork pulled:\n", Dumper( $o );
+	print $io->obj2data( [1, 3] );
+	STDOUT->flush();
+	sleep 1;
+
+	$_ = '';
+	read STDIN, $_, 64 << 10;
+
+	my $o = $io->data2obj( $_ );
+	push @$o, "!";
+	print $io->obj2data( $o );
+	STDOUT->flush();
+
+	#my $obj = $io->socket_pull();
+	#return unless defined $obj;
+	#my $o = $io->data2obj( $obj );
+	#print "fork pulled:\n", Dumper( $o );
 
 	sleep 1;
 
@@ -37,26 +53,28 @@ unless ( $pid ) {
 
 # parent
 RSGet::Forks::add( $pid,
+	from_child => $ch_out,
+	to_child => $ch_in,
+	read => \&child_data,
 	at_exit => sub {
-		RSGet::Mux::remove_short( "io" );
+		print "Child returned: @_\n";
 	}
 );
-close $child_in;
-close $child_out;
 
-my $io = new RSGet::Comm::Exchange $parent_in, $parent_out;
+my $io = new RSGet::Comm::PerlData;
 
-sub io_check
+sub child_data
 {
-	my $obj = $io->socket_pull();
-	return unless defined $obj;
-	my $o = $io->data2obj( $obj );
+	my $pid = shift;
+	my $data = shift;
+	my $o = $io->data2obj( $data );
+	unless ( $o ) {
+		warn "No object this time\n";
+	}
 	print "pulled:\n", Dumper( $o );
 
-	$io->socket_push( $io->obj2data( [ "hello", "o" ] ) );
+	return $io->obj2data( [ "hell", "o" ] );
 }
-
-RSGet::Mux::add_short( io => \&io_check );
 
 RSGet::Mux::main_loop();
 
