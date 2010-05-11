@@ -24,12 +24,13 @@ Functions in long interval are called every 2 seconds, more under heavy load.
 =cut
 
 
-# function list, called every 200ms
+# function list, called every 100ms
 my %interval_short;
-my $time_short = 0.2;
+my $time_short = 0.1;
 
-# function list, called once every 10 times short list is called
+# function list, called once every 20 times short list is called
 my %interval_long;
+use constant long_count => 20;
 
 =head2 $RSGet::Mux::start_short, $RSGet::Mux::start_long
 
@@ -91,14 +92,14 @@ Main loop function, must be called after initialization.
 =cut
 sub main_loop
 {
-	my $count = 10;
+	my $count = long_count;
 	while (1) {
 		$start_short = time;
 		if ( not %interval_short and not %interval_long ) {
 			warn "RSGet::Mux::main_loop: nothing to call, returning\n";
 			return;
 		}
-		if ( ++$count > 10 and not @run_long ) {
+		if ( ++$count > long_count and not @run_long ) {
 			$count = 0;
 			@run_long = sort keys %interval_long;
 			$start_long = $start_short;
