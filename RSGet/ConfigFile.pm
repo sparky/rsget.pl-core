@@ -42,7 +42,7 @@ sub set
 	$self->{cache}->{$key} = $value;
 
 	if ( ++$self->{updates} > 100 ) {
-		$self->_rewrite();
+		_rewrite( $self );
 	} else {
 		open my $f_out, ">>", $self->{file};
 		print $f_out "$key = $value\n";
@@ -80,7 +80,7 @@ sub _rewrite
 
 sub DESTROY
 {
-	(shift)->_rewrite();
+	goto &_rewrite;
 }
 
 sub getall
