@@ -99,28 +99,29 @@ sub data2obj # {{{
 sub _data2obj # {{{
 {
 	my $self = shift;
-	my $data = shift;
+	my $dataref = shift;
 	
-	if ( "c" eq substr $data, 0, 1 ) {
-		my $encrypted_data = substr $data, 1;
+	if ( "c" eq substr $dataref, 0, 1 ) {
 		my $cipher = $self->{cipher}
 			or die "Data encrypted but cipher not specified.";
 		my $block_size = $cipher->blocksize;
-		$data = '';
-		for ( my $i = 0; $i < length $encrypted_data; $i += $block_size ) {
-			$data .= $cipher->decrypt( substr $encrypted_data, $i, $block_size );
+		my $data = '';
+		for ( my $i = 1; $i < length $$dataref; $i += $block_size ) {
+			$data .= $cipher->decrypt( substr $$dataref, $i, $block_size );
 		}
+		$dataref = \$data;
 	} else {
 		if ( $self->{cipher} ) {
 			die "Received not-encoded data\n";
 		}
 	}
 
-	if ( "x" eq substr $data, 0, 1 ) {
-		$data = uncompress( $data );
+	if ( "x" eq substr $$dataref, 0, 1 ) {
+		my $data = uncompress( $dataref );
+		$dataref = \$data;
 	}
 
-	return thaw( $data );
+	return thaw( $$dataref );
 }
 # }}}
 
