@@ -11,10 +11,9 @@ my $port = 7643;
 my $sock = "socket";
 
 my $socket;
-if ( 0 ) {
+if ( 1 ) {
 	$socket = new IO::Socket::UNIX
-		Type => SOCK_STREAM,
-		Remote => $sock
+		Peer => $sock
 	;
 } else {
 	$socket = new IO::Socket::INET
