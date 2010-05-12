@@ -1,4 +1,4 @@
-package RSGet::Comm::IPC;
+package RSGet::Comm::RPC;
 # This file is an integral part of rsget.pl downloader.
 #
 # 2010 (c) Przemysław Iskra <sparky@pld-linux.org>
@@ -11,7 +11,7 @@ use warnings;
 #use RSGet::Comm::Client;
 our $AUTOLOAD;
 
-=head1 RSGet::Comm::IPC
+=head1 RSGet::Comm::RPC
 
 Easyly call functions from server.
 

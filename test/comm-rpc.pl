@@ -2,10 +2,10 @@
 use strict;
 use warnings;
 use RSGet::Mux;
-use RSGet::Comm::IPC;
+use RSGet::Comm::RPC;
 use Data::Dumper;
 
-my $server = new RSGet::Comm::IPC;
+my $server = new RSGet::Comm::RPC;
 
 $server->hello( "a" );
 
