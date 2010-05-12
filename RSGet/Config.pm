@@ -62,7 +62,7 @@ use constant {
 use constant _regdata => {
 	desc	=> "Setting description.",
 	default	=> "Default value.",
-	allowed	=> "RegExp that defines allowed values.",
+	allowed	=> "CODE that defines allowed values.",
 	dynamic	=> "May be changed after start.",
 	type	=> "Type of the setting.",
 	user	=> "May be modified by user.",
@@ -268,13 +268,21 @@ sub _set
 		die "RSGet::Config: Configuration option $key may not be changed for user.\n";
 	}
 
+	if ( $reg and $reg->{allowed} ) {
+		my $func = $reg->{allowed};
+		$_ = $value;
+		my $ret = &$func;
+		die "RSGet::Config::_set: Value '$value' not allowed for '$key'.\n"
+			unless $ret;
+	}
+
 	$options{ $key } = [ $user, $key, $value, $priority, $origin ];
 
 	return 1;
 }
 # }}}
 
-# {{{ sub set: change variable at runtime, new value will be saved in SQL
+# {{{ sub set: change variable at runtime, new value will be saved in dynaconfig
 sub set
 {
 	my ( $user, $key, $value ) = @_;

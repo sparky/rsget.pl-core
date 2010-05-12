@@ -17,7 +17,7 @@ RSGet::Config::register_settings(
 	plugin_uri => {
 		desc => "http path to rsget.pl plugins updater.",
 		default => 'http://rsget.pl/download/plugins.php',
-		allowed => qr{https?://.{4,}/.+},
+		allowed => sub { m{^https?://.{4,}/\S+$} },
 	},
 );
 
