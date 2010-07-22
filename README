@@ -10,7 +10,8 @@ Remarks:
   -- I'm considering rewriting RPC::PlServer not to use Net::Daemon, but
     IO::Socket directly (either UNIX or INET). RPC::PlClient may need updating.
 - no integrated input/output interfaces
-- store data in SQL database (will support at least SQlite3, PgSQL and MySQL)
+- store data in barkeley db, or gnu db
+  -- SQL was not a good idea
 - multi-user support
 
 
@@ -30,6 +31,8 @@ Clients planned in future:
     communication
 - port cgi to mod_perl (for speed)
 - kde/gnome tray icon (inform about completed downloads, ask captcha)
+  -- current gersion alreadt has tray icon for captcha written in gtk,
+    most of it could be reused
 
 
 Other ideas:
@@ -42,10 +45,13 @@ Other ideas:
 - (direct download) If URI is not of any supported service, send http head
   request. In case of mime type other than text/* or image/* allow
   downloading the file.
-- (direct ftp download) Any ftp:// URI can be accessed directly only,
-  does cURL support head-like request ?
+  -- current version already supports it
+- (direct ftp download) Any ftp:// URI can be accessed directly only
+  -- current version already supports it
 - filename_fix -- function similar to unify, but fixes file name returned
   by Content-Disposition (e.g. remove .html_ from RS names)
+- rewrite Plugin Processor to use Filter::Util::Call
+- full XDG support
 
 
 * $ rsget.pl --help
@@ -91,7 +97,7 @@ See 'rsget.pl --help [command]' or 'rsget.pl --help-all' for more information.
 - start core (do not fork), and download some links, (exit after):
   $ rsget.pl core -- add <http://..>
 
-- start curses client and connect do daemon:
+- start curses client and connect to daemon:
   $ rsget.pl curses
 
 - start curses with core:
