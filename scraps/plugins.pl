@@ -247,12 +247,185 @@ which one does match, the code could look something like this:
 		expect( /bar string/ )
 	) {
 		...
+		checkpoint;
+		...
 	}
 
 =head2 Continuation
 
 Do you think this would be an invasion of someone's privacy ?
 Those statistics will be strictly voluntary and anonymous.
+
+
+
+
+=head1 COMPLETE PLUGIN
+
+=cut
+
+# unique package name corresponding to the Plugin/Dir/File
+package Plugin::Type::Name;
+
+# Require plugin interface version 0.10
+# If users rsget.pl does not provide that interface plugin won't be loaded.
+# Also load optional extensions.
+use RSGet::Plugin 0.10 qw(cookie captcha form);
+
+# Register new plugin
+plugin
+	name => "Name",
+	short => "N",
+	web => "http://name.com/",
+	tos => "http://name.com/tos";
+
+# Register uris supported by that plugin
+uri qr{name\.com/file/\d+};
+uri qr{name\.org/file/\d+};
+uri_exact qr{https?://f\d+\.name\.org};
+
+# Register uri unification method
+# $_ is the input
+# return new value or edit $_ in place
+unify
+{
+	s{#.*}{};
+	s{/+$}{};
+};
+
+# Register downloader
+start
+{
+	my $uri = shift;
+	get $uri, sub;
+
+	assert /find link="(.*?)"/;
+
+	click $1, sub named_sub;
+
+	if ( $need_captcha ) {
+		captcha result => fail;
+
+		get "/image", sub;
+
+		captcha
+			qr/[allowed]/,
+			process => \&process_captcha,
+			sub;
+
+		click "/check", post => { captcha => $_ },
+			\&named_sub;
+	} else {
+		captcha result => ok;
+	}
+
+	sleep 30, "waiting", sub;
+
+	get $link, sub;
+
+	download $file, sub;
+
+	restart $time, $message
+		if /Must wait/;
+};
+
+# Disable plugin preprocessing (no more autosubs)
+no RSGet::Plugin;
+
+# Do anything you want here
+sub process_captcha
+{
+	my $img = shift;
+
+	return $img->ocr;
+}
+
+=head1 DETAILED
+
+	package Plugin::Type::Name;
+
+package must be a unique name corresponding to the Plugin/Dir/File
+
+	use RSGet::Plugin 0.10 qw(cookie captcha form);
+
+Require plugin interface version 0.10
+If users rsget.pl does not provide that interface plugin won't be loaded.
+Each time any addition required by some plugin is made interface version
+number will be increased. Also support for older interfaces may be dropped
+from time to time.
+It also loads optional extensions.
+ - ask - plugin will be able to ask some additional questions (video size)
+ - captcha - web uses captcha
+ - cookie - web requires cookie support
+ - !cookie - web requires cookie support while checking links
+ - form - automatic form extraction
+ - https, ftp, rtmp, rtsp - non-standard protocols
+
+
+	plugin
+		name => "Name",
+		short => "N",
+		web => "http://name.com/",
+		tos => "http://name.com/tos";
+
+Register this new plugin.
+ - name (required) - full name
+ - short (required) - short name
+ - web (required) - uri to main web page
+ - tos - uri to terms of service
+ - cookie - template for cookie file name
+
+# Register uris supported by that plugin
+uri qr{name\.com/file/\d+};
+uri qr{name\.org/file/\d+};
+uri_exact qr{https?://f\d+\.name\.org};
+
+# Register uri unification method
+# $_ is the input
+# return new value or edit $_ in place
+unify
+{
+	s{#.*}{};
+	s{/+$}{};
+};
+
+# Register downloader
+start
+{
+	my $uri = shift;
+	get $uri, sub;
+
+	assert /find link="(.*?)"/;
+
+	click $1, sub named_sub;
+
+	if ( $need_captcha ) {
+		captcha result => fail;
+
+		get "/image", sub;
+
+		captcha
+			qr/[allowed]/,
+			process => \&process_captcha,
+			sub;
+
+		click "/check", post => { captcha => $_ },
+			\&named_sub;
+	} else {
+		captcha result => ok;
+	}
+
+	sleep 30, "waiting", sub;
+
+	get $link, sub;
+
+	download $file, sub;
+
+	restart $time, $message
+		if /Must wait/;
+};
+
+# Disable plugin preprocessing (no more autosubs)
+no RSGet::Plugin;
 
 =cut
 
