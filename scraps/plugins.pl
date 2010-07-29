@@ -26,35 +26,35 @@ If we were using one thread per download the following code could be a valid
 downloader:
 =cut
 
-start {
-	my $uri = shift;
-	
-	get $uri;
-
-	error "file not found: $1"
-		if m#<span class="fail_info">\s*(.*?)\s*</span>#s;
-
-	assert m#<h1>(.+?)</h1>#;
-	my $fname = de_ml $1;
-
-	assert m#<strong>($STDSIZE)</strong>#o;
-	info name => $fname, asize => $1;
-
-	click "", post => { downloadLink => "wait" };
-
-	sleep 30, "waiting for download link";
-
-	click "", post => { downloadLink => "show" };
-
-	download $uri, post => { download => "normal" };
-
-	restart $1, "free limit reached"
-		if m#You need to wait (\d+) seconds to start another download\.#;
-};
+ start {
+ 	my $uri = shift;
+ 
+ 	get $uri;
+ 
+ 	error "file not found: $1"
+ 		if m#<span class="fail_info">\s*(.*?)\s*</span>#s;
+ 
+ 	assert m#<h1>(.+?)</h1>#;
+ 	my $fname = de_ml $1;
+ 
+ 	assert m#<strong>($STDSIZE)</strong>#o;
+ 	info name => $fname, asize => $1;
+ 
+ 	click "", post => { downloadLink => "wait" };
+ 
+ 	sleep 30, "waiting for download link";
+ 
+ 	click "", post => { downloadLink => "show" };
+ 
+ 	download $uri, post => { download => "normal" };
+ 
+ 	restart $1, "free limit reached"
+ 		if m#You need to wait (\d+) seconds to start another download\.#;
+ };
 
 =head2 One thread for all
 
-In out case every get(), download(), wait() has to stop execution of this
+In our case every get(), download(), wait() has to stop execution of this
 function. This can be easily acomplished by using eval wrapper while calling
 the function and die "All OK!" after setting up all information needed in
 those functions.
@@ -64,41 +64,41 @@ performing those tasks. That's why we need a separate function for each stage.
 =cut
 
 
-start {
-	my $uri = shift;
-	
-	get $uri,
-	sub {
-
-		error "file not found: $1"
-			if m#<span class="fail_info">\s*(.*?)\s*</span>#s;
-
-		assert m#<h1>(.+?)</h1>#;
-		my $fname = de_ml $1;
-
-		assert m#<strong>($STDSIZE)</strong>#o;
-		info name => $fname, asize => $1;
-
-		click "", post => { downloadLink => "wait" },
-		sub {
-
-			sleep 30, "waiting for download link",
-			sub {
-
-				click "", post => { downloadLink => "show" },
-				sub {
-
-					download $uri, post => { download => "normal" },
-					sub {
-
-						restart $1, "free limit reached"
-							if m#You need to wait (\d+) seconds to start another download\.#;
-					};
-				};
-			};
-		};
-	};
-};
+ start {
+ 	my $uri = shift;
+ 
+ 	get $uri,
+ 	sub {
+ 
+ 		error "file not found: $1"
+ 			if m#<span class="fail_info">\s*(.*?)\s*</span>#s;
+ 
+ 		assert m#<h1>(.+?)</h1>#;
+ 		my $fname = de_ml $1;
+ 
+ 		assert m#<strong>($STDSIZE)</strong>#o;
+ 		info name => $fname, asize => $1;
+ 
+ 		click "", post => { downloadLink => "wait" },
+ 		sub {
+ 
+ 			sleep 30, "waiting for download link",
+ 			sub {
+ 
+ 				click "", post => { downloadLink => "show" },
+ 				sub {
+ 
+ 					download $uri, post => { download => "normal" },
+ 					sub {
+ 
+ 						restart $1, "free limit reached"
+ 							if m#You need to wait (\d+) seconds to start another download\.#;
+ 					};
+ 				};
+ 			};
+ 		};
+ 	};
+ };
 
 =head3 Continuation
 
@@ -113,42 +113,42 @@ However, the deep nesting eats all our horizontal space.
 Makes it very hard to count how many sub {} we have to close.
 =cut
 
-start {
-	my $uri = shift;
-	
-	get $uri,
-	sub {
-
-	error "file not found: $1"
-		if m#<span class="fail_info">\s*(.*?)\s*</span>#s;
-
-	assert m#<h1>(.+?)</h1>#;
-	my $fname = de_ml $1;
-
-	assert m#<strong>($STDSIZE)</strong>#o;
-	info name => $fname, asize => $1;
-
-	click "", post => { downloadLink => "wait" },
-	sub {
-
-	sleep 30, "waiting for download link",
-	sub {
-
-	click "", post => { downloadLink => "show" },
-	sub {
-
-	download $uri, post => { download => "normal" },
-	sub {
-
-	restart $1, "free limit reached"
-		if m#You need to wait (\d+) seconds to start another download\.#;
-
-	};
-	};
-	};
-	};
-	};
-};
+ start {
+ 	my $uri = shift;
+ 
+ 	get $uri,
+ 	sub {
+ 
+ 	error "file not found: $1"
+ 		if m#<span class="fail_info">\s*(.*?)\s*</span>#s;
+ 
+ 	assert m#<h1>(.+?)</h1>#;
+ 	my $fname = de_ml $1;
+ 
+ 	assert m#<strong>($STDSIZE)</strong>#o;
+ 	info name => $fname, asize => $1;
+ 
+ 	click "", post => { downloadLink => "wait" },
+ 	sub {
+ 
+ 	sleep 30, "waiting for download link",
+ 	sub {
+ 
+ 	click "", post => { downloadLink => "show" },
+ 	sub {
+ 
+ 	download $uri, post => { download => "normal" },
+ 	sub {
+ 
+ 	restart $1, "free limit reached"
+ 		if m#You need to wait (\d+) seconds to start another download\.#;
+ 
+ 	};
+ 	};
+ 	};
+ 	};
+ 	};
+ };
 
 
 =head2 Automatic subs
@@ -159,32 +159,32 @@ code block.
 
 =cut
 
-start {
-	my $uri = shift;
-	
-	get $uri, sub;
-
-	error "file not found: $1"
-		if m#<span class="fail_info">\s*(.*?)\s*</span>#s;
-
-	assert m#<h1>(.+?)</h1>#;
-	my $fname = de_ml $1;
-
-	assert m#<strong>($STDSIZE)</strong>#o;
-	info name => $fname, asize => $1;
-
-	click "", post => { downloadLink => "wait" }, sub;
-
-	sleep 30, "waiting for download link", sub;
-
-	click "", post => { downloadLink => "show" }, sub;
-
-	download $uri, post => { download => "normal" }, sub;
-
-	restart $1, "free limit reached"
-		if m#You need to wait (\d+) seconds to start another download\.#;
-
-};
+ start {
+ 	my $uri = shift;
+ 
+ 	get $uri, sub;
+ 
+ 	error "file not found: $1"
+ 		if m#<span class="fail_info">\s*(.*?)\s*</span>#s;
+ 
+ 	assert m#<h1>(.+?)</h1>#;
+ 	my $fname = de_ml $1;
+ 
+ 	assert m#<strong>($STDSIZE)</strong>#o;
+ 	info name => $fname, asize => $1;
+ 
+ 	click "", post => { downloadLink => "wait" }, sub;
+ 
+ 	sleep 30, "waiting for download link", sub;
+ 
+ 	click "", post => { downloadLink => "show" }, sub;
+ 
+ 	download $uri, post => { download => "normal" }, sub;
+ 
+ 	restart $1, "free limit reached"
+ 		if m#You need to wait (\d+) seconds to start another download\.#;
+ 
+ };
 
 =head3 Continuation
 
@@ -199,7 +199,7 @@ function" or just the one with special meaning.
 
 For instance:
 
-captcha qr/[VALID CHARS]+/, solver => \&our_solver, sub;
+	captcha qr/[VALID CHARS]+/, solver => \&our_solver, sub;
 
 Without the marker preprocessor could assume execution would continue in
 &our_solver and not create the necessary sub.
@@ -254,72 +254,72 @@ Those statistics will be strictly voluntary and anonymous.
 
 =cut
 
-package Plugin::Type::Name;
-# I wrote this, so I'm a god !
-# YEAR (c) My Name <my@email>
-
-use RSGet::Plugin 0.10 qw(cookie captcha form);
-
-plugin
-	name => "Name",
-	short => "N",
-	web => "http://name.com/",
-	tos => "http://name.com/tos";
-
-uri qr{name\.com/file/\d+};
-uri qr{name\.org/file/\d+};
-uri_exact qr{https?://f\d+\.name\.org};
-
-unify
-{
-	s{#.*}{};
-	s{/+$}{};
-	return $_;
-};
-
-start
-{
-	my $uri = shift;
-	get $uri, sub;
-
-	assert /find link="(.*?)"/;
-
-	click $1, sub named_sub;
-
-	if ( $need_captcha ) {
-		captcha result => fail;
-
-		get "/image", sub;
-
-		captcha
-			qr/[allowed]/,
-			process => \&process_captcha,
-			sub;
-
-		click "/check", post => { captcha => $_ },
-			\&named_sub;
-	} else {
-		captcha result => ok;
-	}
-
-	sleep 30, "waiting", sub;
-
-	get $link, sub;
-
-	download $file, sub;
-
-	restart $time, $message
-		if /Must wait/;
-};
-
-no RSGet::Plugin;
-
-sub process_captcha
-{
-	my $img = shift;
-
-	return $img->ocr;
-}
+ package Plugin::Type::Name;
+ # I wrote this, so I'm a god !
+ # YEAR (c) My Name <my@email>
+ 
+ use RSGet::Plugin 0.10 qw(cookie captcha form);
+ 
+ plugin
+ 	name => "Name",
+ 	short => "N",
+ 	web => "http://name.com/",
+ 	tos => "http://name.com/tos";
+ 
+ uri qr{name\.com/file/\d+};
+ uri qr{name\.org/file/\d+};
+ uri_exact qr{https?://f\d+\.name\.org};
+ 
+ unify
+ {
+ 	s{#.*}{};
+ 	s{/+$}{};
+ 	return $_;
+ };
+ 
+ start
+ {
+ 	my $uri = shift;
+ 	get $uri, sub;
+ 
+ 	assert /find link="(.*?)"/;
+ 
+ 	click $1, sub named_sub;
+ 
+ 	if ( $need_captcha ) {
+ 		captcha result => fail;
+ 
+ 		get "/image", sub;
+ 
+ 		captcha
+ 			qr/[allowed]/,
+ 			process => \&process_captcha,
+ 			sub;
+ 
+ 		click "/check", post => { captcha => $_ },
+ 			\&named_sub;
+ 	} else {
+ 		captcha result => ok;
+ 	}
+ 
+ 	sleep 30, "waiting", sub;
+ 
+ 	get $link, sub;
+ 
+ 	download $file, sub;
+ 
+ 	restart $time, $message
+ 		if /Must wait/;
+ };
+ 
+ no RSGet::Plugin;
+ 
+ sub process_captcha
+ {
+ 	my $img = shift;
+ 
+ 	return $img->ocr;
+ }
 
 =head1 DETAILED
 
