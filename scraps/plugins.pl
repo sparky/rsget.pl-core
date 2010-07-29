@@ -1,14 +1,5 @@
 BEGIN { die "Not a real code !"; }
 
-sub start(&) {}
-sub error {}
-sub get {}
-sub assert {}
-sub info {}
-sub click {}
-sub download {}
-sub sleep($$) {}
-
 =head1 NAME
 
 Programming interface for rsget.pl plugins.
@@ -263,36 +254,29 @@ Those statistics will be strictly voluntary and anonymous.
 
 =cut
 
-# unique package name corresponding to the Plugin/Dir/File
 package Plugin::Type::Name;
+# I wrote this, so I'm a god !
+# YEAR (c) My Name <my@email>
 
-# Require plugin interface version 0.10
-# If users rsget.pl does not provide that interface plugin won't be loaded.
-# Also load optional extensions.
 use RSGet::Plugin 0.10 qw(cookie captcha form);
 
-# Register new plugin
 plugin
 	name => "Name",
 	short => "N",
 	web => "http://name.com/",
 	tos => "http://name.com/tos";
 
-# Register uris supported by that plugin
 uri qr{name\.com/file/\d+};
 uri qr{name\.org/file/\d+};
 uri_exact qr{https?://f\d+\.name\.org};
 
-# Register uri unification method
-# $_ is the input
-# return new value or edit $_ in place
 unify
 {
 	s{#.*}{};
 	s{/+$}{};
+	return $_;
 };
 
-# Register downloader
 start
 {
 	my $uri = shift;
@@ -328,10 +312,8 @@ start
 		if /Must wait/;
 };
 
-# Disable plugin preprocessing (no more autosubs)
 no RSGet::Plugin;
 
-# Do anything you want here
 sub process_captcha
 {
 	my $img = shift;
@@ -353,12 +335,15 @@ Each time any addition required by some plugin is made interface version
 number will be increased. Also support for older interfaces may be dropped
 from time to time.
 It also loads optional extensions.
- - ask - plugin will be able to ask some additional questions (video size)
+ - ask - plugin may ask some additional questions (video size, download pass)
  - captcha - web uses captcha
- - cookie - web requires cookie support
- - !cookie - web requires cookie support while checking links
+ - cookie - web requires cookie support for downloading
+ - +cookie - web requires cookie support while checking links
  - form - automatic form extraction
- - https, ftp, rtmp, rtsp - non-standard protocols
+ - user - web may use user+password setting
+ - +user - service requires user and password
+ - proto_https, proto_ftp, proto_rtmp, proto_rtsp - requires protocols
+     other than http
 
 
 	plugin
@@ -372,60 +357,97 @@ Register this new plugin.
  - short (required) - short name
  - web (required) - uri to main web page
  - tos - uri to terms of service
- - cookie - template for cookie file name
 
-# Register uris supported by that plugin
-uri qr{name\.com/file/\d+};
-uri qr{name\.org/file/\d+};
-uri_exact qr{https?://f\d+\.name\.org};
+	uri qr{name\.com/file/\d+};
+	uri qr{name\.org/file/\d+};
 
-# Register uri unification method
-# $_ is the input
-# return new value or edit $_ in place
-unify
-{
-	s{#.*}{};
-	s{/+$}{};
-};
+Register uris supported by that plugin. Will allow both http and https
+protocols and optional leading www.
 
-# Register downloader
-start
-{
-	my $uri = shift;
-	get $uri, sub;
+	uri_exact qr{https?://f\d+\.name\.org};
 
-	assert /find link="(.*?)"/;
+Register uris supported by that plugin. They must match exactly.
 
-	click $1, sub named_sub;
+	unify \&unify_sub;
 
-	if ( $need_captcha ) {
-		captcha result => fail;
+Register uri unification method.
 
-		get "/image", sub;
-
-		captcha
-			qr/[allowed]/,
-			process => \&process_captcha,
-			sub;
-
-		click "/check", post => { captcha => $_ },
-			\&named_sub;
-	} else {
-		captcha result => ok;
+	sub unify_sub {
+		s{#.*}{};
+		s{/+$}{};
 	}
 
-	sleep 30, "waiting", sub;
+Uri unification function. Initial uri is in locallized $_ variable.
+Return new value to change it.
 
-	get $link, sub;
+	start \&downloader_sub;
 
-	download $file, sub;
+Register downloader method.
 
-	restart $time, $message
-		if /Must wait/;
-};
+	no RSGet::Plugin;
 
-# Disable plugin preprocessing (no more autosubs)
-no RSGet::Plugin;
+Disable plugin preprocessing (no more autosubs)
+
+
+=head2 downloader function
+
+	get $uri, %options, \&callback;
+
+Retrieve data from $uri and call callback() with that data in $_.
+
+	click $uri, %options, \&callback;
+
+Wait a few seconds, then retrieve data from $uri and call callback()
+with that data in $_.
+
+	download $uri, %options, \&callback;
+
+Start download process saving data to file. callback will be called if
+the data turns out to be a text (html) file.
+
+	click_download $uri, %options, \&callback;
+
+Wait a few seconds, then start download process saving data to file. callback
+will be called if the data turns out to be a text (html) file.
+
+	sleep $time, $msg, \&callback;
+
+Wait $time seconds while displaying $msg, then call callback().
+If $time is very large value rsget.pl may try to continue earlier, use
+negative $time values to prevent it from doing so.
+
+	error $msg;
+
+Indicate that the file cannot be downloaded. "File not found" is the most
+common message.
+
+	assert EXPRESSION;
+
+Make sure EXPRESSION evaluates to true. Restarts download process if it
+doesn't.
+
+	restart $time, $msg;
+
+Wait $time seconds while displaying $msg, then restart.
+If $time is very large value rsget.pl may try to continue earlier, use
+negative $time values to prevent it from doing so.
+
+	captcha qr/RegExp/, %options, \&callback;
+
+Initiate captcha recognition. RegExp indicates possible correct solutions.
+
+	captcha result => ok;
+	captcha result => fail;
+
+Indicate whether last captcha recognition was successful or not.
+
+	ask $msg, qr/RegExp/;
+
+Ask user for some text value. RegExp indicates possible correct values.
+
+	ask $msg, [$item1, $item2];
+
+Ask user to select one value from a list.
 
 =cut
 
