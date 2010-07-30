@@ -238,7 +238,8 @@ which one does match, the code could look something like this:
 		expect( /bar string/ )
 	) {
 		...
-		checkpoint;
+		# checkpoint
+		expect 1;
 		...
 	}
 
@@ -410,6 +411,15 @@ the data turns out to be a text (html) file.
 Wait a few seconds, then start download process saving data to file. callback
 will be called if the data turns out to be a text (html) file.
 
+	link @link_list;
+
+Retutn a list of links to download from, instead of downloading anything.
+Not-full paths use referer as base.
+
+	info %values;
+
+Save information about the file to download. Required for non-link plugins.
+
 	sleep $time, $msg, \&callback;
 
 Wait $time seconds while displaying $msg, then call callback().
@@ -421,10 +431,15 @@ negative $time values to prevent it from doing so.
 Indicate that the file cannot be downloaded. "File not found" is the most
 common message.
 
-	assert EXPRESSION;
+	assert EXPRESSION; # simple expr
+	assert( EXPRESSION ); # complex expr
 
 Make sure EXPRESSION evaluates to true. Restarts download process if it
 doesn't.
+
+	expect( EXPRESSION )
+
+Check whether EXPRESSION evaluates to true. Returns the result.
 
 	restart $time, $msg;
 
@@ -448,6 +463,10 @@ Ask user for some text value. RegExp indicates possible correct values.
 	ask $msg, [$item1, $item2];
 
 Ask user to select one value from a list.
+
+	my $form = form %options;
+
+Extract form from current html and return a form object.
 
 =cut
 
