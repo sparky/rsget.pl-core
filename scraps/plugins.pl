@@ -470,4 +470,24 @@ Extract form from current html and return a form object.
 
 =cut
 
+=head2 MORE IDEAS, MAY NOT BE COMPATIBLE WITH EARLIER ASSUMPTIONS
 
+	# either
+	uri { "$2/$3" } qr{(subdomain\.)(domain.tld)/(file)(/useless_data)};
+
+	# or
+	uri qr{(subdomain\.)(domain.tld)/(file)(/useless_data)}, sub {
+		return "$2/$3"
+	};
+
+Each uri with its own unify function.
+
+	reg_download \&dl_h;
+	reg_premium \&dl_premium_h;
+	reg_upload \&up_h;
+
+Use those to register handlers (instead of start). No need for separate plugin
+files for regular and premium downloads. Should ease switching form one to
+other if premium login fails.
+
+=cut
