@@ -44,3 +44,28 @@ cron { ... } 60, +15;
 
 #### hooks ####
 # todo
+
+
+#### special global variables ####
+# those variables can be used to dynamically select some behaviour,
+# either by using by_var function or in sub {} body
+
+# $user
+# owner of the current download session
+# "$user", same as $user->{name}
+
+# $session
+# current download session
+# "$session", same as $session->{id}
+
+# $interface
+# current download interface
+# "$interface", same as $interface->{name}
+
+# $plugin
+# current session handler
+# "$plugin", same as $plugin->{id}
+
+# $file
+# destination file
+# "$file", same as $file->{path}
