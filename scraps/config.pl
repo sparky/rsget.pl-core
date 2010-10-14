@@ -3,23 +3,23 @@
 #### changing options ####
 
 # set option statically
-option_name = $value;
+$_->option_name = $value;
 
 # set different value for each user
-option_name = by_var $user,
+$_->option_name = by_var $user,
 	user1 => $value1,
 	user2 => $value2,
 	user3 => $value3,
 	"" => $default;
 
 # set option dynamically
-option_name = sub { <create value> };
+$_->option_name = sub { <create value> };
 
 # refresh dynamic option at most once every $seconds
-option_name = sub_cache { <create value> } $seconds;
+$_->option_name = sub_cache { <create value> } $seconds;
 
 # cache dynamic option separatelly for each user
-option_name = sub_cache { <create $user-specific value> } $seconds, $user;
+$_->option_name = sub_cache { <create $user-specific value> } $seconds, $user;
 
 
 #### executing some code ####
