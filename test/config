@@ -1,0 +1,7 @@
+########### rsget.pl configuration file ###########
+
+$_->option_name = 2;
+
+$_->test = sub { "hello" };
+
+# vim:ts=4:sw=4:ft=perl
