@@ -129,6 +129,70 @@ sub AUTOLOAD() : lvalue
 	$RSGet::Config::values{ $name };
 }
 
+
+=head2 $var = sub_cache { BODY } TIMEOUT, [GLOBALS];
+
+Cache sub output for specified amount of seconds.
+
+Usage:
+
+Instead of writing:
+ $myvar = sub { [sub body here] };
+
+You can use:
+ $myvar = sub_cache { [sub body here] } $seconds;
+ $myvar = sub_cache { [sub body here, uses global variable $global] }
+   $seconds, $global;
+
+It can be used if sub call is expensive and you don't need it to be
+updated as often as rsget.pl normally does. With sub_cache the body
+will be called only if cache expires. Cache is stored separatelly for
+each set of global variables. You must specify what global variables
+that sub is using, if any.
+
+Warning: it does not check function arguments. If you need argument
+checking use Memoize instead.
+=cut
+
+# TODO: this function is overly-complicated because of array support
+# which will fail in some other place anyways
+sub sub_cache(&$;\$\$\$\$\$\$\$)
+{
+	my $sub = shift;
+	my $timeout = shift;
+	my @globals = @_;
+
+	my %lasttime;
+	my %cache;
+	return sub {
+		# stringize globals, let's hope they do it nicely
+		my $glob = join "\017", map { $$_ } @globals;
+
+		my $time = time;
+		my $lt_min = $time - $timeout;
+
+		# remove all outdated caches
+		while ( my ( $g, $lt ) = each %lasttime ) {
+			if ( $lt < $lt_min ) {
+				delete $lasttime{ $g };
+				delete $cache{ $g };
+			}
+		}
+
+		# return cached value, if there is one
+		if ( $lasttime{$glob} ) {
+			return wantarray ? @{$cache{$glob}} : $cache{$glob}->[0];
+		} else {
+			# finally, execute and cache
+			my @ret = &$sub;
+			$lasttime{ $glob } = $time;
+			$cache{ $glob } = \@ret;
+			return wantarray ? @ret : $ret[0];
+		}
+	};
+}
+
+
 =head2 cron SUB, PERIOD, [DELAY]
 
 Register a function executed periodically.
