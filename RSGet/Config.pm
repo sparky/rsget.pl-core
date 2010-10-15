@@ -153,9 +153,6 @@ that sub is using, if any.
 Warning: it does not check function arguments. If you need argument
 checking use Memoize instead.
 =cut
-
-# TODO: this function is overly-complicated because of array support
-# which will fail in some other place anyways
 sub sub_cache(&$;\$\$\$\$\$\$\$)
 {
 	my $sub = shift;
@@ -181,13 +178,11 @@ sub sub_cache(&$;\$\$\$\$\$\$\$)
 
 		# return cached value, if there is one
 		if ( $lasttime{$glob} ) {
-			return wantarray ? @{$cache{$glob}} : $cache{$glob}->[0];
+			return $cache{$glob};
 		} else {
 			# finally, execute and cache
-			my @ret = &$sub;
 			$lasttime{ $glob } = $time;
-			$cache{ $glob } = \@ret;
-			return wantarray ? @ret : $ret[0];
+			return $cache{ $glob } = &$sub;
 		}
 	};
 }
