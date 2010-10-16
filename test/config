@@ -4,4 +4,6 @@ $_->option_name = 2;
 
 $_->test = sub_cache { [time, "hello world\n"]; } 5;
 
+$_->glob = by_var $main::global, root => 3, "" => 1;
+
 # vim:ts=4:sw=4:ft=perl

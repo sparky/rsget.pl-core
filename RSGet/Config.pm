@@ -187,6 +187,27 @@ sub sub_cache(&$;\$\$\$\$\$\$\$)
 	};
 }
 
+=head2 $var = by_var $GLOBAL, OPT1 => VAL1, [..., "" => DEFAULT_VAL];
+
+Select returned value based on $GLOBAL variable.
+
+ # set $val to 3 is user is root, 1 otherwise
+ $val = by_var $user, root => 3, "" => 1;
+
+=cut
+sub by_var(\$@)
+{
+	my $varref = shift;
+	my %opts = @_;
+
+	return sub {
+		# force string
+		my $var = "$$varref";
+
+		return exists $opts{ $var } ? $opts{ $var } : $opts{ "" };
+	};
+}
+
 
 =head2 cron SUB, PERIOD, [DELAY]
 
@@ -196,7 +217,7 @@ Register a function executed periodically.
  cron sub { print "It is tomorrow!\n"; }, 24 * 60 * 60;
 
  # run half past every hour
- cron sub { printf "Half past %d\n", (localtime)[2]; }, 60 * 60, 30 * 60;
+ cron { printf "Half past %d\n", (localtime)[2]; } 60 * 60, 30 * 60;
 
 =cut
 sub cron(&$;$)
