@@ -66,6 +66,8 @@ sub load_config_file($)
 
 	{
 		package RSGet::Config::File;
+		require RSGet::Common;
+		RSGet::Common->import();
 		local $_ = "RSGet::Config::File";
 		do $file;
 
@@ -202,7 +204,7 @@ sub by_var(\$@)
 
 	return sub {
 		# force string
-		my $var = "$$varref";
+		my $var = defined $$varref ? "$$varref" : "";
 
 		return exists $opts{ $var } ? $opts{ $var } : $opts{ "" };
 	};
