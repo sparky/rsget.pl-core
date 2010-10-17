@@ -224,12 +224,8 @@ Register a function executed periodically.
 =cut
 sub cron(&$;$)
 {
-	#goto &RSGet::Cron::add;
-	my $code = shift;
-	my $period = shift;
-	my $delay = shift || 0;
-
-	warn "Adding $code to cron, run every $period, with $delay delay\n";
+	require RSGet::Cron;
+	goto &RSGet::Cron::add;
 }
 
 1;
