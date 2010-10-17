@@ -1,5 +1,9 @@
 Experimental rsget.pl core. A shape of new things to come.
 
+WARNING: my vision of the core has changed somewhat since writing this
+document.
+
+
 The goal is to adopt rsget.pl to server-like environment, possibly destroying
 any compatibility with earlier versions.
 
@@ -15,13 +19,13 @@ Remarks:
 - multi-user support
 
 
-Salvaged clients:
+Salvaged clients (not part of core):
 - output-only terminal visualization
 - input/output list file writer (with syntax similar to actual file list,
   or simpler one)
 - input/output perl cgi application to create webbrowser interface
 
-Clients planned in future:
+Clients planned in future (not part of core):
 - I/O ncurses client (something like rtorrent, caca for captcha ?)
 	see scraps/showimage.pl
 - I/O readline client, with captcha displaying !
