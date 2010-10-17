@@ -29,7 +29,7 @@ sub add(&$;$)
 	my $period = int shift;
 	my $delay = int ( shift || 0 );
 
-	warn "Adding $code to cron, run every $period, with $delay delay\n";
+	#warn "Adding $code to cron, run every $period, with $delay delay\n";
 	die "RSGet::Cron::add: first argument must be coderef\n"
 		unless ref $code eq "CODE";
 	die "RSGet::Cron::add: period must be an integer > 0\n"
