@@ -50,6 +50,8 @@ sub _execute($)
 	my $code = shift;
 
 	local $@ = undef;
+	local $_ = "RSGet::Config::File";
+
 	eval {
 		$code->();
 	};
