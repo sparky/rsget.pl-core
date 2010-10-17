@@ -17,7 +17,7 @@ During initialization functions may be added to short or long interval call
 list. After initialization program should call main_loop() which will be
 calling all those functions in order. It never returns.
 
-Functions in short interval will be called every 200ms (unless they require
+Functions in short interval will be called every 100ms (unless they require
 more time to execute).
 
 Functions in long interval are called every 2 seconds, more under heavy load.
