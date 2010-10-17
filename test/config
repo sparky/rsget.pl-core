@@ -6,4 +6,10 @@ $_->test = sub_cache { [time, "hello world\n"]; } 5;
 
 $_->glob = by_var $user, root => 3, "" => 1;
 
+# run every odd second
+cron { print "Time1: " . localtime() . "\n" } 2, 1;
+
+# run every 10 sedonds
+cron { print "Time2: " . localtime() . "\n" } 10;
+
 # vim:ts=4:sw=4:ft=perl
