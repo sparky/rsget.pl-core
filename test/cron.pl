@@ -4,12 +4,10 @@ use warnings;
 use RSGet::Common;
 use RSGet::Config;
 use RSGet::Cron;
+use RSGet::Mux;
 
 RSGet::Config::load_config_file "test";
 
-foreach ( 0..100 ) {
-	RSGet::Cron::tick();
-	sleep 1;
-}
+RSGet::Mux::main_loop();
 
 # vim:ts=4:sw=4
