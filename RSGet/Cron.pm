@@ -7,6 +7,7 @@ package RSGet::Cron;
 
 use strict;
 use warnings;
+use RSGet::Mux;
 
 # registered cron jobs
 my @registered;
@@ -16,7 +17,8 @@ my $tick = time;
 
 =head1 package RSGet::Cron
 
-Handles periodical jobs. Long period (over 1 sec). Assures execution.
+Handles periodical jobs. Does not guarantee exact execution time.
+Guarantees execution even unver heavy load.
 
 =head2 add SUB, PERIOD, [DELAY];
 
@@ -61,12 +63,13 @@ sub _execute($)
 }
 
 
-=head2 tick;
+=head2 _tick();
 
 Give cron a chance to run its jobs. Ideally would be run once every second.
 
 =cut
-sub tick()
+RSGet::Mux::add_long X_cron => \&_tick;
+sub _tick()
 {
 	my $now = time;
 
