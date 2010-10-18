@@ -18,24 +18,25 @@ package RSGet::Plugin;
 
 use strict;
 use warnings;
-
-our ( @ISA, @EXPORT, @EXPORT_OK );
 our $VERSION = v0.01;
 
-require Exporter;
-@ISA = qw(Exporter);
-@EXPORT = qw(plugin uri unify start get click wait error assert info restart);
-@EXPORT_OK = qw();
+my @session = qw(plugin uri start get click wait error assert info restart download);
+
+# micro exporter
+sub import
+{
+	my $callpkg = caller 0;
+	my $pkg = "RSGet::Plugin";
+
+	no strict 'refs';
+	*{"$callpkg\::$_"} = \&{"$pkg\::$_"} foreach @session;
+}
 
 sub plugin(@)
 {
 }
 
 sub uri($)
-{
-}
-
-sub unify(&)
 {
 }
 
@@ -48,6 +49,10 @@ sub get($;@)
 }
 
 sub click($;@)
+{
+}
+
+sub download($;@)
 {
 }
 

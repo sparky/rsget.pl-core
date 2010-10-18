@@ -18,27 +18,19 @@ package RSGet::Plugin::Get::Rapidshare;
 
 use strict;
 use warnings;
-use RSGet::Plugin v0.01;
-use RSGet::Common;
-
-plugin
+use RSGet::Plugin v0.01
 	name => "RapidShare",
 	short => "RS",
 	web => "http://rapidshare.com/",
-	tos => "http://rapidshare.com/#!rapidshare-ag/rapidshare-ag_agb";
+	tos => "http://rapidshare.com/#!rapidshare-ag/rapidshare-ag_agb",
+	uri => qr{(?:rs[a-z0-9]+\.)?rapidshare\.com/files/(\d+)/.+},
+	uri => qr{(?:rs[a-z0-9]+\.)?rapidshare\.com/?#!download\|\d+\|(\d+)\|.+?\|\d+},
+	uri => qr{(?:rs[a-z0-9]+\.)?rapidshare\.de/files/(\d+)/.+},
+	uri => qr{(?:rs[a-z0-9]+\.)?rapidshare\.de/?#!download\|\d+\|(\d+)\|.+?\|\d+};
+use RSGet::Common;
 
-
-uri qr{(?:rs[a-z0-9]+\.)?rapidshare\.com/files/\d+/.+};
-uri qr{(?:rs[a-z0-9]+\.)?rapidshare\.com/?#!download\|\d+\|\d+\|.+?\|\d+};
-uri qr{(?:rs[a-z0-9]+\.)?rapidshare\.de/files/\d+/.+};
-uri qr{(?:rs[a-z0-9]+\.)?rapidshare\.de/?#!download\|\d+\|\d+\|.+?\|\d+};
-
-unify {
-	# don't change anything
- 	return $_;
-};
- 
-start {
+start
+{
 	my $uri = shift;
 
 	get $uri, \&main_page;
