@@ -20,7 +20,7 @@ use strict;
 use warnings;
 our $VERSION = v0.01;
 
-my @session = qw(plugin uri start get click wait error assert info restart download);
+my @session = qw(plugin uri downloader get click wait error assert info restart download this);
 
 # micro exporter
 sub import
@@ -32,6 +32,12 @@ sub import
 	*{"$callpkg\::$_"} = \&{"$pkg\::$_"} foreach @session;
 }
 
+sub this()
+{
+	require RSGet::Session;
+	return $RSGet::Session::current;
+}
+
 sub plugin(@)
 {
 }
@@ -40,7 +46,7 @@ sub uri($)
 {
 }
 
-sub start(&)
+sub downloader(&)
 {
 }
 
@@ -48,7 +54,7 @@ sub get($;@)
 {
 }
 
-sub click($;@)
+sub click()
 {
 }
 
@@ -68,7 +74,7 @@ sub error($$)
 {
 }
 
-sub restart($$)
+sub restart($$$)
 {
 }
 
