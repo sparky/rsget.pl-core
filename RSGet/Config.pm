@@ -205,7 +205,7 @@ sub sub_cache(&$;\$\$\$\$\$\$\$)
 Select returned value based on $GLOBAL variable.
 
  # set $val to 3 is user is root, 1 otherwise
- $val = by_var $user, root => 3, "" => 1;
+ $val = by_var $RSGet::User::current, root => 3, "" => 1;
 
 =cut
 sub by_var(\$@)
