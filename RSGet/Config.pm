@@ -143,7 +143,7 @@ sub AUTOLOAD() : lvalue
 }
 
 
-=head2 $var = sub_cache { BODY } TIMEOUT, [GLOBALS];
+=head2 $var = sub_cache { BODY } TIMEOUT, [CONTEXT];
 
 Cache sub output for specified amount of seconds.
 
@@ -154,8 +154,8 @@ Instead of writing:
 
 You can use:
  $myvar = sub_cache { [sub body here] } $seconds;
- $myvar = sub_cache { [sub body here, uses global variable $global] }
-   $seconds, $global;
+ $myvar = sub_cache { [sub body here, uses context variable user] }
+   $seconds, qw(user);
 
 It can be used if sub call is expensive and you don't need it to be
 updated as often as rsget.pl normally does. With sub_cache the body
@@ -166,17 +166,25 @@ that sub is using, if any.
 Warning: it does not check function arguments. If you need argument
 checking use Memoize instead.
 =cut
-sub sub_cache(&$;\$\$\$\$\$\$\$)
+sub sub_cache(&$@)
 {
 	my $sub = shift;
 	my $timeout = shift;
-	my @globals = @_;
+	my @context = @_;
+
+	if ( @context ) {
+		require RSGet::Context;
+		foreach my $varname ( @context ) {
+			die "RSGet::Config::sub_cache: '$varname' cannot be used as context variable\n"
+				unless RSGet::Context->is_context( $varname );
+		}
+	}
 
 	my %lasttime;
 	my %cache;
 	return sub {
-		# stringize globals, let's hope they do it nicely
-		my $glob = join "\017", map { $$_ } @globals;
+		# stringize context
+		my $glob = join "\017", map { RSGet::Context->$_ } @context;
 
 		my $time = time;
 		my $lt_min = $time - $timeout;
@@ -200,22 +208,28 @@ sub sub_cache(&$;\$\$\$\$\$\$\$)
 	};
 }
 
-=head2 $var = by_var $GLOBAL, OPT1 => VAL1, [..., "" => DEFAULT_VAL];
+=head2 $var = by_context 'VARIABLE', OPT1 => VAL1, [..., "" => DEFAULT_VAL];
 
-Select returned value based on $GLOBAL variable.
+Select returned value based on context variable.
 
- # set $val to 3 is user is root, 1 otherwise
- $val = by_var $RSGet::User::current, root => 3, "" => 1;
+ # set val to 3 is user is root, 1 otherwise
+ $_->val = by_context 'user', root => 3, "" => 1;
 
 =cut
-sub by_var(\$@)
+sub by_context($@)
 {
-	my $varref = shift;
+	my $varname = shift;
 	my %opts = @_;
 
+	require RSGet::Context;
+	die "RSGet::Config::by_context: '$varname' cannot be used as context variable\n"
+		unless RSGet::Context->is_context( $varname );
+
 	return sub {
+		# get value
+		my $val = RSGet::Context->$varname;
 		# force string
-		my $var = defined $$varref ? "$$varref" : "";
+		my $var = defined $val ? "$val" : "";
 
 		return exists $opts{ $var } ? $opts{ $var } : $opts{ "" };
 	};
