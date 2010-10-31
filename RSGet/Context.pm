@@ -25,6 +25,8 @@ use List::Util ();
 This is used to set and restrict context information (like user - owner
 of the download).
 
+=head1 External interface - can be used in config file.
+
 =head2 used context variables
 
 =over
@@ -57,7 +59,37 @@ my @context_variables = qw(user file plugin session interface);
 
 
 # current context stack
+# Context with largest index is on top. Only this one is used.
 my @current;
+
+
+=head2 my $value = RSGet::Context->get( NAME );
+
+Get context information. NAME is one of context variables.
+
+=cut
+sub get
+{
+	my $class = shift;
+	my $var = shift;
+
+	return unless @current;
+	return $current[ $#current ]->{ $var };
+}
+
+
+=head2 my $value = RSGet::Context->NAME();
+
+Shortcut for my $value = RSGet::Context->get( NAME );
+
+=cut
+foreach ( @context_variables ) {
+	eval "sub $_ { splice \@_, 1, 0, '$_'; goto \\&get; }";
+}
+
+
+
+=head1 Internal interface.
 
 =head2 my $ctxt = RSGet::Context->new( [OPTIONS] );
 
@@ -68,6 +100,10 @@ sub new
 {
 	my $class = shift;
 
+	my $self = {};
+	bless $self, $class;
+
+	return $self->set( @_ );
 }
 
 =head2 my $child_ctxt = $parent_ctxt->child( [OPTIONS] );
@@ -79,6 +115,8 @@ sub child
 {
 	my $parent = shift;
 
+	my $child = RSGet::Context->new( %$parent );
+	return $child->set( @_ );
 }
 
 =head2 $ctxt->set( OPTIONS );
@@ -90,6 +128,17 @@ sub set
 {
 	my $self = shift;
 
+	while ( my ( $key, $value ) = splice @_, 0, 2 ) {
+		die "RSGet::Context::set: '$key' is not a valid context variable\n"
+			unless RSGet::Context->is_context( $key );
+
+		die "RSGet::Context::set: context already defines '$key' with different value\n"
+			if exists $self->{$key} and $self->{$key} ne $value;
+
+		$self->{$key} = $value;
+	}
+
+	return $self;
 }
 
 =head2 my $ctxt = RSGet::Context->top();
@@ -145,30 +194,6 @@ sub is_context
 
 	return List::Util::first { $var eq $_ } @context_variables;
 }
-
-=head2 my $value = RSGet::Context->get( NAME );
-
-Get topmost context information.
-
-=cut
-sub get
-{
-	my $class = shift;
-	my $var = shift;
-
-	return unless @current;
-	return $current[ $#current ]->{ $var };
-}
-
-=head2 my $value = RSGet::Context->NAME();
-
-Shortcut for my $value = RSGet::Context->get( NAME );
-
-=cut
-foreach ( @context_variables ) {
-	eval "sub $_ { splice \@_, 1, 0, '$_'; goto \\&get; }";
-}
-
 
 1;
 
