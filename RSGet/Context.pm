@@ -110,9 +110,9 @@ sub check_keys
 
 	return unless @invalid;
 
-	local $" = ", ";
+	local $" = "', '";
 	require Carp;
-	Carp::confess( "keys: @invalid are not valid context variables\n" );
+	Carp::confess( "keys '@invalid' are not valid context variables\n" );
 }
 
 
