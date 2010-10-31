@@ -20,64 +20,124 @@ use strict;
 use warnings;
 use List::Util ();
 
+=head1 RSGet::Context -- context sensitive information
+
+This is used to set and restrict context information (like user - owner
+of the download).
+
+=head2 used context variables
+
+=over
+
+=item user
+
+user that is actually downloading; session/file owner
+
+=item file
+
+destination file
+
+=item plugin
+
+getter information
+
+=item session
+
+download session
+
+=item interface
+
+user network interface
+
+=back
+
+=cut
+
+my @context_variables = qw(user file plugin session interface);
+
+
 # current context stack
 my @current;
 
-# create new context
+=head2 my $ctxt = RSGet::Context->new( [OPTIONS] );
+
+Create new context.
+
+=cut
 sub new
 {
 	my $class = shift;
 
 }
 
-# clone context and restrict some options
+=head2 my $child_ctxt = $parent_ctxt->child( [OPTIONS] );
+
+Clone context and restrict some options.
+
+=cut
 sub child
 {
 	my $parent = shift;
 
 }
 
-# set some context
+=head2 $ctxt->set( OPTIONS );
+
+Set some context options.
+
+=cut
 sub set
 {
 	my $self = shift;
 
 }
 
-# return topmost context
+=head2 my $ctxt = RSGet::Context->top();
+
+returns topmost context
+
+=cut
 sub top
 {
-	my $class = shift;
-
 	return unless @current;
 	return $current[ $#current ];
 }
 
-# push context, execute function, pop context
+=head2 $ctxt->wrap( SUB. [ARGUMENTS] );
+
+Push $ctxt on top of context stack.
+Execute SUB.
+Pop context from the stack.
+
+=cut
 sub wrap
 {
 	my $self = shift;
 	my $func = shift;
 
+	my @ret;
+
 	push @current, $self;
 	eval {
-		&$func;
+		if ( wantarray ) {
+			@ret = &$func;
+		} else {
+			@ret = scalar &$func;
+		}
 	};
 	if ( $@ ) {
 		warn "RSGet::Context::wrap function eval failed: $@\n";
 	}
 	pop @current;
+
+	return @ret;
 }
 
-# allowed context variables
-#
-# user - user that is actually downloading; session/file owner
-# file - destination file
-# plugin - getter information
-# session - download session
-# interface - user network interface
-my @context_variables = qw(user file plugin session interface);
+=head2 RSGet::Context->is_context( NAME );
 
+Return true if NAME is a correct context variable.
+
+=cut
 sub is_context
 {
 	my $class = shift;
@@ -86,6 +146,11 @@ sub is_context
 	return List::Util::first { $var eq $_ } @context_variables;
 }
 
+=head2 my $value = RSGet::Context->get( NAME );
+
+Get topmost context information.
+
+=cut
 sub get
 {
 	my $class = shift;
@@ -95,7 +160,11 @@ sub get
 	return $current[ $#current ]->{ $var };
 }
 
-# create shortcuts
+=head2 my $value = RSGet::Context->NAME();
+
+Shortcut for my $value = RSGet::Context->get( NAME );
+
+=cut
 foreach ( @context_variables ) {
 	eval "sub $_ { splice \@_, 1, 0, '$_'; goto \\&get; }";
 }
