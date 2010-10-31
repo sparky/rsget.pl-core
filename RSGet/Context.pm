@@ -71,10 +71,13 @@ Get context information. NAME is one of context variables.
 sub get
 {
 	my $class = shift;
-	my $var = shift;
+	my $key = shift;
+
+	die "RSGet::Context::get: '$key' is not a valid context variable\n"
+		unless RSGet::Context->is_context( $key );
 
 	return unless @current;
-	return $current[ $#current ]->{ $var };
+	return $current[ $#current ]->{ $key };
 }
 
 
@@ -91,6 +94,20 @@ foreach ( @context_variables ) {
 
 =head1 Internal interface.
 
+=head2 RSGet::Context->is_context( NAME );
+
+Return true if NAME is a correct context variable.
+
+=cut
+sub is_context
+{
+	my $class = shift;
+	my $var = shift or return;
+
+	return List::Util::first { $var eq $_ } @context_variables;
+}
+
+
 =head2 my $ctxt = RSGet::Context->new( [OPTIONS] );
 
 Create new context.
@@ -106,6 +123,7 @@ sub new
 	return $self->set( @_ );
 }
 
+
 =head2 my $child_ctxt = $parent_ctxt->child( [OPTIONS] );
 
 Clone context and restrict some options.
@@ -118,6 +136,7 @@ sub child
 	my $child = RSGet::Context->new( %$parent );
 	return $child->set( @_ );
 }
+
 
 =head2 $ctxt->set( OPTIONS );
 
@@ -141,6 +160,7 @@ sub set
 	return $self;
 }
 
+
 =head2 my $ctxt = RSGet::Context->top();
 
 returns topmost context
@@ -152,10 +172,11 @@ sub top
 	return $current[ $#current ];
 }
 
-=head2 $ctxt->wrap( SUB. [ARGUMENTS] );
+
+=head2 $ctxt->wrap( SUB, [ARGUMENTS] );
 
 Push $ctxt on top of context stack.
-Execute SUB.
+Execute SUB( ARGUMENTS ).
 Pop context from the stack.
 
 =cut
@@ -167,32 +188,25 @@ sub wrap
 	my @ret;
 
 	push @current, $self;
+
+	# wrapped in eval to make sure we pop the context
 	eval {
 		if ( wantarray ) {
 			@ret = &$func;
 		} else {
-			@ret = scalar &$func;
+			$ret[0] = &$func;
 		}
 	};
-	if ( $@ ) {
-		warn "RSGet::Context::wrap function eval failed: $@\n";
-	}
+
 	pop @current;
 
+	if ( $@ ) {
+		# Do not handle $@ here because we don't know how to handle it.
+		# Just transmit the last words.
+		die $@;
+	}
+
 	return @ret;
-}
-
-=head2 RSGet::Context->is_context( NAME );
-
-Return true if NAME is a correct context variable.
-
-=cut
-sub is_context
-{
-	my $class = shift;
-	my $var = shift or return undef;
-
-	return List::Util::first { $var eq $_ } @context_variables;
 }
 
 1;
