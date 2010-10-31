@@ -11,9 +11,18 @@ print @{ RSGet::Config->test };
 sleep 2;
 print @{ RSGet::Config->test() };
 
-$user = "root";
-print RSGet::Config->glob, "\n";
-undef $user;
-print RSGet::Config->glob, "\n";
+my $ctxt = RSGet::Context->new( user => 'root' );
+
+sub print_glob
+{
+	print "args: @_\n";
+	print RSGet::Config->glob, "\n";
+}
+
+print_glob( "as noone" );
+$ctxt->wrap( \&print_glob, "as root" );
+print_glob( "as noone" );
+
+# $ctxt->child( users => 'some_user' );
 
 # vim:ts=4:sw=4
