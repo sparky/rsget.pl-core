@@ -20,50 +20,5 @@ use strict;
 use warnings;
 
 1;
-__END__
-
-use vars qw(@ISA @EXPORT @EXPORT_OK);
-
-require Exporter;
-@ISA = qw(Exporter);
-@EXPORT = qw(user file plugin session interface);
-@EXPORT_OK = qw();
-
-# user that is actually downloading; session/file owner
-sub Cuser()
-{
-	require RSGet::User;
-	return $RSGet::User::current;
-}
-
-# destination file
-sub Cfile()
-{
-	require RSGet::File;
-	return $RSGet::File::current;
-}
-
-# getter information
-sub Cplugin()
-{
-	require RSGet::Plugin;
-	return $RSGet::Plugin::current;
-}
-
-# download session
-sub Csession()
-{
-	require RSGet::Session;
-	return $RSGet::Session::current;
-}
-
-# user network interface
-sub Cinterface()
-{
-	require RSGet::Interface;
-	return $RSGet::Interface::current;
-}
-
-1;
 
 # vim: ts=4:sw=4:fdm=marker
