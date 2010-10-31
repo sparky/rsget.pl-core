@@ -4,7 +4,7 @@ $_->option_name = 2;
 
 $_->test = sub_cache { [time, "hello world\n"]; } 5;
 
-$_->glob = by_var $user, root => 3, "" => 1;
+$_->glob = by_context 'user', root => 3, "" => 1;
 
 # run every odd second
 cron { print "Time1: " . localtime() . "\n" } 2, 1;

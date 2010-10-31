@@ -174,10 +174,7 @@ sub sub_cache(&$@)
 
 	if ( @context ) {
 		require RSGet::Context;
-		foreach my $varname ( @context ) {
-			die "RSGet::Config::sub_cache: '$varname' cannot be used as context variable\n"
-				unless RSGet::Context->is_context( $varname );
-		}
+		RSGet::Context->check_keys( @context );
 	}
 
 	my %lasttime;
@@ -222,8 +219,7 @@ sub by_context($@)
 	my %opts = @_;
 
 	require RSGet::Context;
-	die "RSGet::Config::by_context: '$varname' cannot be used as context variable\n"
-		unless RSGet::Context->is_context( $varname );
+	RSGet::Context->check_keys( $varname );
 
 	return sub {
 		# get value

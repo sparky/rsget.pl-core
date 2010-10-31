@@ -73,8 +73,7 @@ sub get
 	my $class = shift;
 	my $key = shift;
 
-	die "RSGet::Context::get: '$key' is not a valid context variable\n"
-		unless RSGet::Context->is_context( $key );
+	RSGet::Context->check_keys( $key );
 
 	return unless @current;
 	return $current[ $#current ]->{ $key };
@@ -94,17 +93,26 @@ foreach ( @context_variables ) {
 
 =head1 Internal interface.
 
-=head2 RSGet::Context->is_context( NAME );
+=head2 RSGet::Context->check_keys( KEYS );
 
-Return true if NAME is a correct context variable.
+Die if any of KEYS isn't a correct context variable.
 
 =cut
-sub is_context
+sub check_keys
 {
 	my $class = shift;
-	my $var = shift or return;
+	my @invalid;
 
-	return List::Util::first { $var eq $_ } @context_variables;
+	foreach my $key ( @_ ) {
+		push @invalid, $key
+			unless List::Util::first { $key eq $_ } @context_variables;
+	}
+
+	return unless @invalid;
+
+	local $" = ", ";
+	require Carp;
+	Carp::confess( "keys: @invalid are not valid context variables\n" );
 }
 
 
@@ -146,11 +154,11 @@ Set some context options.
 sub set
 {
 	my $self = shift;
+	my %opts = @_;
 
-	while ( my ( $key, $value ) = splice @_, 0, 2 ) {
-		die "RSGet::Context::set: '$key' is not a valid context variable\n"
-			unless RSGet::Context->is_context( $key );
+	RSGet::Context->check_keys( keys %opts );
 
+	while ( my ( $key, $value ) = each %opts ) {
 		die "RSGet::Context::set: context already defines '$key' with different value\n"
 			if exists $self->{$key} and $self->{$key} ne $value;
 
