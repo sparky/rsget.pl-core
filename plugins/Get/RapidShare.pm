@@ -37,8 +37,8 @@ downloader
 	{
 		error( file_not_found => $1 )
 			if /^ERROR: (.*)/
-				and substr( $1, 0, 16 ) ne "You need to wait"
-				and substr( $1, 0, 17 ) ne "You need RapidPro";
+				and expect( substr( $1, 0, 16 ) ne "You need to wait" )
+				and expect( substr( $1, 0, 17 ) ne "You need RapidPro" );
 
 		if ( m{<script type="text/javascript">location="(.*?)"} ) {
 			this->{_referer} = undef;
@@ -48,7 +48,8 @@ downloader
 		assert( my ( $id, $name, $size ) = this->{_referer} =~ m{#!download\|\d+\|(\d+)\|(.+?)\|(\d+)} );
 		info( name => $name, asize => $size."KB" );
 	
-		get wait => click, "http://api.rapidshare.com/cgi-bin/rsapi.cgi?sub=download_v1&try=1&fileid=$id&filename=$name", sub
+		sleep click;
+		get "http://api.rapidshare.com/cgi-bin/rsapi.cgi?sub=download_v1&try=1&fileid=$id&filename=$name", sub
 		{
 			delay( 0, multidownload => $1 )
 				if /^(ERROR: You need RapidPro.*)/;
@@ -57,8 +58,8 @@ downloader
 
 			assert( my ( $host, $dlauth, $wait ) = m{DL:(.*?),([0-9A-F]+?),(\d+)} );
 
-			download wait => $wait,
-				"http://$host/cgi-bin/rsapi.cgi?sub=download_v1&dlauth=$dlauth&bin=1&fileid=$id&filename=$name";
+			sleep $wait;
+			download "http://$host/cgi-bin/rsapi.cgi?sub=download_v1&dlauth=$dlauth&bin=1&fileid=$id&filename=$name";
 		};
 	};
 };

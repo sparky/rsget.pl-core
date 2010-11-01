@@ -18,68 +18,88 @@ package RSGet::Plugin;
 
 use strict;
 use warnings;
+use RSGet::Common;
 our $VERSION = v0.01;
 
-my @session = qw(plugin uri downloader get click wait error assert info restart download this);
+my @session = qw(
+	downloader
+	this
+	get download
+	sleep click
+	error info restart delay
+	assert expect
+);
 
 # micro exporter
 sub import
 {
 	my $callpkg = caller 0;
-	my $pkg = "RSGet::Plugin";
+	my $pkg = shift || "RSGet::Plugin";
 
 	no strict 'refs';
 	*{"$callpkg\::$_"} = \&{"$pkg\::$_"} foreach @session;
 }
 
-sub this()
-{
-	require RSGet::Session;
-	return $RSGet::Session::current;
-}
 
-sub plugin(@)
-{
-}
-
-sub uri($)
-{
-}
-
+# register new downloader
 sub downloader(&)
 {
 }
 
-sub get($;@)
+
+# return current session
+sub this()
+{
+	#require RSGet::Session;
+	#return $RSGet::Session::current;
+	return {};
+}
+
+
+# get/post uri, download to memory
+sub get($@)
 {
 }
 
+# get file, download to disk
+sub download($@)
+{
+}
+
+# wait some time before next step
+sub sleep($)
+{
+}
+
+# return small random number
 sub click()
 {
+	return RSGet::Common::irand( 2, 5 );
 }
 
-sub download($;@)
-{
-}
 
-sub wait($;@)
-{
-}
-
+# file information, or links
 sub info(@)
 {
 }
 
+# die with an error
 sub error($$)
 {
 }
 
+# restart download
 sub restart($$$)
 {
 }
 
-
+# make sure operation was successfull
 sub assert
+{
+}
+
+# log operation and its value
+sub expect
 {
 }
 
