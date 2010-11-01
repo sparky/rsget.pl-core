@@ -19,6 +19,47 @@ package RSGet::Common;
 use strict;
 use warnings;
 
+=head1 RSGet::Common -- common functions
+
+This package implements some very common functions.
+
+=head2 use RSGet::Common qw(FUNCTIONS);
+
+Package is able to export all of its functions, but they must be listed
+explicitly.
+
+=cut
+
+# micro exporter
+sub import
+{
+	my $callpkg = caller 0;
+	my $pkg = shift || "RSGet::Common";
+
+	no strict 'refs';
+	foreach ( @_ ) {
+		die "$pkg: has no sub named '$_'\n"
+			unless $pkg->can( $_ );
+
+		# export sub
+		*{"$callpkg\::$_"} = \&{"$pkg\::$_"};
+	}
+}
+
+
+=head2 my $val = irand( [MIN], MAX );
+
+Returns an integer in [MIN, MAX) interval. MIN is zero if ommited.
+
+=cut
+sub irand($;$)
+{
+	my $arg = shift;
+	return int rand $arg unless @_;
+
+	return int ( $arg + rand ( (shift) - $arg ) );
+}
+
 1;
 
 # vim: ts=4:sw=4:fdm=marker
