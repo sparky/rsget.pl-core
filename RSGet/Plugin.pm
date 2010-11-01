@@ -59,16 +59,19 @@ sub this()
 # get/post uri, download to memory
 sub get($@)
 {
+	_coverage();
 }
 
 # get file, download to disk
 sub download($@)
 {
+	_coverage();
 }
 
 # wait some time before next step
 sub sleep($)
 {
+	_coverage();
 }
 
 # return small random number
@@ -81,26 +84,52 @@ sub click()
 # file information, or links
 sub info(@)
 {
+	_coverage();
 }
 
 # die with an error
 sub error($$)
 {
+	_coverage();
 }
 
 # restart download
 sub restart($$$)
 {
+	_coverage();
 }
 
 # make sure operation was successfull
 sub assert
 {
+	my $success = @_ > 1 || $_[0] ? 1 : 0;
+
+	unless ( $success ) {
+		# fake coverage information
+		@_ = (assertion_failed => 1);
+		goto &error;
+	}
+
+	_coverage();
 }
 
 # log operation and its value
 sub expect
 {
+	my $success = 0;
+	$success = 1 if wantarray ? @_ : $_[0];
+
+	_coverage( @_ );
+
+	return wantarray ? @_ : $_[0];
+}
+
+sub _coverage
+{
+	my @c = caller 1;
+	my $func = $c[3];
+	$func =~ s/^RSGet::Plugin:://;
+	print "coverage: '$func' called from '$c[1]:$c[2]'\n";
 }
 
 1;
