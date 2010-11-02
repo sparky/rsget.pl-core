@@ -137,9 +137,13 @@ sub import
 }
 
 
-=head2 downloader SUB
+=head2 downloader SUB;
 
-Register new downloader
+Register new downloader.
+
+	downloader {
+		ALL CODE GOES HERE;
+	};
 
 =cut
 sub downloader(&)
@@ -155,6 +159,9 @@ sub downloader(&)
 
 Return current session.
 
+	my $uri = this->{uri};
+	this->{referer} = undef;
+
 =cut
 sub this()
 {
@@ -166,6 +173,12 @@ sub this()
 =head2 get( URI, [OPTIONS], CALLBACK_SUB );
 
 Send request to server (either GET or POST). Save data to memory.
+
+	get $uri, post => { data => "to post" }, sub
+	{
+		EXECUTED ON SUCCESS;
+		DATA IN $_;
+	}
 
 =cut
 sub get($$@)
@@ -182,6 +195,12 @@ sub get($$@)
 =head2 download( URI, [OPTIONS], [FAIL_CALLBACK_SUB] );
 
 Send request to server (either GET or POST). Save data to file.
+
+	download $file_uri, post => { data => "to post" }, sub
+	{
+		EXECUTED ON FAILURE;
+		# i.e. content type was text/*
+	}
 
 =cut
 sub download($@)
@@ -203,6 +222,9 @@ sub download($@)
 Set sleep timeout. Session will wait that many SECONDS before next
 get/download request.
 
+	sleep $wait_time;
+	get $uri, sub { ... };
+
 =cut
 sub sleep($)
 {
@@ -211,9 +233,15 @@ sub sleep($)
 	this->{sleep} = _val_check qr/-?\d+/ => shift;
 }
 
-=head2 sleep( click() );
+=head2 click();
 
 Return small random number. Used to simulate user clicking.
+
+	sleep click;
+	get $uri, sub { ... };
+
+	sleep $wait_time + click;
+	download $file_uri;
 
 =cut
 sub click()
@@ -226,6 +254,23 @@ sub click()
 
 Save information about this download.
 Will interrupt current session if only file information was requested.
+
+	info
+		# file name, in order of preference
+		name => "exact file name",
+		aname => "aproximate file name", # chars other than [A-Za-z0-9] may differ
+		iname => "incomplete file name", # \0 denotes missing fragment
+		ainame => "aproximate incomplete file name",
+
+		# file size, in order of preference
+		size => EXACT_SIZE, # in bytes
+		asize => "aproximate size", # e.g. 100KB
+
+		kilo => 1000, # if K/M/G are multiples of 1000, not 1024
+		;
+
+	info
+		links => [ LIST, OF, LINKS ];
 
 =cut
 sub info(@)
@@ -244,6 +289,9 @@ sub info(@)
 
 Die because of some error.
 
+	error file_not_found => $1
+		if />(File is missing: .*?)</;
+
 =cut
 sub error($$)
 {
@@ -257,6 +305,9 @@ sub error($$)
 =head2 restart( SECONDS, REASON => MESSAGE );
 
 Restart current session after SECONDS.
+
+	restart( $2, free_limit => $1 )
+		if /(Free limit reached.*must wait (\d+) seconds)/;
 
 =cut
 sub restart($$$)
@@ -275,8 +326,11 @@ sub restart($$$)
 
 Make sure operation was successfull.
 
+	assert( /wait: (\d+)/ );
+	my $wait = $1;
+
 =cut
-sub assert
+sub assert(@)
 {
 	my $success = @_ > 0 && $_[ $#_ ] || undef;
 
@@ -301,7 +355,7 @@ Log operation and its value.
 	}
 
 =cut
-sub expect
+sub expect(@)
 {
 	my $success = 0;
 	$success = 1 if wantarray ? @_ : $_[ $#_ ];
