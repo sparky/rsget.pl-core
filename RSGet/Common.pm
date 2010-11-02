@@ -60,6 +60,27 @@ sub irand($;$)
 	return int ( $arg + rand ( (shift) - $arg ) );
 }
 
+
+=head2 confess( "message" );
+
+Die babbling.
+
+=cut
+sub confess($)
+{
+	my $msg = shift;
+
+	eval {
+		require Carp;
+	};
+	if ( $@ ) {
+		die "Died because: $msg\n" .
+			"Moreover Carp cannot be loaded to display full backtrace.\n";
+	} else {
+		Carp::confess( $msg );
+	}
+}
+
 1;
 
 # vim: ts=4:sw=4:fdm=marker
