@@ -29,8 +29,6 @@ Package is able to export all of its functions, but they must be listed
 explicitly.
 
 =cut
-
-# micro exporter
 sub import
 {
 	my $callpkg = caller 0;
@@ -68,16 +66,15 @@ Die babbling.
 =cut
 sub confess($)
 {
-	my $msg = shift;
-
 	eval {
 		require Carp;
 	};
 	if ( $@ ) {
+		my $msg = shift;
 		die "Died because: $msg\n" .
-			"Moreover Carp cannot be loaded to display full backtrace.\n";
+			"Moreover, Carp cannot be loaded to display full backtrace.\n";
 	} else {
-		Carp::confess( $msg );
+		goto \&Carp::confess;
 	}
 }
 
