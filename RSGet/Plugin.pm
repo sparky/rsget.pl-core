@@ -20,7 +20,14 @@ use strict;
 use warnings;
 use RSGet::Common;
 use RSGet::Context;
-our $VERSION = v0.01;
+our $VERSION = v0.1.0;
+
+=head1 RSGet::Plugin -- interface for rsget.pl plugins
+
+This module must be imported by all rsget.pl plugins. It rsgisters the plugin
+and defines an interface for connection with the core.
+
+=cut
 
 my @session = qw(
 	downloader
@@ -33,16 +40,70 @@ my @session = qw(
 
 my %plugins;
 
-sub _ref_check($;$);
-sub _val_check($$);
-
-sub import
+# INTERNAL: my $val = _ref_check TYPE => $argument;
+#
+# Make sure argument is a ref to TYPE. Die if it isn't.
+#
+# my $val = _ref_check $argument;
+#
+# Die if argument is a ref.
+#
+sub _ref_check($;$)
 {
-	my $callpkg = caller 0;
-	my $pkg = shift || "RSGet::Plugin";
+	my $var = pop;
+	my $type = shift || "";
+
+	my $ref = ref $var;
+	unless ( $ref eq $type ) {
+		RSGet::Common::confess( "Argument should contain a '$type' ref, but it is '$ref'\n" );
+	}
+
+	return $var;
+}
+
+# INTERNAL: my $val = _val_check qr/PATTERN/ => $argument;
+#
+# Make sure argument matches PATTERN. Die if it doesn't.
+#
+sub _val_check($$)
+{
+	my $var = pop;
+	my $match = shift;
+
+	my $ref = ref $var;
+	unless ( $ref eq "" ) {
+		RSGet::Common::confess( "Argument should be a scalar, but it is a ref to '$ref'\n" );
+	}
+
+	unless ( $var =~ m/^$match$/ ) {
+		RSGet::Common::confess( "Argument '$var' does not match pattern: $match\n" );
+	}
+}
+
+
+=head2 use RSGet::Common VERSION [OPTIONS];
+
+Register new plugin.
+
+ use RSGet::Plugin v0.1.0
+ 	name => "Service name",
+	web => "http://main_page.com/",
+	tos => "http://main_page.com/terms_of_service",
+	uri => qr{main_page\.com/supported_uris/.*},
+	uri => qr{secong_page\.com/supported_uris/.*};
+
+=cut
+
+# INTERNAL: _register_plugin( PKG, [OPTIONS] )
+#
+sub _register_plugin
+{
+	my $callpkg = shift;
 
 	# register plugin
-	my $plugin = { uri => [] };
+	my $plugin = $plugins{ $callpkg } ||= {};
+	$plugin->{uri} ||= [];
+
 	while ( my ( $key, $value ) = splice @_, 0, 2 ) {
 		if ( $key eq "uri" ) {
 			push @{ $plugin->{ $key } }, $value;
@@ -50,7 +111,25 @@ sub import
 			$plugin->{ $key } = $value;
 		}
 	}
-	$plugins{ $callpkg } = $plugin;
+}
+
+# Save required version number. Later we'll be able to whether plugin
+# requires interface new-enough for it to work.
+sub VERSION
+{
+	_register_plugin( scalar caller 0, plugin_version => $_[1] );
+
+	# actually check the version
+	goto \&UNIVERSAL::VERSION;
+}
+
+# Register plugin and export all methods.
+sub import
+{
+	my $callpkg = caller 0;
+	my $pkg = shift || "RSGet::Plugin";
+
+	_register_plugin( $callpkg, @_ );
 
 	# export all session methods
 	no strict 'refs';
@@ -58,7 +137,11 @@ sub import
 }
 
 
-# register new downloader
+=head2 downloader SUB
+
+Register new downloader
+
+=cut
 sub downloader(&)
 {
 	my $callpkg = caller 0;
@@ -68,7 +151,11 @@ sub downloader(&)
 }
 
 
-# return current session
+=head2 my $val = this()->{ VAR };
+
+Return current session.
+
+=cut
 sub this()
 {
 	# XXX: correct but slow, replace with internal session ref
@@ -76,7 +163,11 @@ sub this()
 }
 
 
-# get/post uri, download to memory
+=head2 get( URI, [OPTIONS], CALLBACK_SUB );
+
+Send request to server (either GET or POST). Save data to memory.
+
+=cut
 sub get($$@)
 {
 	_coverage();
@@ -87,7 +178,12 @@ sub get($$@)
 	...
 }
 
-# get file, download to disk
+
+=head2 download( URI, [OPTIONS], [FAIL_CALLBACK_SUB] );
+
+Send request to server (either GET or POST). Save data to file.
+
+=cut
 sub download($@)
 {
 	_coverage();
@@ -101,7 +197,13 @@ sub download($@)
 	...
 }
 
-# wait some time before next step
+
+=head2 sleep( SECONDS );
+
+Set sleep timeout. Session will wait that many SECONDS before next
+get/download request.
+
+=cut
 sub sleep($)
 {
 	_coverage();
@@ -109,14 +211,23 @@ sub sleep($)
 	this->{sleep} = _val_check qr/-?\d+/ => shift;
 }
 
-# return small random number
+=head2 sleep( click() );
+
+Return small random number. Used to simulate user clicking.
+
+=cut
 sub click()
 {
 	return RSGet::Common::irand( 2, 5 );
 }
 
 
-# file information, or links
+=head2 info( OPTIONS );
+
+Save information about this download.
+Will interrupt current session if only file information was requested.
+
+=cut
 sub info(@)
 {
 	_coverage();
@@ -128,7 +239,12 @@ sub info(@)
 	_abort() if this->{info_only} or $info{links};
 }
 
-# die with an error
+
+=head2 error( TYPE => MESSAGE );
+
+Die because of some error.
+
+=cut
 sub error($$)
 {
 	_coverage();
@@ -137,7 +253,12 @@ sub error($$)
 	_abort();
 }
 
-# restart download
+
+=head2 restart( SECONDS, REASON => MESSAGE );
+
+Restart current session after SECONDS.
+
+=cut
 sub restart($$$)
 {
 	_coverage();
@@ -149,7 +270,12 @@ sub restart($$$)
 	_abort();
 }
 
-# make sure operation was successfull
+
+=head2 assert( SOMETHING );
+
+Make sure operation was successfull.
+
+=cut
 sub assert
 {
 	my $success = @_ > 0 && $_[ $#_ ] || undef;
@@ -164,7 +290,17 @@ sub assert
 	_coverage();
 }
 
-# log operation and its value
+
+=head2 expect( SOMETHING )
+
+Log operation and its value.
+
+	if ( expect( CONDITION_1 )
+			or expect( CONDITION_2 ) ) {
+		...
+	}
+
+=cut
 sub expect
 {
 	my $success = 0;
@@ -175,6 +311,8 @@ sub expect
 	return wantarray ? @_ : $_[ $#_ ];
 }
 
+
+# INTERNAL: save session coverage information
 sub _coverage
 {
 	my @c = caller 1;
@@ -183,37 +321,11 @@ sub _coverage
 	print "coverage: '$func' called from '$c[1]:$c[2]'\n";
 }
 
+
+# INTERNAL: abort current session
 sub _abort
 {
 	die [ abort => shift ];
-}
-
-sub _ref_check($;$)
-{
-	my $var = pop;
-	my $type = shift || "";
-
-	my $ref = ref $var;
-	unless ( $ref eq $type ) {
-		RSGet::Common::confess( "Argument should have ref '$type', but it is '$ref'\n" );
-	}
-
-	return $var;
-}
-
-sub _val_check($$)
-{
-	my $var = pop;
-	my $match = shift;
-
-	my $ref = ref $var;
-	unless ( $ref eq "" ) {
-		RSGet::Common::confess( "Argument should be a scalar, but it is '$ref'\n" );
-	}
-
-	unless ( $var =~ m/^$match$/ ) {
-		RSGet::Common::confess( "Argument '$var' does not match pattern: $match\n" );
-	}
 }
 
 1;
