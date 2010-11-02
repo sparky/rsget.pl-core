@@ -33,6 +33,9 @@ my @session = qw(
 
 my %plugins;
 
+sub _ref_check($;$);
+sub _val_check($$);
+
 sub import
 {
 	my $callpkg = caller 0;
@@ -59,7 +62,7 @@ sub import
 sub downloader(&)
 {
 	my $callpkg = caller 0;
-	my $code = shift;
+	my $code = _ref_check CODE => shift;
 
 	$plugins{ $callpkg }->{downloader} = $code;
 }
@@ -78,8 +81,8 @@ sub get($$@)
 {
 	_coverage();
 
-	my $uri = shift;
-	my $code = pop;
+	my $uri = _ref_check shift;
+	my $code = _ref_check CODE => pop;
 
 	...
 }
@@ -89,10 +92,10 @@ sub download($@)
 {
 	_coverage();
 
-	my $uri = shift;
+	my $uri = _ref_check shift;
 	my $fallback;
 	if ( @_ & 1 ) {
-		$fallback = pop;
+		$fallback = _ref_check CODE => pop;
 	}
 
 	...
@@ -103,7 +106,7 @@ sub sleep($)
 {
 	_coverage();
 
-	this->{sleep} = shift;
+	this->{sleep} = _val_check qr/-?\d+/ => shift;
 }
 
 # return small random number
@@ -139,7 +142,7 @@ sub restart($$$)
 {
 	_coverage();
 
-	my $time = shift;
+	my $time = _val_check qr/-?\d+/ => shift;
 
 	...;
 
@@ -183,6 +186,34 @@ sub _coverage
 sub _abort
 {
 	die [ abort => shift ];
+}
+
+sub _ref_check($;$)
+{
+	my $var = pop;
+	my $type = shift || "";
+
+	my $ref = ref $var;
+	unless ( $ref eq $type ) {
+		RSGet::Common::confess( "Argument should have ref '$type', but it is '$ref'\n" );
+	}
+
+	return $var;
+}
+
+sub _val_check($$)
+{
+	my $var = pop;
+	my $match = shift;
+
+	my $ref = ref $var;
+	unless ( $ref eq "" ) {
+		RSGet::Common::confess( "Argument should be a scalar, but it is '$ref'\n" );
+	}
+
+	unless ( $var =~ m/^$match$/ ) {
+		RSGet::Common::confess( "Argument '$var' does not match pattern: $match\n" );
+	}
 }
 
 1;
