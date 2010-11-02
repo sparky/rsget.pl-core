@@ -19,6 +19,7 @@ package RSGet::Plugin;
 use strict;
 use warnings;
 use RSGet::Common;
+use RSGet::Context;
 our $VERSION = v0.01;
 
 my @session = qw(
@@ -30,12 +31,25 @@ my @session = qw(
 	assert expect
 );
 
-# micro exporter
+my %plugins;
+
 sub import
 {
 	my $callpkg = caller 0;
 	my $pkg = shift || "RSGet::Plugin";
 
+	# register plugin
+	my $plugin = { uri => [] };
+	while ( my ( $key, $value ) = splice @_, 0, 2 ) {
+		if ( $key eq "uri" ) {
+			push @{ $plugin->{ $key } }, $value;
+		} else {
+			$plugin->{ $key } = $value;
+		}
+	}
+	$plugins{ $callpkg } = $plugin;
+
+	# export all session methods
 	no strict 'refs';
 	*{"$callpkg\::$_"} = \&{"$pkg\::$_"} foreach @session;
 }
@@ -44,34 +58,52 @@ sub import
 # register new downloader
 sub downloader(&)
 {
+	my $callpkg = caller 0;
+	my $code = shift;
+
+	$plugins{ $callpkg }->{downloader} = $code;
 }
 
 
 # return current session
 sub this()
 {
-	#require RSGet::Session;
-	#return $RSGet::Session::current;
-	return {};
+	# XXX: correct but slow, replace with internal session ref
+	return RSGet::Context->session();
 }
 
 
 # get/post uri, download to memory
-sub get($@)
+sub get($$@)
 {
 	_coverage();
+
+	my $uri = shift;
+	my $code = pop;
+
+	...
 }
 
 # get file, download to disk
 sub download($@)
 {
 	_coverage();
+
+	my $uri = shift;
+	my $fallback;
+	if ( @_ & 1 ) {
+		$fallback = pop;
+	}
+
+	...
 }
 
 # wait some time before next step
 sub sleep($)
 {
 	_coverage();
+
+	this->{sleep} = shift;
 }
 
 # return small random number
@@ -85,28 +117,44 @@ sub click()
 sub info(@)
 {
 	_coverage();
+
+	my %info = @_;
+
+	this->{info} = \%info;
+
+	_abort() if this->{info_only} or $info{links};
 }
 
 # die with an error
 sub error($$)
 {
 	_coverage();
+
+	this->{error} = [ @_ ];
+	_abort();
 }
 
 # restart download
 sub restart($$$)
 {
 	_coverage();
+
+	my $time = shift;
+
+	...;
+
+	_abort();
 }
 
 # make sure operation was successfull
 sub assert
 {
-	my $success = @_ > 1 || $_[0] ? 1 : 0;
+	my $success = @_ > 0 && $_[ $#_ ] || undef;
 
 	unless ( $success ) {
 		# fake coverage information
-		@_ = (assertion_failed => 1);
+		my @c = caller 0;
+		@_ = (assertion_failed => "at $c[1], line $c[2]");
 		goto &error;
 	}
 
@@ -117,11 +165,11 @@ sub assert
 sub expect
 {
 	my $success = 0;
-	$success = 1 if wantarray ? @_ : $_[0];
+	$success = 1 if wantarray ? @_ : $_[ $#_ ];
 
 	_coverage( @_ );
 
-	return wantarray ? @_ : $_[0];
+	return wantarray ? @_ : $_[ $#_ ];
 }
 
 sub _coverage
@@ -130,6 +178,11 @@ sub _coverage
 	my $func = $c[3];
 	$func =~ s/^RSGet::Plugin:://;
 	print "coverage: '$func' called from '$c[1]:$c[2]'\n";
+}
+
+sub _abort
+{
+	die [ abort => shift ];
 }
 
 1;
