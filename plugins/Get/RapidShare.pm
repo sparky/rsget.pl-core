@@ -18,7 +18,7 @@ package RSGet::Plugin::Get::Rapidshare;
 
 use strict;
 use warnings;
-use RSGet::Plugin v0.01
+use RSGet::Plugin v0.1
 	name => "RapidShare",
 	web => "http://rapidshare.com/",
 	tos => "http://rapidshare.com/#!rapidshare-ag/rapidshare-ag_agb",
@@ -30,10 +30,8 @@ use RSGet::Plugin v0.01
 
 downloader
 {
-	my $uri = shift;
-
 	my $main_page;
-	get $uri, $main_page = sub
+	get this->{uri}, $main_page = sub
 	{
 		error( file_not_found => $1 )
 			if /^ERROR: (.*)/
@@ -41,11 +39,11 @@ downloader
 				and expect( substr( $1, 0, 17 ) ne "You need RapidPro" );
 
 		if ( m{<script type="text/javascript">location="(.*?)"} ) {
-			this->{_referer} = undef;
+			this->{referer} = undef;
 			get "http://rapidshare.com$1", $main_page;
 		}
 
-		assert( my ( $id, $name, $size ) = this->{_referer} =~ m{#!download\|\d+\|(\d+)\|(.+?)\|(\d+)} );
+		assert( my ( $id, $name, $size ) = this->{referer} =~ m{#!download\|\d+\|(\d+)\|(.+?)\|(\d+)} );
 		info( name => $name, asize => $size."KB" );
 	
 		sleep click;
