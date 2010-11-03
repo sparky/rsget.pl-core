@@ -25,6 +25,8 @@ our %registered;
 # options set in config file
 our %values;
 
+# valid option name
+my $OPTION_NAME_RE = qr/[a-z][a-z0-9_]*[a-z]/;
 
 =head1 package RSGet::Config
 
@@ -46,7 +48,7 @@ sub import
 
 	while ( my ( $name, $desc, $default ) = splice @_, 0, 3 ) {
 		die "use RSGet::Config: option name '$name' is not valid\n"
-			unless $name =~ /^[a-z][a-z_]*[a-z]$/;
+			unless $name =~ /^$OPTION_NAME_RE$/o;
 
 		die "use RSGet::Config: option '$name' registered already\n"
 			if exists $registered{ $name };
@@ -77,13 +79,43 @@ sub load_config_file($)
 
 	{
 		package RSGet::Config::File;
-		require RSGet::Common;
-		RSGet::Common->import();
 		local $_ = "RSGet::Config::File";
 		do $file;
 
 		if ( $@ ) {
 			warn "Failed to load '$file': $@\n";
+		}
+	}
+}
+
+
+=head2 set_args( ARGV )
+
+Set options from command-line arguments.
+
+=cut
+sub set_args(@)
+{
+	{
+		package RSGet::Config::File;
+
+		while ( local $_ = shift @_ ) {
+			my ( $name, $type, $value ) = /^--($OPTION_NAME_RE)(?::(sub|eval))?=(.*)$/
+				or die "Invalid argument: $_\n";
+
+			if ( $type ) {
+				local $_ = "RSGet::Config::File";
+
+				if ( $type eq "sub" ) {
+					$value = "sub {" . $value . "}";
+				}
+				$RSGet::Config::values{ $name } = eval $value;
+				if ( $@ ) {
+					die "Failed to eval: '$value': $@\n";
+				}
+			} else {
+				$RSGet::Config::values{ $name } = $value;
+			}
 		}
 	}
 }
