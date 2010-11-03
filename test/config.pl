@@ -5,6 +5,7 @@ use RSGet::Common;
 use RSGet::Config test => "does nothing";
 
 RSGet::Config::load_config_file "test";
+RSGet::Config::set_args( @ARGV );
 
 
 print @{ RSGet::Config->test };
