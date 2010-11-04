@@ -18,7 +18,7 @@ package RSGet::Plugin;
 
 use strict;
 use warnings;
-use RSGet::Common;
+use RSGet::Common qw(ref_check val_check);
 use RSGet::Context;
 our $VERSION = v0.1.0;
 
@@ -40,48 +40,8 @@ my @session = qw(
 
 my %plugins;
 
-# INTERNAL: my $val = _ref_check TYPE => $argument;
-#
-# Make sure argument is a ref to TYPE. Die if it isn't.
-#
-# my $val = _ref_check $argument;
-#
-# Die if argument is a ref.
-#
-sub _ref_check($;$)
-{
-	my $var = pop;
-	my $type = shift || "";
 
-	my $ref = ref $var;
-	unless ( $ref eq $type ) {
-		RSGet::Common::confess( "Argument should contain a '$type' ref, but it is '$ref'\n" );
-	}
-
-	return $var;
-}
-
-# INTERNAL: my $val = _val_check qr/PATTERN/ => $argument;
-#
-# Make sure argument matches PATTERN. Die if it doesn't.
-#
-sub _val_check($$)
-{
-	my $var = pop;
-	my $match = shift;
-
-	my $ref = ref $var;
-	unless ( $ref eq "" ) {
-		RSGet::Common::confess( "Argument should be a scalar, but it is a ref to '$ref'\n" );
-	}
-
-	unless ( $var =~ m/^$match$/ ) {
-		RSGet::Common::confess( "Argument '$var' does not match pattern: $match\n" );
-	}
-}
-
-
-=head2 use RSGet::Common VERSION [OPTIONS];
+=head2 use RSGet::Plugin VERSION [OPTIONS];
 
 Register new plugin.
 
@@ -149,7 +109,7 @@ Register new downloader.
 sub downloader(&)
 {
 	my $callpkg = caller 0;
-	my $code = _ref_check CODE => shift;
+	my $code = ref_check CODE => shift, "First downloader() argument";
 
 	$plugins{ $callpkg }->{downloader} = $code;
 }
@@ -185,8 +145,8 @@ sub get($$@)
 {
 	_coverage();
 
-	my $uri = _ref_check shift;
-	my $code = _ref_check CODE => pop;
+	my $uri = ref_check undef => shift, "First get() argument";
+	my $code = ref_check CODE => pop, "Last get() argument";
 
 	...
 }
@@ -207,10 +167,10 @@ sub download($@)
 {
 	_coverage();
 
-	my $uri = _ref_check shift;
+	my $uri = ref_check undef => shift, "First download() argument";
 	my $fallback;
 	if ( @_ & 1 ) {
-		$fallback = _ref_check CODE => pop;
+		$fallback = ref_check CODE => pop, "Last download() argument (if any)";
 	}
 
 	...
@@ -230,8 +190,9 @@ sub sleep($)
 {
 	_coverage();
 
-	this->{sleep} = _val_check qr/-?\d+/ => shift;
+	this->{sleep} = val_check qr/-?\d+/ => shift, "First sleep() argument";
 }
+
 
 =head2 click();
 
@@ -314,7 +275,7 @@ sub restart($$$)
 {
 	_coverage();
 
-	my $time = _val_check qr/-?\d+/ => shift;
+	my $time = val_check qr/-?\d+/ => shift, "First restart() argument";
 
 	...;
 
