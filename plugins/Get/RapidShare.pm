@@ -33,7 +33,7 @@ downloader
 	my $main_page;
 	get this->{uri}, $main_page = sub
 	{
-		error( file_not_found => $1 )
+		error( not_found => $1 )
 			if /^ERROR: (.*)/
 				and expect( substr( $1, 0, 16 ) ne "You need to wait" )
 				and expect( substr( $1, 0, 17 ) ne "You need RapidPro" );

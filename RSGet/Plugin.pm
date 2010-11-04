@@ -112,6 +112,10 @@ sub downloader(&)
 	my $code = ref_check CODE => shift, "First downloader() argument";
 
 	$plugins{ $callpkg }->{downloader} = $code;
+
+	# this function will likely be the last function in plugin module so make
+	# sure to return true value
+	return 1;
 }
 
 
@@ -250,8 +254,16 @@ sub info(@)
 
 Die because of some error.
 
-	error file_not_found => $1
+	error not_found => $1
 		if />(File is missing: .*?)</;
+
+Valid error types:
+
+ - not_found - file was never there, or has been removed
+ - unavailable - temporarily unavailable, user should try later
+ - restricted - requires an account
+ - server - some (common) server error, user should try later
+ - assertion_failed - plugin error - internal, don't use
 
 =cut
 sub error($$)
@@ -269,6 +281,10 @@ Restart current session after SECONDS.
 
 	restart( $2, free_limit => $1 )
 		if /(Free limit reached.*must wait (\d+) seconds)/;
+
+Valid restart reasons:
+
+ - free_limit - limit reached, must wait before continuing
 
 =cut
 sub restart($$$)
