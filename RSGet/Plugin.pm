@@ -45,7 +45,7 @@ my %plugins;
 
 Register new plugin.
 
- use RSGet::Plugin v0.1.0
+ use RSGet::Plugin v0.1
  	name => "Service name",
 	web => "http://main_page.com/",
 	tos => "http://main_page.com/terms_of_service",
@@ -72,6 +72,40 @@ sub _register_plugin
 		}
 	}
 }
+
+
+# INTERNAL: make sure plugin requires recent-enough interface
+# usage:
+# sub something {
+# 	_introduced_in( v0.2 );
+# 	...
+# }
+#
+# sub get {
+# 	...
+# 	_introduced_in( v0.3, "option 'nofollow' in get()" ) if $opts{nofoloow};
+# 	...
+# }
+sub _introduced_in($;$)
+{
+	return unless RSGet::Common::DEBUG;
+
+	my $version = shift;
+
+	my @caller = caller 1;
+	my $function = shift || ($caller[3] =~ m/.*::(.*)/)[0] . "()";
+
+	my $plugin = $plugins{ $caller[ 0 ] };
+
+	die unless my $reqver = $plugin->{plugin_version};
+
+	return if $reqver ge $version;
+
+	die sprintf "Plugin interface version mismatch: $plugin->{name} requires " .
+		"RSGet::Plugin v%vd, but it uses $function, which was introduced in v%vd\n",
+		$reqver, $version;
+}
+
 
 # Save required version number. Later we'll be able to whether plugin
 # requires interface new-enough for it to work.
