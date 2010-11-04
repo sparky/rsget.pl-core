@@ -45,6 +45,14 @@ sub import
 }
 
 
+=head2 if ( DEBUG ) { ... }
+
+Return true if debugging.
+
+=cut
+use constant DEBUG => 1;
+
+
 =head2 my $val = irand( [MIN], MAX );
 
 Returns an integer in [MIN, MAX) interval. MIN is zero if ommited.
