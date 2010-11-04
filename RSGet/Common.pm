@@ -78,6 +78,57 @@ sub confess($)
 	}
 }
 
+
+=head2 my $val = ref_check TYPE => $argument, 'Option "name"';
+
+Make sure argument is a ref to TYPE. Die if it isn't.
+
+	my $val = ref_check undef => $argument;
+
+Die if argument is a ref.
+
+=cut
+sub ref_check($$;$)
+{
+	my $type = shift || "";
+	$type = "" if $type eq "undef";
+	my $var = shift;
+	my $name = shift || "Argument";
+
+	my $ref = ref $var;
+	unless ( $ref eq $type ) {
+		@_ = ( "$name should contain a '$type' ref, but it is '$ref'\n" );
+		goto \&RSGet::Common::confess;
+	}
+
+	return $var;
+}
+
+
+=head2 my $val = val_check qr/PATTERN/ => $argument;
+
+Make sure argument matches PATTERN. Die if it doesn't.
+
+=cut
+sub val_check($$;$)
+{
+	my $match = shift;
+	my $var = shift;
+	my $name = shift || "Argument";
+
+	my $ref = ref $var;
+	unless ( $ref eq "" ) {
+		@_ = ( "$name should be a scalar, but it is a ref to '$ref'\n" );
+		goto \&RSGet::Common::confess;
+	}
+
+	unless ( $var =~ m/^$match$/ ) {
+		@_ = ( "$name '$var' does not match pattern: $match\n" );
+		goto \&RSGet::Common::confess;
+	}
+}
+
+
 1;
 
 # vim: ts=4:sw=4:fdm=marker
