@@ -52,6 +52,18 @@ Register new plugin.
 	uri => qr{main_page\.com/supported_uris/.*},
 	uri => qr{secong_page\.com/supported_uris/.*};
 
+Options:
+
+	name - string; service name (required)
+	web - string; main page (required)
+	tos - string; terms of service (required if any)
+	uri - regexp; match valid links, multiple uri allowed
+	use - scalar; list of additional facilities:
+		"captcha, cookie, form, user, select"
+	broken - string; give reason if plugin is broken
+
+	? noresume - service unable to resume
+
 =cut
 
 # INTERNAL: _register_plugin( PKG, [OPTIONS] )
@@ -168,6 +180,22 @@ sub this()
 }
 
 
+=head2 head( URI, [OPTIONS], CALLBACK_SUB );
+
+Send HEAD request to server. Save headers to $_.
+
+=cut
+sub head($$@)
+{
+	_coverage();
+
+	my $uri = ref_check undef => shift, "First head() argument";
+	my $code = ref_check CODE => pop, "Last head() argument";
+
+	...
+}
+
+
 =head2 get( URI, [OPTIONS], CALLBACK_SUB );
 
 Send request to server (either GET or POST). Save data to memory.
@@ -210,6 +238,22 @@ sub download($@)
 	if ( @_ & 1 ) {
 		$fallback = ref_check CODE => pop, "Last download() argument (if any)";
 	}
+
+	...
+}
+
+
+=head2 cookie BASE, KEY => VALUE, [KEY => VALUE];
+
+Set-up a cookie.
+
+=cut
+sub cookie($@)
+{
+	_coverage();
+
+	my $base = ref_check undef => shift, "First cookie() argument";
+	my %opts = map { ref_check undef => $_, "cookie() key/value" } @_;
 
 	...
 }
@@ -266,6 +310,8 @@ Will interrupt current session if only file information was requested.
 		asize => "aproximate size", # e.g. 100KB
 
 		kilo => 1000, # if K/M/G are multiples of 1000, not 1024
+
+		desc => "download description", # additional info, video length
 		;
 
 	info
@@ -284,6 +330,75 @@ sub info(@)
 }
 
 
+=head2 captcha URI, NAME => REGEXP, [OPTIONS], CALLBACK_SUB;
+
+Download and solve captcha image.
+
+=cut
+sub captcha($$$$@)
+{
+	_coverage();
+
+	my $uri = ref_check undef => shift, "First captcha() argument";
+	my $name = val_check qr/[a-z]+/ => shift, "Second captcha() argument";
+	my $re = ref_check Regexp => shift, "Third captcha() argument";
+	my $code = ref_check CODE => pop, "Last captcha() argument";
+
+	...
+}
+
+
+=head2 captcha_result SUCCESS;
+
+True for successful captcha.
+
+	if ( CAPTCHA_IS_OK ) {
+		captcha_result 1;
+	} else {
+		captcha_result 0;
+		restart ...
+	}
+
+=cut
+sub captcha_result($)
+{
+	_coverage();
+
+	my $result = ref_check undef => shift, "First captcha_result() argument";
+
+	...
+}
+
+
+=head2 my $form = form MATCH_OPTIONS;
+
+Extract <form></form> from document.
+
+=cut
+sub form
+{
+	_coverage();
+
+	...
+}
+
+
+=head2 my $opt = select NAME, OPT1 => DESC1, [ OPT2 => DESC2, ...];
+
+Select between multiple possibilities. E.g. video quality.
+Returns inmediatelly.
+
+=cut
+sub select($@)
+{
+	_coverage();
+
+	my $name = val_check qr/[a-z]+/ => shift, "First select() argument";
+
+	...
+}
+
+
 =head2 error( TYPE => MESSAGE );
 
 Die because of some error.
@@ -294,9 +409,7 @@ Die because of some error.
 Valid error types:
 
  - not_found - file was never there, or has been removed
- - unavailable - temporarily unavailable, user should try later
  - restricted - requires an account
- - server - some (common) server error, user should try later
  - assertion_failed - plugin error - internal, don't use
 
 =cut
@@ -305,6 +418,26 @@ sub error($$)
 	_coverage();
 
 	this->{error} = [ @_ ];
+	_abort();
+}
+
+
+=head2 delay( TYPE => MESSAGE );
+
+Delay download because of some error.
+
+Valid delay types:
+
+ - multi - multi-download not allowed
+ - unavailable - temporarily unavailable, user should try later
+ - server - some (common) server error, user should try later
+
+=cut
+sub delay($$)
+{
+	_coverage();
+
+	this->{delay} = [ @_ ];
 	_abort();
 }
 
@@ -319,6 +452,7 @@ Restart current session after SECONDS.
 Valid restart reasons:
 
  - free_limit - limit reached, must wait before continuing
+ - captcha - unsolved or incorrect captcha
 
 =cut
 sub restart($$$)
