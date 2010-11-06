@@ -533,4 +533,49 @@ sub _abort
 
 1;
 
+=head2 Request options
+
+Options which can be used in head(), get(), captcha(), download().
+
+=over
+
+=item post => String or HASHREF or ARRAYREF
+
+Send a POST request. Post supplied data.
+
+=item accept => Regexp
+
+Accepted content type. Defaults:
+
+ - head: .*/.*
+ - get: text/.*
+ - captcha: image/.*
+ - download: all but text/.*
+
+=item header => String or ARRAYREF
+
+Send http header. Multiple header options alowed.
+
+ header => "X-Requested-With: XMLHttpRequest",
+ header => "Content-Type: text/xml",
+
+ header => [ "X-Requested-With: XMLHttpRequest", "Content-Type: text/xml" ],
+
+=item keep_referer => Bool
+
+Don't update referer value. Default 1 for head() and captcha(), 0 for others.
+Should be set for ajax requests.
+
+=item file_name => String
+
+Force file name, useful only for download().
+
+=item file_size => Integer
+
+Force file size, useful only for download().
+
+=back
+
+=cut
+
 # vim: ts=4:sw=4:fdm=marker
