@@ -32,7 +32,9 @@ and defines an interface for connection with the core.
 my @session = qw(
 	downloader
 	this
-	get download
+	head get download
+	cookie form select
+	captcha captcha_result
 	sleep click
 	error info restart delay
 	assert expect
@@ -422,7 +424,7 @@ sub error($$)
 }
 
 
-=head2 delay( TYPE => MESSAGE );
+=head2 delay( SECONDS, TYPE => MESSAGE );
 
 Delay download because of some error.
 
@@ -433,9 +435,11 @@ Valid delay types:
  - server - some (common) server error, user should try later
 
 =cut
-sub delay($$)
+sub delay($$$)
 {
 	_coverage();
+
+	my $time = val_check qr/\d+/ => shift, "First delay() argument";
 
 	this->{delay} = [ @_ ];
 	_abort();
