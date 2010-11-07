@@ -182,6 +182,40 @@ sub this()
 	return RSGet::Context->session();
 }
 
+my %_req_options = (
+	uri => qr/.*/, # string
+	post => qr/.+/, # string
+	accept => "Regexp",
+	reject => "Regexp",
+	next_step => "CODE",
+	rejected => "CODE",
+	header => qr/.+/,
+	keep_referer => qr/[01]/,
+	last_stop => qr/\d+/, #Integer
+	file_name => qr/.+/, #String
+	file_size => qr/\d+/, #Integer
+);
+
+# INTERNAL: set request options
+sub _request_options
+{
+	my $opts = {}; # XXX: just a placeholder
+
+	die if @_ & 1;
+	while ( my ($key, $value) = splice @_, 0, 2 ) {
+		die unless exists $_req_options{ $key };
+		unless ( defined $value ) {
+			delete $opts->{ $key };
+			next;
+		}
+		my $check = $_req_options{ $key };
+
+		$opts->{ $key } =
+			( ref $check eq "Regexp" ? \&val_check : \&ref_check )->(
+				$check => $value, "Value for $key option"
+			);
+	}
+}
 
 =head2 head( URI, [OPTIONS], CALLBACK_SUB );
 
@@ -194,6 +228,14 @@ sub head($$@)
 
 	my $uri = ref_check undef => shift, "First head() argument";
 	my $code = ref_check CODE => pop, "Last head() argument";
+
+	_request_options(
+		accept => qr#.*/.*#,
+		@_,
+		uri => $uri,
+		next_step => $code,
+		head_only => 1,
+	);
 
 	...
 }
@@ -217,6 +259,13 @@ sub get($$@)
 	my $uri = ref_check undef => shift, "First get() argument";
 	my $code = ref_check CODE => pop, "Last get() argument";
 
+	_request_options(
+		accept => qr#text/.*#,
+		@_,
+		uri => $uri,
+		next_step => $code,
+	);
+
 	...
 }
 
@@ -237,6 +286,13 @@ sub download($@)
 	_coverage();
 
 	my $uri = ref_check undef => shift, "First download() argument";
+
+	_request_options(
+		accept => qr#.*/.*#,
+		reject => qr#text/.*#,
+		@_,
+		uri => $uri,
+	);
 
 	...
 }
@@ -348,6 +404,14 @@ sub captcha($$$$@)
 	my $re = ref_check Regexp => shift, "Third captcha() argument";
 	my $code = ref_check CODE => pop, "Last captcha() argument";
 
+	_request_options(
+		accept => qr#image/.*#,
+		@_,
+		uri => $uri,
+		next_step => $code,
+	);
+
+
 	...
 }
 
@@ -403,7 +467,7 @@ sub select($@)
 
 	my $name = val_check qr/[a-z]+/ => shift, "First select() argument";
 	if ( @_ == 1 ) {
-		my $re = reg_check Regexp => shift, "Second select() argument";
+		my $re = ref_check Regexp => shift, "Second select() argument";
 
 		...
 	}
@@ -544,6 +608,10 @@ Options which can be used in head(), get(), captcha(), download().
 
 =over
 
+=item (internal) uri => String
+
+URI to retrieve. Set automatically from first parameter. Don't set it manually.
+
 =item post => String or HASHREF or ARRAYREF
 
 Send a POST request. Post supplied data.
@@ -572,14 +640,12 @@ manually for those.
 
 Sub executed if content-type has been rejected.
 
-=item header => String or ARRAYREF
+=item header => String
 
 Send http header. Multiple header options alowed.
 
  header => "X-Requested-With: XMLHttpRequest",
  header => "Content-Type: text/xml",
-
- header => [ "X-Requested-With: XMLHttpRequest", "Content-Type: text/xml" ],
 
 =item keep_referer => Bool
 
