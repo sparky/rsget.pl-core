@@ -207,7 +207,7 @@ Send request to server (either GET or POST). Save data to memory.
 	{
 		EXECUTED ON SUCCESS;
 		DATA IN $_;
-	}
+	};
 
 =cut
 sub get($$@)
@@ -225,11 +225,11 @@ sub get($$@)
 
 Send request to server (either GET or POST). Save data to file.
 
-	download $file_uri, post => { data => "to post" }, sub
+	download $file_uri, post => { data => "to post" }, rejected => sub
 	{
 		EXECUTED ON FAILURE;
 		# i.e. content type was text/*
-	}
+	};
 
 =cut
 sub download($@)
@@ -237,10 +237,6 @@ sub download($@)
 	_coverage();
 
 	my $uri = ref_check undef => shift, "First download() argument";
-	my $fallback;
-	if ( @_ & 1 ) {
-		$fallback = ref_check CODE => pop, "Last download() argument (if any)";
-	}
 
 	...
 }
@@ -559,7 +555,22 @@ Accepted content type. Defaults:
  - head: .*/.*
  - get: text/.*
  - captcha: image/.*
- - download: all but text/.*
+ - download: .*/.* (see reject)
+
+=item reject => Regexp
+
+Reject following content-type. Even if accepted by "accept" option.
+Default: text/.* for download(), none for others.
+
+=item (internal) next_step => CODE
+
+Sub executed if request was successful. This option is set automatically
+from last parameter passed to head(), get() and captcha(). Don't set it
+manually for those.
+
+=item rejected => CODE
+
+Sub executed if content-type has been rejected.
 
 =item header => String or ARRAYREF
 
