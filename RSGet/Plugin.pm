@@ -57,11 +57,12 @@ Register new plugin.
 Options:
 
 	name - string; service name (required)
-	web - string; main page (required)
-	tos - string; terms of service (required if any)
+	web - string; main page uri (required)
+	tos - string; terms of service uri (required if any)
 	uri - regexp; match valid links, multiple uri allowed
+	uri_exact - regexp; match exactly those links (including proto)
 	use - scalar; list of additional facilities:
-		"captcha, cookie, form, user, select"
+		"captcha, cookie, form, user, select, proto_https"
 	broken - string; give reason if plugin is broken
 
 	? noresume - service unable to resume
@@ -261,12 +262,12 @@ sub cookie($@)
 }
 
 
-=head2 sleep( SECONDS );
+=head2 sleep( SECONDS, [MSG] );
 
 Set sleep timeout. Session will wait that many SECONDS before next
 get/download request.
 
-	sleep $wait_time;
+	sleep $wait_time, "waiting for download link";
 	get $uri, sub { ... };
 
 =cut
@@ -280,18 +281,23 @@ sub sleep($)
 
 =head2 click();
 
-Return small random number. Used to simulate user clicking.
+Set click sleep timeout. Emulates user following the link.
+Session will wait at least 2 to 5 seconds, but may wait much longer
+if soft limits are reached.
 
-	sleep click;
+	click;
 	get $uri, sub { ... };
 
-	sleep $wait_time + click;
+	sleep $wait_time;
+	click;
 	download $file_uri;
 
 =cut
 sub click()
 {
-	return RSGet::Common::irand( 2, 5 );
+	_coverage();
+
+	this->{click} = RSGet::Common::irand( 2, 5 );
 }
 
 
@@ -390,12 +396,21 @@ sub form
 Select between multiple possibilities. E.g. video quality.
 Returns inmediatelly.
 
+=head2 my $opt = select NAME, qr/Regexp/;
+
+Ask for some string (e.g. password).
+
 =cut
 sub select($@)
 {
 	_coverage();
 
 	my $name = val_check qr/[a-z]+/ => shift, "First select() argument";
+	if ( @_ == 1 ) {
+		my $re = reg_check Regexp => shift, "Second select() argument";
+
+		...
+	}
 
 	...
 }
@@ -411,7 +426,8 @@ Die because of some error.
 Valid error types:
 
  - not_found - file was never there, or has been removed
- - restricted - requires an account
+ - restricted - requires an account or password
+ - invalid - it is not what we expected
  - assertion_failed - plugin error - internal, don't use
 
 =cut
@@ -426,10 +442,12 @@ sub error($$)
 
 =head2 delay( SECONDS, TYPE => MESSAGE );
 
-Delay download because of some error.
+Delay download because of some error. May try to restart on another interface.
 
 Valid delay types:
 
+ - limit - limit reached, must wait before continuing
+ - busy - servers are overloaded, no slots for free users, must retry later
  - multi - multi-download not allowed
  - unavailable - temporarily unavailable, user should try later
  - server - some (common) server error, user should try later
@@ -446,24 +464,15 @@ sub delay($$$)
 }
 
 
-=head2 restart( SECONDS, REASON => MESSAGE );
+=head2 restart();
 
-Restart current session after SECONDS.
-
-	restart( $2, free_limit => $1 )
-		if /(Free limit reached.*must wait (\d+) seconds)/;
-
-Valid restart reasons:
-
- - free_limit - limit reached, must wait before continuing
- - captcha - unsolved or incorrect captcha
+Restart current session inmediatelly. Use delay otherwise.
 
 =cut
-sub restart($$$)
+sub restart()
 {
 	_coverage();
 
-	my $time = val_check qr/-?\d+/ => shift, "First restart() argument";
 
 	...;
 
@@ -565,6 +574,15 @@ Send http header. Multiple header options alowed.
 
 Don't update referer value. Default 1 for head() and captcha(), 0 for others.
 Should be set for ajax requests.
+
+=item last_stop => Integer
+
+Tell dispatcher that after this request session must not be stopped and cannot
+linger. Normally (on the server side) download session starts when we issue
+the last download() request, but on some servers it happens earlier.
+
+The number denotes how long can we wait (at most) before issuing this request.
+Default: 120 on download(), not set on others.
 
 =item file_name => String
 

@@ -46,12 +46,12 @@ downloader
 		assert( my ( $id, $name, $size ) = this->{referer} =~ m{#!download\|\d+\|(\d+)\|(.+?)\|(\d+)} );
 		info( name => $name, asize => $size."KB" );
 	
-		sleep click;
+		click;
 		get "http://api.rapidshare.com/cgi-bin/rsapi.cgi?sub=download_v1&try=1&fileid=$id&filename=$name", sub
 		{
-			delay( 0, multidownload => $1 )
+			delay( 0, multi => $1 )
 				if /^(ERROR: You need RapidPro.*)/;
-			restart( $2, freelimit => $1 )
+			delay( $2, limit => $1 )
 				if /^(ERROR: You need to wait (\d+) seconds.*)/;
 
 			assert( my ( $host, $dlauth, $wait ) = m{DL:(.*?),([0-9A-F]+?),(\d+)} );
