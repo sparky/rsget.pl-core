@@ -112,13 +112,14 @@ sub _introduced_in($;$)
 
 	my $plugin = $plugins{ $caller[ 0 ] };
 
-	die unless my $reqver = $plugin->{plugin_version};
+	RSGet::Common::confess( "plugin not registered properly" )
+		unless my $reqver = $plugin->{plugin_version};
 
 	return if $reqver ge $version;
 
-	die sprintf "Plugin interface version mismatch: $plugin->{name} requires " .
+	RSGet::Common::confess( sprintf "Plugin interface version mismatch: $plugin->{name} requires " .
 		"RSGet::Plugin v%vd, but it uses $function, which was introduced in v%vd\n",
-		$reqver, $version;
+		$reqver, $version );
 }
 
 
@@ -201,9 +202,11 @@ sub _request_options
 {
 	my $opts = {}; # XXX: just a placeholder
 
-	die if @_ & 1;
+	RSGet::Common::confess( "Passed odd number of options" )
+		if @_ & 1;
 	while ( my ($key, $value) = splice @_, 0, 2 ) {
-		die unless exists $_req_options{ $key };
+		RSGet::Common::confess( "option '$key' is not valid" )
+			unless exists $_req_options{ $key };
 		unless ( defined $value ) {
 			delete $opts->{ $key };
 			next;
