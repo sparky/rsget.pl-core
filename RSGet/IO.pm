@@ -32,6 +32,7 @@ use constant {
 	IO_BUFFER => 2,
 };
 
+
 =head2 my $input = RSGet::IO->new( HANDLE );
 
 Mark HANDLE as non-blocking and return a wrapper.
@@ -47,7 +48,7 @@ sub new
 
 	my $self = [
 		$handle,	# IO_HANDLE
-		chr( 0 ),		# IO_VECTOR
+		chr( 0 ),	# IO_VECTOR
 		"",			# IO_BUFFER
 	];
 
@@ -58,33 +59,18 @@ sub new
 	return $self;
 }
 
-sub _read_end
+
+=head2 my $handle = $input->handle();
+
+Return file handle.
+
+=cut
+sub handle
 {
 	my $self = shift;
-	my $active = 1;
-
-	my $r = $self->[ IO_VECTOR ];
-	my $nfound = select ( $r, undef, undef, 0 );
-
-	if ( $nfound > 0 ) {
-		my $nread = sysread $self->[ IO_HANDLE ], my $buf, 1;
-		if ( $nread ) {
-			$self->[ IO_BUFFER ] .= $buf;
-		} else {
-			$active = 0;
-		}
-	}
-
-	if ( $active ) {
-		die "RSGet::IO: no data\n";
-	} elsif ( length $self->[ IO_BUFFER ] ) {
-		my $ret = $self->[ IO_BUFFER ];
-		$self->[ IO_BUFFER ] = '';
-		return $ret;
-	} else {
-		die "RSGet::IO: handle closed\n";
-	}
+	return $self->[ IO_HANDLE ];
 }
+
 
 =head2 my $data = $input->read( BYTES );
 
@@ -116,6 +102,7 @@ sub read
 	return substr $self->[ IO_BUFFER ], 0, $size, '';
 }
 
+
 =head2 my $line = $input->readline();
 
 Read exactly one line from input and return it.
@@ -142,17 +129,33 @@ sub readline
 	return substr $self->[ IO_BUFFER ], 0, ($idx + length $/), '';
 }
 
-=head2 my $handle = $input->handle();
-
-Return file handle.
-
-=cut
-sub handle
+sub _read_end
 {
 	my $self = shift;
-	return $self->[ IO_HANDLE ];
-}
+	my $active = 1;
 
+	my $r = $self->[ IO_VECTOR ];
+	my $nfound = select ( $r, undef, undef, 0 );
+
+	if ( $nfound > 0 ) {
+		my $nread = sysread $self->[ IO_HANDLE ], my $buf, 1;
+		if ( $nread ) {
+			$self->[ IO_BUFFER ] .= $buf;
+		} else {
+			$active = 0;
+		}
+	}
+
+	if ( $active ) {
+		die "RSGet::IO: no data\n";
+	} elsif ( length $self->[ IO_BUFFER ] ) {
+		my $ret = $self->[ IO_BUFFER ];
+		$self->[ IO_BUFFER ] = '';
+		return $ret;
+	} else {
+		die "RSGet::IO: handle closed\n";
+	}
+}
 
 1;
 
