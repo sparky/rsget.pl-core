@@ -63,8 +63,8 @@ sub _read_end
 	my $self = shift;
 	my $active = 1;
 
-	my $r = my $w = my $e = $self->[ IO_VECTOR ];
-	my $nfound = select ( $r, $w, $e, 0 );
+	my $r = $self->[ IO_VECTOR ];
+	my $nfound = select ( $r, undef, undef, 0 );
 
 	if ( $nfound > 0 ) {
 		my $nread = sysread $self->[ IO_HANDLE ], my $buf, 1;
@@ -141,6 +141,18 @@ sub readline
 
 	return substr $self->[ IO_BUFFER ], 0, $idx + 1, '';
 }
+
+=head2 my $handle = $input->handle();
+
+Return file handle.
+
+=cut
+sub handle
+{
+	my $self = shift;
+	return $self->[ IO_HANDLE ];
+}
+
 
 1;
 
