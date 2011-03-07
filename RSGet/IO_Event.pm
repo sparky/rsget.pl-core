@@ -16,6 +16,12 @@ package RSGet::IO_Event;
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+=head1 package RSGet::IO_Event
+
+Automatically call methods on new data.
+
+=cut
+
 use strict;
 use warnings;
 use IO::Select;
@@ -23,6 +29,12 @@ use Time::HiRes ();
 
 my $select = IO::Select->new();
 
+=head2 RSGet::IO_Event->add( HANDLE, OBJECT, [METHOD] );
+
+Add OBJECT with associated HANDLE to call list. If METHOD is not specified
+io_data() will be used.
+
+=cut
 sub add
 {
 	my $class = shift;
@@ -43,6 +55,11 @@ sub add
 	return 1;
 }
 
+=head2 RSGet::IO_Event->remove( HANDLE );
+
+Remove OBJECT associated with HANDLE from call list.
+
+=cut
 sub remove
 {
 	my $class = shift;
@@ -54,6 +71,11 @@ sub remove
 	$select->remove( $handle );
 }
 
+=head2 RSGet::IO_Event::_perform();
+
+For each HANDLE ready to read call appropriate OBJECT->METHOD( $time ).
+
+=cut
 sub _perform
 {
 	my @io = $select->can_read( 0 );
