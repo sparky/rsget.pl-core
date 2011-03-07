@@ -20,12 +20,23 @@ use strict;
 use warnings;
 use IO::Handle ();
 
+=head1 package RSGet::IO
+
+IO wrapper. Allows exact reads without blocking.
+
+=cut
+
 use constant {
 	IO_HANDLE => 0,
 	IO_VECTOR => 1,
 	IO_BUFFER => 2,
 };
 
+=head2 my $input = RSGet::IO->new( HANDLE );
+
+Mark HANDLE as non-blocking and return a wrapper.
+
+=cut
 sub new
 {
 	my $class = shift;
@@ -75,6 +86,15 @@ sub _read_end
 	}
 }
 
+=head2 my $data = $input->read( BYTES );
+
+Read exactly BYTES from input and return it.
+
+If there aren't enough bytes and handle is still open - read will return undef.
+If handle was closed return remaining data. Subsequent reads will die with
+"handle closed" error.
+
+=cut
 sub read
 {
 	my $self = shift;
@@ -96,6 +116,15 @@ sub read
 	return substr $self->[ IO_BUFFER ], 0, $size, '';
 }
 
+=head2 my $line = $input->readline();
+
+Read exactly one line from input and return it.
+
+If there aren't enough data and handle is still open - readline will return
+undef. If handle was closed return remaining data. Subsequent reads will die
+with "handle closed" error.
+
+=cut
 sub readline
 {
 	my $self = shift;
