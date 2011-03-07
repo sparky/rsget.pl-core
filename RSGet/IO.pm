@@ -76,13 +76,13 @@ sub _read_end
 	}
 
 	if ( $active ) {
-		return undef;
+		die "RSGet::IO: no data\n";
 	} elsif ( length $self->[ IO_BUFFER ] ) {
 		my $ret = $self->[ IO_BUFFER ];
 		$self->[ IO_BUFFER ] = '';
 		return $ret;
 	} else {
-		die "handle closed\n";
+		die "RSGet::IO: handle closed\n";
 	}
 }
 
@@ -90,9 +90,9 @@ sub _read_end
 
 Read exactly BYTES from input and return it.
 
-If there aren't enough bytes and handle is still open - read will return undef.
-If handle was closed return remaining data. Subsequent reads will die with
-"handle closed" error.
+If there aren't enough bytes and handle is still open - read will die with
+"RSGet::IO: no data" error. If handle was closed it returns remaining data.
+Subsequent reads will die with "RSGet::IO: handle closed" error.
 
 =cut
 sub read
@@ -120,9 +120,9 @@ sub read
 
 Read exactly one line from input and return it.
 
-If there aren't enough data and handle is still open - readline will return
-undef. If handle was closed return remaining data. Subsequent reads will die
-with "handle closed" error.
+If there aren't enough data and handle is still open - readline will die with
+"RSGet::IO: no data" error. If handle was closed it returns remaining line.
+Subsequent reads will die with "RSGet::IO: handle closed" error.
 
 =cut
 sub readline
@@ -130,7 +130,7 @@ sub readline
 	my $self = shift;
 
 	my $idx;
-	until ( ( $idx = index $self->[ IO_BUFFER ], "\n" ) >= 0 ) {
+	until ( ( $idx = index $self->[ IO_BUFFER ], $/ ) >= 0 ) {
 		my $nread = sysread $self->[ IO_HANDLE ], my $buf, 32;
 
 		return _read_end( $self )
@@ -139,7 +139,7 @@ sub readline
 		$self->[ IO_BUFFER ] .= $buf;
 	}
 
-	return substr $self->[ IO_BUFFER ], 0, $idx + 1, '';
+	return substr $self->[ IO_BUFFER ], 0, ($idx + length $/), '';
 }
 
 =head2 my $handle = $input->handle();
