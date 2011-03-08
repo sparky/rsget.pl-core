@@ -24,7 +24,7 @@ sub create
 	my $self = \$socket;
 	bless $self, $class;
 
-	RSGet::IO_Event->add( $socket, $self, "_client" );
+	RSGet::IO_Event->add_read( $socket, $self, "_client" );
 
 	return $self;
 }
@@ -73,7 +73,7 @@ sub create
 
 	bless $self, $class;
 
-	RSGet::IO_Event->add( $handle, $self, "_data" );
+	RSGet::IO_Event->add_read( $handle, $self, "_data" );
 
 	return $self;
 }
@@ -105,11 +105,11 @@ NEXT_REQUEST:
 			$_ = $io->readline();
 			my @request = split /\s+/, $_;
 
-			print "REQ: [ @request ]\n";
 			$self->{method} = uc shift @request;
 
 			$_ = shift @request;
 			s#^/+##;
+			s#/+$##;
 			s#//+#/#g;
 			$self->{file} = $_;
 		}
@@ -184,7 +184,17 @@ sub _post2hash
 }
 
 my @handlers = (
-	[ "a", sub { return "dupA!\n" } ],
+	[ "a", sub {
+			my $self = shift;
+			$self->{h_out}->{content_type} = "text/html";
+			return join "<br/>", map "<iframe src='/a/$_'></iframe>", (1..99)
+		} ],
+	[ "big", sub { return "12345678" x ( 32 * 1024 * 1024 ) } ],
+	[ qr#a/.*#, sub {
+			my $self = shift;
+			$self->{h_out}->{content_type} = "text/plain";
+			return "file '$self->{file}'\n"
+		} ],
 );
 
 sub process
@@ -201,7 +211,7 @@ sub process
 	my $handler;
 	foreach my $hdl ( @handlers ) {
 		my $file = $hdl->[0];
-		if ( ref $file eq "RegExp" ) {
+		if ( ref $file eq "Regexp" ) {
 			next unless $self->{file} =~ /^$file$/;
 		} else {
 			next unless $self->{file} eq $file;
@@ -235,18 +245,52 @@ sub process
 	$self->{h_out}->{connection} = "Keep-Alive";
 	$self->{h_out}->{content_length} = length $data;
 
-	my $h = $self->{_io}->handle();
-	$h->syswrite( "HTTP/1.1 $self->{code} $codes{ $self->{code} }\r\n" );
+	my $h = $self->{_io};
+	$h->write( "HTTP/1.1 $self->{code} $codes{ $self->{code} }\r\n" );
 	foreach my $hdr ( sort keys %{ $self->{h_out} } ) {
-		$h->syswrite( _ucfirst_h( $hdr ) . ": " . $self->{h_out}->{ $hdr } . "\r\n" );
+		$h->write( _ucfirst_h( $hdr ) . ": " . $self->{h_out}->{ $hdr } . "\r\n" );
 	}
-	$h->syswrite( "\r\n" );
-	$h->syswrite( $data );
-	$h->flush();
+	$h->write( "\r\n" );
+	eval {
+		$h->write( $data );
+	};
+	if ( $@ ) {
+		if ( $@ =~ /^RSGet::IO: busy/ ) {
+			RSGet::IO_Event->add_write( $h, $self );
+		} elsif ( $@ =~ /^RSGet::IO: handle closed/ ) {
+			$self->delete();
+		}
+	}
 
 	foreach ( keys %$self ) {
 		next if /^_/;
 		delete $self->{$_};
+	}
+}
+
+sub io_write
+{
+	my $self = shift;
+	my $time = shift;
+
+	my $h = $self->{_io};
+	eval {
+		# flush
+		$h->write();
+	};
+	if ( $@ ) {
+		if ( $@ =~ /^RSGet::IO: busy/ ) {
+			# do nothing
+			return;
+		} else {
+			RSGet::IO_Event->remove_write( $h );
+			if ( $@ =~ /^RSGet::IO: handle closed/ ) {
+				$self->delete();
+				return;
+			} else {
+				die $@;
+			}
+		}
 	}
 }
 
@@ -267,7 +311,7 @@ while ( 1 ) {
 		RSGet::IO_Event::_perform();
 	};
 	warn "_perform() $@" if $@;
-	select undef, undef, undef, 0.1;
+	select undef, undef, undef, 0.05;
 }
 
 # vim: ts=4:sw=4
