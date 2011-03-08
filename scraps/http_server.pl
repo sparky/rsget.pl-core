@@ -189,7 +189,14 @@ my @handlers = (
 			$self->{h_out}->{content_type} = "text/html";
 			return join "<br/>", map "<iframe src='/a/$_'></iframe>", (1..99)
 		} ],
-	[ "big", sub { return "12345678" x ( 32 * 1024 * 1024 ) } ],
+	[ "big_mem", sub { return "12345678" x ( 32 * 1024 * 1024 ) } ],
+	[ "big_iter", sub {
+			my $self = shift;
+			$self->{h_out}->{content_length} = 8 * 32 * 1024 * 1024;
+			my $i = 0;
+
+			return sub { $i++ >= 32 * 1024 ? undef : "12345678" x 1024 };
+		} ],
 	[ qr#a/.*#, sub {
 			my $self = shift;
 			$self->{h_out}->{content_type} = "text/plain";
@@ -243,14 +250,25 @@ sub process
 		$data ||= $codes{ $self->{code} } . "\r\n";
 	}
 	$self->{h_out}->{connection} = "Keep-Alive";
-	$self->{h_out}->{content_length} = length $data;
+	unless ( ref $data ) {
+		$self->{h_out}->{content_length} = length $data;
+	}
+
+	my $headers = "HTTP/1.1 $self->{code} $codes{ $self->{code} }\r\n";
+	foreach my $hdr ( sort keys %{ $self->{h_out} } ) {
+		$headers .= _ucfirst_h( $hdr ) . ": " . $self->{h_out}->{ $hdr } . "\r\n";
+	}
+	$headers .= "\r\n";
+
 
 	my $h = $self->{_io};
-	$h->write( "HTTP/1.1 $self->{code} $codes{ $self->{code} }\r\n" );
-	foreach my $hdr ( sort keys %{ $self->{h_out} } ) {
-		$h->write( _ucfirst_h( $hdr ) . ": " . $self->{h_out}->{ $hdr } . "\r\n" );
-	}
-	$h->write( "\r\n" );
+	eval {
+		$h->write( $headers );
+	};
+	if ( ref $data ) {
+		$self->{_iter} = $data;
+		RSGet::IO_Event->add_write( $h, $self, "io_write_iter");
+	} else {
 	eval {
 		$h->write( $data );
 	};
@@ -260,6 +278,7 @@ sub process
 		} elsif ( $@ =~ /^RSGet::IO: handle closed/ ) {
 			$self->delete();
 		}
+	}
 	}
 
 	foreach ( keys %$self ) {
@@ -294,6 +313,39 @@ sub io_write
 	}
 }
 
+sub io_write_iter
+{
+	my $self = shift;
+	my $time = shift;
+
+	my $h = $self->{_io};
+	my $i = $self->{_iter};
+	eval {
+		$h->write();
+		while ( defined ( $_ = $i->() ) ) {
+			$h->write( $_ );
+		}
+	};
+	if ( $@ ) {
+		if ( $@ =~ /^RSGet::IO: busy/ ) {
+			# do nothing
+			return;
+		} else {
+			RSGet::IO_Event->remove_write( $h );
+			if ( $@ =~ /^RSGet::IO: handle closed/ ) {
+				$self->delete();
+				return;
+			} else {
+				die $@;
+			}
+		}
+	} else {
+		RSGet::IO_Event->remove_write( $h );
+		delete $self->{_iter};
+	}
+}
+
+
 sub delete
 {
 	my $self = shift;
@@ -306,12 +358,16 @@ package main;
 
 my $server = RSGet::HTTP::Server->create( 8080 );
 
+my @c = qw(\ | / -);
+my $i = 0;
 while ( 1 ) {
 	eval {
 		RSGet::IO_Event::_perform();
 	};
 	warn "_perform() $@" if $@;
 	select undef, undef, undef, 0.05;
+	print "\r" . $c[ $i = ( $i + 1) % 4 ];
+	STDOUT->flush();
 }
 
 # vim: ts=4:sw=4
