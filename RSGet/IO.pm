@@ -197,6 +197,17 @@ sub write
 	}
 }
 
+sub DESTROY
+{
+	my $self = shift;
+	eval {
+		$self->write();
+	};
+	if ( $@ and $@ =~ /^RSGet::IO: busy/ ) {
+		warn "RSGet::IO: Could not flush buffer on DESTROY, some data will be lost\n";
+	}
+}
+
 1;
 
 # vim: ts=4:sw=4
