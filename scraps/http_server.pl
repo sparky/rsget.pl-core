@@ -52,7 +52,14 @@ package RSGet::HTTP::Client;
 use RSGet::IO;
 use RSGet::IO_Event;
 use constant
-	MAX_POST_SIZE => 2 * 1024 * 1024; # 2 MB
+	MAX_POST_SIZE => 1 * 1024 * 1024; # 1 MB
+
+my %codes = (
+	200 => "OK",
+	401 => "Authorization Required",
+	404 => "Not Found",
+	500 => "Internal Server Error",
+);
 
 sub create
 {
@@ -80,7 +87,7 @@ sub _lc_h
 
 sub _ucfirst_h
 {
-	return join "-", map ucfirst, split /[-_]+/, lc shift;
+	return join "-", map ucfirst, split /[-_ ]+/, lc shift;
 }
 
 sub _data
@@ -94,34 +101,41 @@ NEXT_REQUEST:
 	eval {
 		local $/ = "\r\n";
 		local $_;
-		if ( not defined $self->{request} ) {
+		if ( not defined $self->{method} ) {
 			$_ = $io->readline();
-			$self->{request} = [ split /\s+/, $_ ];
+			my @request = split /\s+/, $_;
+
+			print "REQ: [ @request ]\n";
+			$self->{method} = uc shift @request;
+
+			$_ = shift @request;
+			s#^/+##;
+			s#//+#/#g;
+			$self->{file} = $_;
 		}
-		if ( not defined $self->{headers_done} ) {
-			my $h = $self->{headers} ||= {};
+		if ( not defined $self->{h_in_done} ) {
+			my $h = $self->{h_in} ||= {};
 			while ( ( $_ = $io->readline() ) ne $/ ) {
 				chomp;
 				/^(\S+?):\s*(.*)$/
 					or die "malformed request";
 				$h->{ _lc_h( $1 ) } = $2;
 			}
-			$self->{headers_done} = 1;
+			$self->{h_in_done} = 1;
 		}
-		if ( uc $self->{request}->[0] eq "POST" ) {
-			$_ = $self->{headers}->{content_length};
-			if ( defined $_ ) {
-				/(\d+)/;
+		if ( $self->{method} eq "POST" ) {
+			$_ = $self->{h_in}->{content_length};
+			if ( defined $_ and /(\d+)/ ) {
 				my $len = 0 | $1;
 				die "POST data too large"
 					if $len > MAX_POST_SIZE;
-				$self->{post} = $io->read( $len );
+				$self->{post_data} = $io->read( $len );
 				die "POST data incomplete"
-					if length $self->{post} != $len;
+					if length $self->{post_data} != $len;
 			} else {
-				$self->{post} = $io->read( MAX_POST_SIZE + 1);
+				$self->{post_data} = $io->read( MAX_POST_SIZE + 1);
 				die "POST data too large"
-					if length $self->{post} > MAX_POST_SIZE;
+					if length $self->{post_data} > MAX_POST_SIZE;
 			}
 		}
 	};
@@ -132,7 +146,8 @@ NEXT_REQUEST:
 		} else {
 			$self->delete();
 			if ( $@ =~ /^RSGet::IO: handle closed/ ) {
-				$self->process( $time );
+				$self->process( $time )
+					if $self->{h_in_done};
 				return;
 			} else {
 				die $@;
@@ -144,19 +159,93 @@ NEXT_REQUEST:
 	}
 }
 
+sub _post2hash
+{
+	my $self = shift;
+
+	my %post;
+	if ( $self->{method} eq "POST" ) {
+		foreach ( split /&/, $self->{post_data} ) {
+			s/^(.*?)=//;
+			my $key = $1;
+			tr/+/ /;
+			s/%(..)/chr hex $1/eg;
+			$post{ $key } = $_;
+		}
+	} elsif ( $self->{file} =~ s/\?(.*)// ) {
+		my $get = $1;
+		%post = map {
+				/^(.*?)=(.*)/;
+				(uri_unescape( $1 ), uri_unescape( $2 ) )
+			} split /[;&]+/, $get;
+	}
+
+	return \%post;
+}
+
+my @handlers = (
+	[ "a", sub { return "dupA!\n" } ],
+);
+
 sub process
 {
 	my $self = shift;
 
-	foreach ( keys %$self ) {
-		print "found $_: [ $self->{ $_ } ]\n";
-		#delete $self->{$_};
+	$self->{post} = _post2hash( $self );
+	$self->{code} = 200;
+	$self->{h_out} = {
+		content_type => "text/xml; charset=utf-8",
+	};
+
+	my $data = "";
+	my $handler;
+	foreach my $hdl ( @handlers ) {
+		my $file = $hdl->[0];
+		if ( ref $file eq "RegExp" ) {
+			next unless $self->{file} =~ /^$file$/;
+		} else {
+			next unless $self->{file} eq $file;
+		}
+		$handler = $hdl;
+		last;
+	}
+	if ( $handler ) {
+		my @args = @$handler;
+		shift @args; # file match
+		my $func = shift @args;
+		eval {
+			$data = $func->( $self, @args );
+		};
+		if ( $@ ) {
+			$self->{code} = 500;
+			$data = "Server error: $@\n";
+		}
+	} else {
+		$self->{code} = 404;
+		$data = "No handler for file '$self->{file}'\n";
 	}
 
-	$self->{_io}->handle()->print( "HTTP/1.1 404 Not found\r\nConnection: Keep-Alive\r\nContent-Length: 0\r\n\r\n" );
+	$self->{code} = 500 if not exists $codes{ $self->{code} };
+	if ( $self->{code} != 200 ) {
+		$self->{h_out} = {
+			content_type => "text/plain; charset=utf-8",
+		};
+		$data ||= $codes{ $self->{code} } . "\r\n";
+	}
+	$self->{h_out}->{connection} = "Keep-Alive";
+	$self->{h_out}->{content_length} = length $data;
+
+	my $h = $self->{_io}->handle();
+	$h->syswrite( "HTTP/1.1 $self->{code} $codes{ $self->{code} }\r\n" );
+	foreach my $hdr ( sort keys %{ $self->{h_out} } ) {
+		$h->syswrite( _ucfirst_h( $hdr ) . ": " . $self->{h_out}->{ $hdr } . "\r\n" );
+	}
+	$h->syswrite( "\r\n" );
+	$h->syswrite( $data );
+	$h->flush();
+
 	foreach ( keys %$self ) {
 		next if /^_/;
-		print "del $_\n";
 		delete $self->{$_};
 	}
 }
