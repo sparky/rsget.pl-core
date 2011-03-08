@@ -29,11 +29,12 @@ IO wrapper. Allows exact reads without blocking.
 use constant {
 	IO_HANDLE => 0,
 	IO_VECTOR => 1,
-	IO_BUFFER => 2,
+	IO_BUFFERIN => 2,
+	IO_BUFFEROUT => 3,
 };
 
 
-=head2 my $input = RSGet::IO->new( HANDLE );
+=head2 my $io = RSGet::IO->new( HANDLE );
 
 Mark HANDLE as non-blocking and return a wrapper.
 
@@ -48,7 +49,8 @@ sub new
 	my $self = [
 		$handle,	# IO_HANDLE
 		chr( 0 ),	# IO_VECTOR
-		"",			# IO_BUFFER
+		"",			# IO_BUFFERIN
+		"",			# IO_BUFFEROUT
 	];
 
 	my $fn = fileno $handle;
@@ -59,7 +61,7 @@ sub new
 }
 
 
-=head2 my $handle = $input->handle();
+=head2 my $handle = $io->handle();
 
 Return file handle.
 
@@ -85,20 +87,20 @@ sub read
 	my $self = shift;
 	my $size = shift;
 
-	my $missing = $size - length $self->[ IO_BUFFER ];
+	my $missing = $size - length $self->[ IO_BUFFERIN ];
 	if ( $missing > 0 ) {
 		my $nread = sysread $self->[ IO_HANDLE ], my ( $buf ), $missing;
 
 		return _read_end( $self )
 			unless $nread;
 
-		$self->[ IO_BUFFER ] .= $buf;
+		$self->[ IO_BUFFERIN ] .= $buf;
 
 		return _read_end( $self )
 			unless $missing <= $nread;
 	}
 
-	return substr $self->[ IO_BUFFER ], 0, $size, '';
+	return substr $self->[ IO_BUFFERIN ], 0, $size, '';
 }
 
 
@@ -116,16 +118,16 @@ sub readline
 	my $self = shift;
 
 	my $idx;
-	until ( ( $idx = index $self->[ IO_BUFFER ], $/ ) >= 0 ) {
+	until ( ( $idx = index $self->[ IO_BUFFERIN ], $/ ) >= 0 ) {
 		my $nread = sysread $self->[ IO_HANDLE ], my $buf, 32;
 
 		return _read_end( $self )
 			unless $nread;
 
-		$self->[ IO_BUFFER ] .= $buf;
+		$self->[ IO_BUFFERIN ] .= $buf;
 	}
 
-	return substr $self->[ IO_BUFFER ], 0, ($idx + length $/), '';
+	return substr $self->[ IO_BUFFERIN ], 0, ($idx + length $/), '';
 }
 
 sub _read_end
@@ -134,12 +136,12 @@ sub _read_end
 	my $active = 1;
 
 	my $r = $self->[ IO_VECTOR ];
-	my $nfound = select ( $r, undef, undef, 0 );
+	my $nfound = select $r, undef, undef, 0;
 
 	if ( $nfound > 0 ) {
 		my $nread = sysread $self->[ IO_HANDLE ], my $buf, 1;
 		if ( $nread ) {
-			$self->[ IO_BUFFER ] .= $buf;
+			$self->[ IO_BUFFERIN ] .= $buf;
 		} else {
 			$active = 0;
 		}
@@ -147,12 +149,51 @@ sub _read_end
 
 	if ( $active ) {
 		die "RSGet::IO: no data\n";
-	} elsif ( length $self->[ IO_BUFFER ] ) {
-		my $ret = $self->[ IO_BUFFER ];
-		$self->[ IO_BUFFER ] = '';
+	} elsif ( length $self->[ IO_BUFFERIN ] ) {
+		my $ret = $self->[ IO_BUFFERIN ];
+		$self->[ IO_BUFFERIN ] = '';
 		return $ret;
 	} else {
 		die "RSGet::IO: handle closed\n";
+	}
+}
+
+=head2 $output->write( [DATA] );
+
+Try to write buffered data and DATA to output.
+
+Returns true on success. If the DATA could not be written completely, write()
+stores remaining data and dies with "RSGET::IO: busy" error. If handle is
+closed write() will die with "RSGet::IO: handle closed" error.
+
+=cut
+sub write
+{
+	my $self = shift;
+	if ( defined $_[0] ) {
+		$self->[ IO_BUFFEROUT ] .= shift;
+	}
+
+	return 0 unless length $self->[ IO_BUFFEROUT ];
+
+	my $w = $self->[ IO_VECTOR ];
+	my $nfound = select undef, $w, undef, 0;
+
+	die "RSGet::IO: busy\n"
+		unless $nfound;
+
+	local $SIG{PIPE} = 'IGNORE';
+
+	my $nwritten = syswrite $self->[ IO_HANDLE ], $self->[ IO_BUFFEROUT ];
+	die "RSGet::IO: handle closed\n"
+		unless defined $nwritten;
+
+	if ( $nwritten == length $self->[ IO_BUFFEROUT ] ) {
+		$self->[ IO_BUFFEROUT ] = '';
+		return $nwritten;
+	} else {
+		substr ( $self->[ IO_BUFFEROUT ], 0, $nwritten ) = '';
+		die "RSGet::IO: busy\n";
 	}
 }
 
