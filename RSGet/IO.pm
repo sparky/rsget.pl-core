@@ -18,7 +18,7 @@ package RSGet::IO;
 
 use strict;
 use warnings;
-use IO ();
+use IO (); # HANDLE->blocking( 0 )
 
 =head1 package RSGet::IO
 
@@ -52,7 +52,7 @@ sub new
 	];
 
 	my $fn = fileno $handle;
-	vec( $self->[ IO_VECTOR ], fileno( $handle ), 1 ) = 1;
+	vec( $self->[ IO_VECTOR ], $fn, 1 ) = 1;
 
 	bless $self, $class;
 	return $self;
