@@ -18,7 +18,7 @@ package RSGet::IO;
 
 use strict;
 use warnings;
-use IO::Handle ();
+use IO ();
 
 =head1 package RSGet::IO
 
@@ -43,7 +43,6 @@ sub new
 	my $class = shift;
 	my $handle = shift;
 
-	# IO::Handle ?
 	$handle->blocking( 0 );
 
 	my $self = [
