@@ -87,6 +87,19 @@ sub confess($)
 }
 
 
+=head2 throw( "message" );
+
+Die with "CALLER_PACKAGE: message".
+
+=cut
+sub throw($)
+{
+	my $msg = shift;
+	require RSGet::Exception;
+	die RSGet::Exception->new( $msg, 1 );
+}
+
+
 =head2 my $val = ref_check TYPE => $argument, 'Option "name"';
 
 Make sure argument is a ref to TYPE. Die if it isn't.
