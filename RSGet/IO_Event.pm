@@ -26,6 +26,7 @@ use strict;
 use warnings;
 use IO::Select;
 use Time::HiRes ();
+use RSGet::Common;
 
 my $select_read = IO::Select->new();
 my $select_write = IO::Select->new();
@@ -78,7 +79,7 @@ sub _add
 
 	my $func = shift || "io_data";
 
-	die "object $object cannot $func\n"
+	RSGet::Common::throw "object $object cannot $func"
 		unless $object->can( $func );
 
 	$handle = $handle->handle

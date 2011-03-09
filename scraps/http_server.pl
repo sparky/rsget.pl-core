@@ -49,6 +49,7 @@ sub delete
 
 package RSGet::HTTP::Client;
 
+use RSGet::Common qw(throw);
 use RSGet::IO;
 use RSGet::IO_Event;
 use constant
@@ -102,23 +103,17 @@ NEXT_REQUEST:
 		local $/ = "\r\n";
 		local $_;
 		if ( not defined $self->{method} ) {
-			$_ = $io->readline();
-			my @request = split /\s+/, $_;
+			my @request = split /\s+/, $io->readline();
 
 			$self->{method} = uc shift @request;
-
-			$_ = shift @request;
-			s#^/+##;
-			s#/+$##;
-			s#//+#/#g;
-			$self->{file} = $_;
+			$self->{file} = shift @request;
 		}
 		if ( not defined $self->{h_in_done} ) {
 			my $h = $self->{h_in} ||= {};
 			while ( ( $_ = $io->readline() ) ne $/ ) {
 				chomp;
 				/^(\S+?):\s*(.*)$/
-					or die "malformed request";
+					or throw "malformed request";
 				$h->{ _lc_h( $1 ) } = $2;
 			}
 			$self->{h_in_done} = 1;
@@ -127,25 +122,25 @@ NEXT_REQUEST:
 			$_ = $self->{h_in}->{content_length};
 			if ( defined $_ and /(\d+)/ ) {
 				my $len = 0 | $1;
-				die "POST data too large"
+				throw "POST data too large"
 					if $len > MAX_POST_SIZE;
 				$self->{post_data} = $io->read( $len );
-				die "POST data incomplete"
+				throw "POST data incomplete"
 					if length $self->{post_data} != $len;
 			} else {
 				$self->{post_data} = $io->read( MAX_POST_SIZE + 1);
-				die "POST data too large"
+				throw "POST data too large"
 					if length $self->{post_data} > MAX_POST_SIZE;
 			}
 		}
 	};
 	if ( $@ ) {
-		if ( $@ =~ /^RSGet::IO: no data/ ) {
+		if ( $@ eq "RSGet::IO: no data" ) {
 			# do nothing, wait for more data
 			return;
 		} else {
 			$self->delete();
-			if ( $@ =~ /^RSGet::IO: handle closed/ ) {
+			if ( $@ eq "RSGet::IO: handle closed" ) {
 				$self->process( $time )
 					if $self->{h_in_done};
 				return;
@@ -184,20 +179,20 @@ sub _post2hash
 }
 
 my @handlers = (
-	[ "a", sub {
+	[ "/a", sub {
 			my $self = shift;
 			$self->{h_out}->{content_type} = "text/html";
 			return join "<br/>", map "<iframe src='/a/$_'></iframe>", (1..99)
 		} ],
-	[ "big_mem", sub { return "12345678" x ( 32 * 1024 * 1024 ) } ],
-	[ "big_iter", sub {
+	[ "/big_mem", sub { return "12345678" x ( 32 * 1024 * 1024 ) } ],
+	[ "/big_iter", sub {
 			my $self = shift;
 			$self->{h_out}->{content_length} = 8 * 32 * 1024 * 1024;
 			my $i = 0;
 
 			return sub { $i++ >= 32 * 1024 ? undef : "12345678" x 1024 };
 		} ],
-	[ qr#a/.*#, sub {
+	[ qr#/a/.*#, sub {
 			my $self = shift;
 			$self->{h_out}->{content_type} = "text/plain";
 			return "file '$self->{file}'\n"
@@ -273,9 +268,9 @@ sub process
 		$h->write( $data );
 	};
 	if ( $@ ) {
-		if ( $@ =~ /^RSGet::IO: busy/ ) {
+		if ( $@ eq "RSGet::IO: busy" ) {
 			RSGet::IO_Event->add_write( $h, $self );
-		} elsif ( $@ =~ /^RSGet::IO: handle closed/ ) {
+		} elsif ( $@ eq "RSGet::IO: handle closed" ) {
 			$self->delete();
 		}
 	}
@@ -298,12 +293,12 @@ sub io_write
 		$h->write();
 	};
 	if ( $@ ) {
-		if ( $@ =~ /^RSGet::IO: busy/ ) {
+		if ( $@ eq "RSGet::IO: busy" ) {
 			# do nothing
 			return;
 		} else {
 			RSGet::IO_Event->remove_write( $h );
-			if ( $@ =~ /^RSGet::IO: handle closed/ ) {
+			if ( $@ eq "RSGet::IO: handle closed" ) {
 				$self->delete();
 				return;
 			} else {
@@ -327,12 +322,12 @@ sub io_write_iter
 		}
 	};
 	if ( $@ ) {
-		if ( $@ =~ /^RSGet::IO: busy/ ) {
+		if ( $@ eq "RSGet::IO: busy" ) {
 			# do nothing
 			return;
 		} else {
 			RSGet::IO_Event->remove_write( $h );
-			if ( $@ =~ /^RSGet::IO: handle closed/ ) {
+			if ( $@ eq "RSGet::IO: handle closed" ) {
 				$self->delete();
 				return;
 			} else {

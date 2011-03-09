@@ -19,6 +19,7 @@ package RSGet::IO;
 use strict;
 use warnings;
 use IO (); # HANDLE->blocking( 0 )
+use RSGet::Common qw(throw);
 
 =head1 package RSGet::IO
 
@@ -148,13 +149,13 @@ sub _read_end
 	}
 
 	if ( $active ) {
-		die "RSGet::IO: no data\n";
+		throw "no data";
 	} elsif ( length $self->[ IO_BUFFERIN ] ) {
 		my $ret = $self->[ IO_BUFFERIN ];
 		$self->[ IO_BUFFERIN ] = '';
 		return $ret;
 	} else {
-		die "RSGet::IO: handle closed\n";
+		throw "handle closed";
 	}
 }
 
@@ -179,13 +180,13 @@ sub write
 	my $w = $self->[ IO_VECTOR ];
 	my $nfound = select undef, $w, undef, 0;
 
-	die "RSGet::IO: busy\n"
+	throw "busy"
 		unless $nfound;
 
 	local $SIG{PIPE} = 'IGNORE';
 
 	my $nwritten = syswrite $self->[ IO_HANDLE ], $self->[ IO_BUFFEROUT ];
-	die "RSGet::IO: handle closed\n"
+	throw "handle closed"
 		unless defined $nwritten;
 
 	if ( $nwritten == length $self->[ IO_BUFFEROUT ] ) {
@@ -193,7 +194,7 @@ sub write
 		return $nwritten;
 	} else {
 		substr ( $self->[ IO_BUFFEROUT ], 0, $nwritten ) = '';
-		die "RSGet::IO: busy\n";
+		throw "busy";
 	}
 }
 
@@ -203,7 +204,7 @@ sub DESTROY
 	eval {
 		$self->write();
 	};
-	if ( $@ and $@ =~ /^RSGet::IO: busy/ ) {
+	if ( $@ and $@ eq "RSGet::IO: busy" ) {
 		warn "RSGet::IO: Could not flush buffer on DESTROY, some data will be lost\n";
 	}
 }
