@@ -16,31 +16,29 @@ package RSGet::IO;
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# use * {{{
 use strict;
 use warnings;
 use IO (); # HANDLE->blocking( 0 )
 use RSGet::Common qw(throw);
-
-=head1 package RSGet::IO
-
-IO wrapper. Allows exact reads without blocking.
-
-=cut
-
 use constant {
 	IO_HANDLE => 0,
 	IO_VECTOR => 1,
 	IO_BUFFERIN => 2,
 	IO_BUFFEROUT => 3,
 };
+# }}}
 
+=head1 package RSGet::IO
+
+IO wrapper. Allows exact reads without blocking.
 
 =head2 my $io = RSGet::IO->new( HANDLE );
 
 Mark HANDLE as non-blocking and return a wrapper.
 
 =cut
-sub new
+sub new # {{{
 {
 	my $class = shift;
 	my $handle = shift;
@@ -50,8 +48,8 @@ sub new
 	my $self = [
 		$handle,	# IO_HANDLE
 		chr( 0 ),	# IO_VECTOR
-		"",			# IO_BUFFERIN
-		"",			# IO_BUFFEROUT
+		'',			# IO_BUFFERIN
+		'',			# IO_BUFFEROUT
 	];
 
 	my $fn = fileno $handle;
@@ -59,7 +57,7 @@ sub new
 
 	bless $self, $class;
 	return $self;
-}
+} # }}}
 
 
 =head2 my $handle = $io->handle();
@@ -67,11 +65,11 @@ sub new
 Return file handle.
 
 =cut
-sub handle
+sub handle # {{{
 {
 	my $self = shift;
 	return $self->[ IO_HANDLE ];
-}
+} # }}}
 
 
 =head2 my $data = $input->read( BYTES );
@@ -83,7 +81,7 @@ If there aren't enough bytes and handle is still open - read will die with
 Subsequent reads will die with "RSGet::IO: handle closed" error.
 
 =cut
-sub read
+sub read # {{{
 {
 	my $self = shift;
 	my $size = shift;
@@ -102,7 +100,7 @@ sub read
 	}
 
 	return substr $self->[ IO_BUFFERIN ], 0, $size, '';
-}
+} # }}}
 
 
 =head2 my $line = $input->readline();
@@ -114,7 +112,7 @@ If there aren't enough data and handle is still open - readline will die with
 Subsequent reads will die with "RSGet::IO: handle closed" error.
 
 =cut
-sub readline
+sub readline # {{{
 {
 	my $self = shift;
 
@@ -129,9 +127,10 @@ sub readline
 	}
 
 	return substr $self->[ IO_BUFFERIN ], 0, ($idx + length $/), '';
-}
+} # }}}
 
-sub _read_end
+
+sub _read_end # {{{
 {
 	my $self = shift;
 	my $active = 1;
@@ -149,15 +148,15 @@ sub _read_end
 	}
 
 	if ( $active ) {
-		throw "no data";
+		throw 'no data';
 	} elsif ( length $self->[ IO_BUFFERIN ] ) {
 		my $ret = $self->[ IO_BUFFERIN ];
 		$self->[ IO_BUFFERIN ] = '';
 		return $ret;
 	} else {
-		throw "handle closed";
+		throw 'handle closed';
 	}
-}
+} # }}}
 
 =head2 $output->write( [DATA] );
 
@@ -168,7 +167,7 @@ stores remaining data and dies with "RSGET::IO: busy" error. If handle is
 closed write() will die with "RSGet::IO: handle closed" error.
 
 =cut
-sub write
+sub write # {{{
 {
 	my $self = shift;
 	if ( defined $_[0] ) {
@@ -180,13 +179,13 @@ sub write
 	my $w = $self->[ IO_VECTOR ];
 	my $nfound = select undef, $w, undef, 0;
 
-	throw "busy"
+	throw 'busy'
 		unless $nfound;
 
 	local $SIG{PIPE} = 'IGNORE';
 
 	my $nwritten = syswrite $self->[ IO_HANDLE ], $self->[ IO_BUFFEROUT ];
-	throw "handle closed"
+	throw 'handle closed'
 		unless defined $nwritten;
 
 	if ( $nwritten == length $self->[ IO_BUFFEROUT ] ) {
@@ -194,21 +193,22 @@ sub write
 		return $nwritten;
 	} else {
 		substr ( $self->[ IO_BUFFEROUT ], 0, $nwritten ) = '';
-		throw "busy";
+		throw 'busy';
 	}
-}
+} # }}}
 
-sub DESTROY
+
+sub DESTROY # {{{
 {
 	my $self = shift;
 	eval {
 		$self->write();
 	};
-	if ( $@ and $@ eq "RSGet::IO: busy" ) {
+	if ( $@ and $@ eq 'RSGet::IO: busy' ) {
 		warn "RSGet::IO: Could not flush buffer on DESTROY, some data will be lost\n";
 	}
-}
+} # }}}
 
 1;
 
-# vim: ts=4:sw=4
+# vim: ts=4:sw=4:fdm=marker
