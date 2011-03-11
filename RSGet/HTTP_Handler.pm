@@ -1,4 +1,4 @@
-package RSGet::HTTP_Request;
+package RSGet::HTTP_Handler;
 # This file is an integral part of rsget.pl downloader.
 #
 # Copyright (C) 2010	Przemysław Iskra <sparky@pld-linux.org>
@@ -25,6 +25,46 @@ use constant {
 	BLOCK_SIZE => 32 * 1024,
 };
 
+my @handlers = (
+	[ qr#/file/.*#, \&_send_file ],
+);
+
+sub get
+{
+	my $class = shift;
+	my $filename = shift;
+
+	foreach my $hdl ( @handlers ) {
+		my $file = $hdl->[0];
+		if ( ref $file eq "Regexp" ) {
+			next unless $filename =~ /^$file$/;
+		} else {
+			next unless $filename eq $file;
+		}
+		return $hdl;
+	}
+
+	return undef;
+}
+
+sub _send_file
+{
+	my $req = shift;
+	my $ct = shift || 'application/octet-stream';
+
+	my $file = $req->{file};
+	$file =~ s#^/file/##;
+
+	unless ( -r $file and -f $file ) {
+		$req->{code} = 404;
+		return "File '$file' not found\n";
+	}
+
+	$req->{h_out}->{content_length} = -s $file;
+	$req->{h_out}->{content_type} = $ct;
+	return _readfile( $file );
+}
+
 sub _readfile
 {
 	my $path = shift;
@@ -33,22 +73,55 @@ sub _readfile
 	throw 'cannot read file %s', $path
 		unless -r $path;
 	
+	my $size = -s $path;
+	my $end = shift || $size;
 	throw 'cannot skip %d bytes', $skip
-		if $skip >= -s $path;
+		if $skip >= $size;
+
+	throw 'cannot end after file end'
+		if $end > $size;
+
+	throw 'cannot end before skip'
+		if $end < $skip;
 
 	my $skipblocks = int ( $skip / BLOCK_SIZE );
 	my $skipread = $skip - $skipblocks * BLOCK_SIZE;
+	my $countblocks = int ( ($end - $skip) / BLOCK_SIZE ) + 1;
 
-	open my $fin, "-|", "dd", "if=$path", "bs=" . BLOCK_SIZE, "skip=" . $skipblocks
-		or throw 'cannot run dd command';
+	open DEV_NULL, ">", "/dev/null";
 
-	my $io = RSGet::IO->new( $fin );
+	require IPC::Open3;
+	my $pid = IPC::Open3::open3( "<&DEV_NULL", my $chout, ">&DEV_NULL",
+			"dd",
+				"if=$path",
+				"bs=" . BLOCK_SIZE,
+				"skip=" . $skipblocks,
+				"count=" . $countblocks
+		);
+	throw 'cannot run dd command' unless $pid;
+	close CHIN;
+	close CHERR;
 
-	if ( not $skipread ) {
-		return sub {
-			return $io->read( BLOCK_SIZE );
-		};
+	my $io = RSGet::IO->new( $chout );
+
+	if ( not $skipread and $end == $size ) {
+		return _readfile_simple( $io );
+	} else {
+		return _readfile_advanced( $io, $skipread, $end - $skip );
 	}
+}
+
+sub _readfile_simple
+{
+	my $io = shift;
+	return sub {
+		return $io->read( BLOCK_SIZE );
+	};
+}
+
+sub _readfile_advanced
+{
+	my ( $io, $skipread, $toread ) = @_;
 	return sub {
 		local $_ = $io->read( BLOCK_SIZE );
 		if ( $skipread ) {

@@ -45,9 +45,23 @@ sub create
 
 	bless $self, $class;
 
-	RSGet::IO_Event->add_read( $handle, $self );
+	$self->state( "read" );
 
 	return $self;
+}
+
+sub state
+{
+	my $self = shift;
+	my $write = shift eq "write";
+
+	my $h = $self->{_io}->handle();
+	RSGet::IO_Event->remove( $h );
+	if ( $write ) {
+		RSGet::IO_Event->add_write( $h, $self );
+	} else {
+		RSGet::IO_Event->add_read( $h, $self );
+	}
 }
 
 sub _lc_h
@@ -109,12 +123,12 @@ sub io_read
 			# do nothing, wait for more data
 			return;
 		} else {
-			$self->delete();
 			if ( $@ eq "RSGet::IO: read: handle closed" ) {
 				$self->process( $time )
 					if $self->{h_in_done};
 				return;
 			} else {
+				$self->delete();
 				die $@;
 			}
 		}
@@ -129,19 +143,15 @@ sub _post2hash
 
 	my %post;
 	if ( $self->{method} eq "POST" ) {
-		foreach ( split /&/, $self->{post_data} ) {
-			s/^(.*?)=//;
-			my $key = $1;
-			tr/+/ /;
-			s/%(..)/chr hex $1/eg;
-			$post{ $key } = $_;
-		}
+		%post =
+			grep { tr/+/ /; s/%(..)/chr hex $1/eg; 1 }
+			map { split /=/, $_, 2 }
+			split /&/, $self->{post_data};
 	} elsif ( $self->{file} =~ s/\?(.*)// ) {
-		my $get = $1;
-		%post = map {
-				/^(.*?)=(.*)/;
-				(uri_unescape( $1 ), uri_unescape( $2 ) )
-			} split /[;&]+/, $get;
+		%post =
+			grep { s/%(..)/chr hex $1/eg; 1 }
+			map { split /=/, $_, 2 }
+			split /[;&]+/, $1;
 	}
 
 	return \%post;
@@ -192,6 +202,7 @@ sub process
 			unless ref $data eq 'CODE';
 		throw 'CODE handler must set up content_length header'
 			unless exists $self->{h_out}->{content_length};
+		$self->{_left} = $self->{h_out}->{content_length};
 	} else {
 		$self->{h_out}->{content_length} = length $data;
 	}
@@ -209,15 +220,15 @@ sub process
 	};
 	if ( ref $data ) {
 		$self->{_iter} = $data;
-		RSGet::IO_Event->add_write( $h, $self );
+		$self->state( "write" );
 	} else {
 		eval {
 			$h->write( $data );
 		};
 		if ( $@ ) {
 			if ( $@ eq "RSGet::IO: busy" ) {
-				$self->{_iter} = sub { throw 'no data' };
-				RSGet::IO_Event->add_write( $h, $self );
+				$self->{_iter} = sub { throw 'DONE' };
+				$self->state( "write" );
 			} elsif ( $@ eq "RSGet::IO: write: handle closed" ) {
 				$self->delete();
 			}
@@ -238,27 +249,43 @@ sub io_write
 	my $h = $self->{_io};
 	my $i = $self->{_iter};
 	eval {
+		# flush write buffer
 		$h->write();
+
+		# read more
+		local $_;
 		while ( defined ( $_ = $i->() ) ) {
+			if ( length $_ > $self->{_left} ) {
+				throw 'size mismatch - tried to send more than declared';
+			}
+			$self->{_left} -= length $_;
 			$h->write( $_ );
 		}
 	};
-	if ( $@ ) {
-		if ( $@ eq "RSGet::IO: busy" ) {
-			# do nothing
+
+	return unless $@; # busy
+	return if $@ eq 'RSGet::IO: busy';
+	return if $@ eq 'RSGet::IO: no data';
+
+	if ( $@ ge 'done' or $@ ge 'read: handle closed' ) {
+		# no more data
+		if ( $self->{_left} ) {
+			# size mismatch - close the handle
+			warn "size mismatch - not enough data sent\n";
+			$self->delete();
 			return;
-		} else {
-			RSGet::IO_Event->remove_write( $h );
-			if ( $@ eq "RSGet::IO: write: handle closed" ) {
-				$self->delete();
-				return;
-			} else {
-				die $@;
-			}
 		}
+		$self->state( "read" );
+		return;
+	}
+
+	# there was some problem
+	$self->delete();
+	if ( $@ eq "RSGet::IO: write: handle closed" ) {
+		warn "$@\n";
+		return;
 	} else {
-		RSGet::IO_Event->remove_write( $h );
-		delete $self->{_iter};
+		die $@;
 	}
 }
 
@@ -267,6 +294,12 @@ sub delete
 {
 	my $self = shift;
 	RSGet::IO_Event->remove( $self->{_io} );
+
+	my $h = $self->{_io};
+	delete $self->{_io};
+
+	$h = $h->handle();
+	close $h;
 }
 
 1;
