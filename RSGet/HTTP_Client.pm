@@ -159,8 +159,8 @@ sub process
 
 	my $data;
 
-	require RSGet::HTTP_Request;
-	my $handler = RSGet::HTTP_Request->get_handler( $self->{file} );
+	require RSGet::HTTP_Handler;
+	my $handler = RSGet::HTTP_Handler->get( $self->{file} );
 
 	if ( $handler ) {
 		my @args = @$handler;
