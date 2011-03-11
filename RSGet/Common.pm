@@ -87,16 +87,16 @@ sub confess($)
 }
 
 
-=head2 throw( "message" );
+=head2 throw( MSGFMT, [ARGS] );
 
-Die with "CALLER_PACKAGE: message".
+Die generating an exception object, which will look like
+"CALLER_PACKAGE: formatted message".
 
 =cut
-sub throw($)
+sub throw($@)
 {
-	my $msg = shift;
 	require RSGet::Exception;
-	die RSGet::Exception->new( $msg, 1 );
+	die RSGet::Exception->new( 1, @_ );
 }
 
 
