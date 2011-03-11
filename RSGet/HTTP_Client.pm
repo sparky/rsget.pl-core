@@ -110,7 +110,7 @@ sub io_read
 			return;
 		} else {
 			$self->delete();
-			if ( $@ eq "RSGet::IO: handle closed" ) {
+			if ( $@ eq "RSGet::IO: read: handle closed" ) {
 				$self->process( $time )
 					if $self->{h_in_done};
 				return;
@@ -218,7 +218,7 @@ sub process
 			if ( $@ eq "RSGet::IO: busy" ) {
 				$self->{_iter} = sub { throw 'no data' };
 				RSGet::IO_Event->add_write( $h, $self );
-			} elsif ( $@ eq "RSGet::IO: handle closed" ) {
+			} elsif ( $@ eq "RSGet::IO: write: handle closed" ) {
 				$self->delete();
 			}
 		}
@@ -249,7 +249,7 @@ sub io_write
 			return;
 		} else {
 			RSGet::IO_Event->remove_write( $h );
-			if ( $@ eq "RSGet::IO: handle closed" ) {
+			if ( $@ eq "RSGet::IO: write: handle closed" ) {
 				$self->delete();
 				return;
 			} else {

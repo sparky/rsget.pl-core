@@ -154,7 +154,7 @@ sub _read_end # {{{
 		$self->[ IO_BUFFERIN ] = '';
 		return $ret;
 	} else {
-		throw 'handle closed';
+		throw 'read: handle closed';
 	}
 } # }}}
 
@@ -185,7 +185,7 @@ sub write # {{{
 	local $SIG{PIPE} = 'IGNORE';
 
 	my $nwritten = syswrite $self->[ IO_HANDLE ], $self->[ IO_BUFFEROUT ];
-	throw 'handle closed'
+	throw 'write: handle closed'
 		unless defined $nwritten;
 
 	if ( $nwritten == length $self->[ IO_BUFFEROUT ] ) {
