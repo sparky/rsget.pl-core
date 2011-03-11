@@ -19,95 +19,116 @@ package RSGet::Exception;
 use strict;
 use warnings;
 
+use constant {
+	ARG_FORMAT => 0,
+	ARG_ARGS => 1,
+	ARG_PKG => 2,
+};
+
 =head1 package RSGet::Exception
 
 Handle and compare exceptions.
 
-=head2 die RSGet::Exception->new( MSG, [PARENT] );
+=head2 die RSGet::Exception->new( PARENT, MSGFMT, [ARGS] );
 
-Create an exception object. PARENT can be set to 1 or more if a parent
-subroutine generated the exception.
+Create an exception object. PARENT can be set to 1 or more if using a
+trampoline sub to throw the exception.
 
 =cut
 sub new
 {
 	my $class = shift;
-	my $msg = shift;
 	my $parent = shift || 0;
+	my $format = shift;
 
-	my $self = [ $msg, (caller $parent) ];
+	my $self = [ $format, [@_], caller $parent ];
 	bless $self, $class;
 	return $self;
 }
 
 
-=head2 $@->pkg( PKG ); ($@ > PKG)
+=head2 $@->pkg( PKG ); if ($@ le PKG) {}
 
 Return true if exception is from package PKG.
 
 =cut
 sub pkg
 {
-	$"=", ";
-	print "PKG: @_\n";
-	return shift->[ 1 ] eq shift;
+	return shift->[ ARG_PKG ] eq shift;
 }
-use overload '>' => \&pkg;
-use overload '<' => \&pkg;
+use overload 'le' => \&pkg;
 
 
-=head2 $@->msg( MSG ); ($@ == MSG)
+=head2 $@->msg( MSG ); if ($@ ge MSG) {}
 
-Return true if exception message is MSG.
+Return true if exception message format is MSG.
 
 =cut
 sub msg
 {
-	return shift->[ 0 ] eq shift;
+	return shift->[ ARG_FORMAT ] eq shift;
 }
-use overload '==' => \&msg;
+use overload 'ge' => \&msg;
 
 
 =head2 $@->is( PKG, MSG );
 
-Return true if exception is from package PKG.
+Return true if exception is from package PKG and message format is MSG.
 
 =cut
 sub is
 {
 	my $self = shift;
 	return
-		$self->[ 1 ] eq shift
+		$self->pkg( shift )
 			and
-		$self->[ 0 ] eq shift;
+		$self->msg( shift );
 }
 
 
-=head2 print "$@"; print $@->str()
+=head2 print "$@"; print $@->str();
 
-Return as string.
+Return as string interpolating all arguments.
 
 =cut
 sub str
 {
 	my $self = shift;
-	return $self->[ 1 ] . ": " . $self->[ 0 ];
+	return $self->[ ARG_PKG ] . ": " . sprintf $self->[ ARG_FORMAT ], @{ $self->[ ARG_ARGS ] };
 }
 use overload '""' => \&str;
 
 
-=head2 $@->eq( MSG ); ($@ eq MSG);
+=head2 $@->eq( PKGMSG ); ($@ eq PKGMSG);
 
-Return true if stringified Exception equals MSG.
+Return true if "PKG: MSGFMT" Exception equals PKGMSG.
+
+E.g.
 
 =cut
 sub eq
 {
 	my $self = shift;
-	return $self->[ 1 ] . ": " . $self->[ 0 ] eq shift;
+	return $self->[ ARG_PKG ] . ": " . $self->[ ARG_FORMAT ] eq shift;
 }
 use overload 'eq' => \&eq;
 
+=head2 USAGE
+	my $eggs = 1;
+	eval {
+		package Omlet;
+		die RSGet::Exception->new( 0, 'I need %d eggs', 2 )
+			if $eggs < 2;
+	};
+	print "$@\n"; # prints "Omlet: I need 2 eggs\n"
+	if ( $@ eq "Omlet: I need %d eggs" ) { # true
+		warn "Buy more eggs\n";
+	}
+	if ( $@ =~ /^Omlet: I need (\d+) eggs$/ ) { # true
+		warn "Buy more eggs, need $1\n";
+	}
+
+=cut
 
 1;
 
