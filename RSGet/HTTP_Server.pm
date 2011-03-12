@@ -1,7 +1,7 @@
 package RSGet::HTTP_Server;
 # This file is an integral part of rsget.pl downloader.
 #
-# Copyright (C) 2010	Przemysław Iskra <sparky@pld-linux.org>
+# Copyright (C) 2011	Przemysław Iskra <sparky@pld-linux.org>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
