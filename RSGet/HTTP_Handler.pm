@@ -1,7 +1,7 @@
 package RSGet::HTTP_Handler;
 # This file is an integral part of rsget.pl downloader.
 #
-# Copyright (C) 2010	Przemysław Iskra <sparky@pld-linux.org>
+# Copyright (C) 2011	Przemysław Iskra <sparky@pld-linux.org>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -18,6 +18,7 @@ package RSGet::HTTP_Handler;
 
 use strict;
 use warnings;
+use RSGet::Cnt;
 use RSGet::Common qw(throw);
 use RSGet::IO;
 
@@ -60,9 +61,26 @@ sub _send_file
 		return "File '$file' not found\n";
 	}
 
-	$req->{h_out}->{content_length} = -s $file;
+
+	my $skip = 0;
+	my $size = -s $file;
+	my $end = $size - 1;
+
+	my $h = $req->{h_in};
+	if ( exists $h->{range} ) {
+		if ( $h->{range} =~ /bytes=(\d+)-(\d+)?/ ) {
+			$skip = $1;
+			$end = $2 || $size - 1;
+			my $cr = sprintf "bytes %d-%d/%d", $skip, $end, $size;
+			$size = $end - $skip + 1;
+			$req->{h_out}->{content_range} = $cr;
+			$req->{code} = 206; # partial content
+		}
+	}
+
+	$req->{h_out}->{content_length} = $size;
 	$req->{h_out}->{content_type} = $ct;
-	return _readfile( $file );
+	return _readfile( $file, $skip, $end + 1 );
 }
 
 sub _readfile
@@ -70,69 +88,67 @@ sub _readfile
 	my $path = shift;
 	my $skip = shift || 0;
 
-	throw 'cannot read file %s', $path
+	throw '500: cannot read file %s', $path
 		unless -r $path;
 	
 	my $size = -s $path;
 	my $end = shift || $size;
-	throw 'cannot skip %d bytes', $skip
+	throw '416: cannot seek past end of file'
 		if $skip >= $size;
 
-	throw 'cannot end after file end'
+	throw '416: cannot read past end of file'
 		if $end > $size;
 
-	throw 'cannot end before skip'
-		if $end < $skip;
+	throw '416: cannot end before start position'
+		if $end <= $skip;
 
-	my $skipblocks = int ( $skip / BLOCK_SIZE );
-	my $skipread = $skip - $skipblocks * BLOCK_SIZE;
-	my $countblocks = int ( ($end - $skip) / BLOCK_SIZE ) + 1;
-
-	open DEV_NULL, ">", "/dev/null";
-
-	require IPC::Open3;
-	my $pid = IPC::Open3::open3( "<&DEV_NULL", my $chout, ">&DEV_NULL",
-			"dd",
-				"if=$path",
-				"bs=" . BLOCK_SIZE,
-				"skip=" . $skipblocks,
-				"count=" . $countblocks
-		);
-	throw 'cannot run dd command' unless $pid;
-	close CHIN;
-	close CHERR;
-
-	my $io = RSGet::IO->new( $chout );
-
-	if ( not $skipread and $end == $size ) {
-		return _readfile_simple( $io );
-	} else {
-		return _readfile_advanced( $io, $skipread, $end - $skip );
+	pipe my $rh, my $wh;
+	my $pid = fork();
+	unless ( defined $pid ) {
+		throw '500: cannot fork';
 	}
-}
 
-sub _readfile_simple
-{
-	my $io = shift;
+	my $toread = $end - $skip;
+	if ( not $pid ) {
+		# child
+		# TODO: maybe ionice ?
+
+		$SIG{__DIE__} = sub {
+			exec "false"
+				or 1;
+
+			require POSIX;
+			POSIX::_exit( 0 );
+		};
+
+		close $rh;
+
+		open my $fin, "<", $path;
+
+		sysseek $fin, $skip, RSGet::Cnt::SEEK_SET
+			if $skip;
+
+		my $buf = " " x BLOCK_SIZE;
+		$buf = "";
+		while ( $toread > BLOCK_SIZE ) {
+			sysread $fin, $buf, BLOCK_SIZE;
+			syswrite $wh, $buf;
+			$toread -= BLOCK_SIZE;
+		}
+		sysread $fin, $buf, $toread;
+		syswrite $wh, $buf;
+
+		# we must exit without calling any destructors
+		exec "true"
+			or die;
+	}
+	close $wh;
+
+	my $io = RSGet::IO->new( $rh );
 	return sub {
 		return $io->read( BLOCK_SIZE );
 	};
 }
-
-sub _readfile_advanced
-{
-	my ( $io, $skipread, $toread ) = @_;
-	return sub {
-		local $_ = $io->read( BLOCK_SIZE );
-		if ( $skipread ) {
-			my $s = $skipread;
-			$skipread = 0;
-			return substr $_, $s;
-		}
-		return $_;
-	};
-}
-
 
 1;
 
