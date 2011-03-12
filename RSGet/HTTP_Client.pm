@@ -94,7 +94,6 @@ sub io_read
 		local $_;
 		if ( not defined $self->{method} ) {
 			my @request = split /\s+/, $io->readline();
-			warn "Request: @request\n";
 
 			$self->{method} = uc shift @request;
 			$self->{file} = shift @request;
@@ -198,7 +197,6 @@ sub process
 				$self->{code} = 500;
 				$data = "Server error: $@\n";
 			}
-			warn $data;
 		}
 	} else {
 		$self->{code} = 404;
