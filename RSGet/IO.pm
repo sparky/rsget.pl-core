@@ -182,9 +182,15 @@ sub write # {{{
 	throw 'busy'
 		unless $nfound;
 
-	local $SIG{PIPE} = 'IGNORE';
 
-	my $nwritten = syswrite $self->[ IO_HANDLE ], $self->[ IO_BUFFEROUT ];
+	my $nwritten;
+	{
+		# disable "syswrite() on closed filehandle" warning
+		no warnings 'closed';
+		local $SIG{PIPE} = 'IGNORE';
+		$nwritten = syswrite $self->[ IO_HANDLE ], $self->[ IO_BUFFEROUT ];
+	}
+
 	throw 'write: handle closed'
 		unless defined $nwritten;
 
