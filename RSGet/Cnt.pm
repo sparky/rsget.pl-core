@@ -16,16 +16,19 @@ package RSGet::Cnt;
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+use strict;
+use warnings;
+
 use Fcntl ();
 use constant {
-	SEEK_CUR => Fcntl::SEEK_CUR,
-	SEEK_SET => Fcntl::SEEK_SET,
-	SEEK_END => Fcntl::SEEK_END,
+	SEEK_CUR => Fcntl::SEEK_CUR(),
+	SEEK_SET => Fcntl::SEEK_SET(),
+	SEEK_END => Fcntl::SEEK_END(),
 };
 
 use POSIX ();
 use constant {
-	WNOHANG => POSIX::WNOHANG,
+	WNOHANG => POSIX::WNOHANG(),
 };
 
 1;
