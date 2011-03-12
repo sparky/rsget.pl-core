@@ -54,7 +54,7 @@ sub create
 }
 
 
-# INTERNAL: accepd new connection and create client
+# INTERNAL: accept new connection and create client
 sub _client
 {
 	my $self = shift;
