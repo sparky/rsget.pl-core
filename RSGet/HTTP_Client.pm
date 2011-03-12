@@ -1,7 +1,7 @@
 package RSGet::HTTP_Client;
 # This file is an integral part of rsget.pl downloader.
 #
-# Copyright (C) 2010	Przemysław Iskra <sparky@pld-linux.org>
+# Copyright (C) 2011	Przemysław Iskra <sparky@pld-linux.org>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -28,8 +28,10 @@ use constant {
 
 my %codes = (
 	200 => "OK",
+	206 => "Partial Content",
 	401 => "Authorization Required",
 	404 => "Not Found",
+	416 => "Requested Range Not Satisfiable",
 	500 => "Internal Server Error",
 );
 
@@ -60,6 +62,10 @@ sub state
 	if ( $write ) {
 		RSGet::IO_Event->add_write( $h, $self );
 	} else {
+		foreach ( keys %$self ) {
+			next if /^_/;
+			delete $self->{$_};
+		}
 		RSGet::IO_Event->add_read( $h, $self );
 	}
 }
@@ -88,6 +94,7 @@ sub io_read
 		local $_;
 		if ( not defined $self->{method} ) {
 			my @request = split /\s+/, $io->readline();
+			warn "Request: @request\n";
 
 			$self->{method} = uc shift @request;
 			$self->{file} = shift @request;
@@ -180,8 +187,18 @@ sub process
 			$data = $func->( $self, @args );
 		};
 		if ( $@ ) {
-			$self->{code} = 500;
-			$data = "Server error: $@\n";
+			$self->{h_out} = {
+				content_type => "text/plain; charset=utf-8",
+			};
+			if ( $@ =~ /^RSGet::HTTP_Handler: (\d{3}):\s*(.*)/ ) {
+				$self->{code} = $1;
+				( $self->{code_msg} = $2 ) =~ s/[^A-Za-z0-9 ]+//;
+				$data = "Server error: $@\n";
+			} else {
+				$self->{code} = 500;
+				$data = "Server error: $@\n";
+			}
+			warn $data;
 		}
 	} else {
 		$self->{code} = 404;
@@ -202,12 +219,13 @@ sub process
 			unless ref $data eq 'CODE';
 		throw 'CODE handler must set up content_length header'
 			unless exists $self->{h_out}->{content_length};
-		$self->{_left} = $self->{h_out}->{content_length};
+		$self->{left} = $self->{h_out}->{content_length};
 	} else {
 		$self->{h_out}->{content_length} = length $data;
 	}
 
-	my $headers = "HTTP/1.1 $self->{code} $codes{ $self->{code} }\r\n";
+	$self->{code_msg} ||= $codes{ $self->{code} };
+	my $headers = "HTTP/1.1 $self->{code} $self->{code_msg}\r\n";
 	foreach my $hdr ( sort keys %{ $self->{h_out} } ) {
 		$headers .= _ucfirst_h( $hdr ) . ": " . $self->{h_out}->{ $hdr } . "\r\n";
 	}
@@ -219,7 +237,7 @@ sub process
 		$h->write( $headers );
 	};
 	if ( ref $data ) {
-		$self->{_iter} = $data;
+		$self->{iter} = $data;
 		$self->state( "write" );
 	} else {
 		eval {
@@ -227,7 +245,7 @@ sub process
 		};
 		if ( $@ ) {
 			if ( $@ eq "RSGet::IO: busy" ) {
-				$self->{_iter} = sub { throw 'DONE' };
+				$self->{iter} = sub { throw 'DONE' };
 				$self->state( "write" );
 			} elsif ( $@ eq "RSGet::IO: write: handle closed" ) {
 				$self->delete();
@@ -235,10 +253,6 @@ sub process
 		}
 	}
 
-	foreach ( keys %$self ) {
-		next if /^_/;
-		delete $self->{$_};
-	}
 }
 
 sub io_write
@@ -247,7 +261,7 @@ sub io_write
 	my $time = shift;
 
 	my $h = $self->{_io};
-	my $i = $self->{_iter};
+	my $i = $self->{iter};
 	eval {
 		# flush write buffer
 		$h->write();
@@ -255,10 +269,10 @@ sub io_write
 		# read more
 		local $_;
 		while ( defined ( $_ = $i->() ) ) {
-			if ( length $_ > $self->{_left} ) {
+			if ( length $_ > $self->{left} ) {
 				throw 'size mismatch - tried to send more than declared';
 			}
-			$self->{_left} -= length $_;
+			$self->{left} -= length $_;
 			$h->write( $_ );
 		}
 	};
@@ -269,9 +283,9 @@ sub io_write
 
 	if ( $@ ge 'done' or $@ ge 'read: handle closed' ) {
 		# no more data
-		if ( $self->{_left} ) {
+		if ( $self->{left} ) {
 			# size mismatch - close the handle
-			warn "size mismatch - not enough data sent\n";
+			warn "size mismatch - not enough data sent (remaining $self->{left})\n";
 			$self->delete();
 			return;
 		}
