@@ -130,8 +130,11 @@ sub io_read
 			return;
 		} else {
 			if ( $@ eq "RSGet::IO: read: handle closed" ) {
-				$self->process( $time )
-					if $self->{h_in_done};
+				if ( $self->{h_in_done} ) {
+					$self->process( $time );
+				} else {
+					$self->delete();
+				}
 				return;
 			} else {
 				$self->delete();
@@ -294,7 +297,7 @@ sub io_write
 	# there was some problem
 	$self->delete();
 	if ( $@ eq "RSGet::IO: write: handle closed" ) {
-		warn "$@\n";
+		# warn "$@\n";
 		return;
 	} else {
 		die $@;
