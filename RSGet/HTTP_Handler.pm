@@ -57,7 +57,7 @@ sub _send_file
 	$file =~ s#^/file/##;
 
 	unless ( -r $file and -f $file ) {
-		throw '404: File '%s' not found', $file;
+		throw '404: File "%s" not found', $file;
 	}
 
 
@@ -107,7 +107,7 @@ sub _readfile
 		sysseek $fin, $skip, RSGet::Cnt::SEEK_SET
 			if $skip;
 
-		sysread $fin, my $buf, $toread;
+		sysread $fin, my ( $buf ), $toread;
 		return $buf;
 	}
 
