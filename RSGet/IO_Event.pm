@@ -41,8 +41,8 @@ io_read() will be used for reading and io_write() for writing.
 sub add # {{{
 {
 	my ( $class, $handle, $object, $func ) = @_;
-	_add( $select_read, $handle, $object, $func || 'io_read' );
-	_add( $select_write, $handle, $object, $func || 'io_write' );
+	_add( 'read', $select_read, $handle, $object, $func || 'io_read' );
+	_add( 'write', $select_write, $handle, $object, $func || 'io_write' );
 	return 1;
 } # }}}
 
@@ -56,7 +56,7 @@ io_read() will be used.
 sub add_read # {{{
 {
 	my ( $class, $handle, $object, $func ) = @_;
-	return _add( $select_read, $handle, $object, $func || 'io_read' );
+	return _add( 'read', $select_read, $handle, $object, $func || 'io_read' );
 } # }}}
 
 
@@ -69,13 +69,14 @@ io_write() will be used.
 sub add_write # {{{
 {
 	my ( $class, $handle, $object, $func ) = @_;
-	return _add( $select_write, $handle, $object, $func || 'io_write' );
+	return _add( 'write', $select_write, $handle, $object, $func || 'io_write' );
 } # }}}
 
 
 # INTERNAL, actually does the job
 sub _add # {{{
 {
+	my $type = shift;
 	my $select = shift;
 
 	my $handle = shift;
@@ -89,7 +90,10 @@ sub _add # {{{
 	$handle = $handle->handle
 		if $handle->isa( 'RSGet::IO' );
 
-	$select->add( [ $handle, $object, $func ] );
+	my $cnt = $select->add( [ $handle, $object, $func ] );
+
+	RSGet::Mux::add_short( "_io_$type" => \&{"_perform_$type"} )
+		if $cnt;
 
 	return 1;
 } # }}}
@@ -103,8 +107,8 @@ Remove OBJECT associated with HANDLE from both call lists.
 sub remove # {{{
 {
 	my ( $class, $handle ) = @_;
-	_remove( $select_read, $handle );
-	_remove( $select_write, $handle );
+	_remove( 'read', $select_read, $handle );
+	_remove( 'write', $select_write, $handle );
 } # }}}
 
 =head2 RSGet::IO_Event->remove_read( HANDLE );
@@ -115,7 +119,7 @@ Remove OBJECT associated with HANDLE from read call list.
 sub remove_read # {{{
 {
 	my ( $class, $handle ) = @_;
-	_remove( $select_read, $handle );
+	_remove( 'read', $select_read, $handle );
 } # }}}
 
 =head2 RSGet::IO_Event->remove_write( HANDLE );
@@ -126,19 +130,22 @@ Remove OBJECT associated with HANDLE from write call list.
 sub remove_write # {{{
 {
 	my ( $class, $handle ) = @_;
-	_remove( $select_write, $handle );
+	_remove( 'write', $select_write, $handle );
 } # }}}
 
 # INTERNAL, actually does the job
 sub _remove # {{{
 {
+	my $type = shift;
 	my $select = shift;
 	my $handle = shift;
 
 	$handle = $handle->handle
 		if $handle->isa( 'RSGet::IO' );
 
-	$select->remove( $handle );
+	my $cnt = $select->remove( $handle );
+	RSGet::Mux::remove_short( "_io_$type" )
+		unless $cnt;
 } # }}}
 
 
@@ -185,10 +192,6 @@ sub _perform_write # {{{
 
 	return scalar @io;
 } # }}}
-
-RSGet::Mux::add_short
-	_1io_read => \&_perform_read,
-	_2io_write => \&_perform_write;
 
 1;
 
