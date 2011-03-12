@@ -2,12 +2,13 @@
 #
 use strict;
 use warnings;
+use RSGet::Cnt;
 use RSGet::HTTP_Server;
 
 $SIG{CHLD} = sub {
 	my $kid;
 	do {
-		$kid = waitpid -1, 0;
+		$kid = waitpid -1, RSGet::Cnt::WNOHANG;
 		print "\rChild $kid exited: $?\n" if $kid > 0;
 	} while ( $kid > 0 );
 };
