@@ -22,6 +22,7 @@ use warnings;
 use IO::Select;
 use Time::HiRes ();
 use RSGet::Common;
+use RSGet::Mux;
 
 my $select_read = IO::Select->new();
 my $select_write = IO::Select->new();
@@ -141,17 +142,14 @@ sub _remove # {{{
 } # }}}
 
 
-=head2 RSGet::IO_Event::_perform();
+=head2 RSGet::IO_Event::_perform_read(); _perform_write();
 
 For each HANDLE in read list ready to read call appropriate
 OBJECT->METHOD( $time ). Afterwards do the same for write list.
 
-=cut
-sub _perform # {{{
-{
-	return _perform_read() + _perform_write();
-} # }}}
+Those functions are called automatically from Mux.
 
+=cut
 
 sub _perform_read # {{{
 {
@@ -187,6 +185,10 @@ sub _perform_write # {{{
 
 	return scalar @io;
 } # }}}
+
+RSGet::Mux::add_short
+	_1io_read => \&_perform_read,
+	_2io_write => \&_perform_write;
 
 1;
 
