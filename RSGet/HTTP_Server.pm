@@ -96,8 +96,8 @@ sub client
 	my $self = shift;
 	my $handle = shift;
 
-	require RSGet::HTTP_Client;
-	RSGet::HTTP_Client->create( $handle );
+	require RSGet::HTTP_Connection;
+	RSGet::HTTP_Connection->create( $handle );
 }
 
 
