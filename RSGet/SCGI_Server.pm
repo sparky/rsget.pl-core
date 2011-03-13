@@ -19,6 +19,7 @@ package RSGet::SCGI_Server;
 use strict;
 use warnings;
 use RSGet::IO_Event;
+use RSGet::Common;
 
 
 =head1 RSGet::SCGI_Server -- simple scgi server
@@ -48,6 +49,11 @@ sub create
 			Blocking => 0,
 		);
 	} else {
+		if ( -e $port ) {
+			RSGet::Common::throw 'file "%s" exists and it is not a socket', $port
+				unless -S $port;
+			unlink $port;
+		}
 		require IO::Socket::UNIX;
 		$socket = IO::Socket::UNIX->new(
 			Type => IO::Socket::UNIX::SOCK_STREAM(),
