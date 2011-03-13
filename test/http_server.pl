@@ -14,7 +14,8 @@ $SIG{CHLD} = sub {
 	} while ( $kid > 0 );
 };
 
-my $server = RSGet::HTTP_Server->create( 8080 );
+my $port = shift @ARGV || 8080;
+my $server = RSGet::HTTP_Server->create( $port );
 
 my @c = qw(\ | / -);
 my $i = 0;
