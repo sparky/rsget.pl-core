@@ -21,8 +21,8 @@ use warnings;
 
 use Fcntl ();
 use constant {
-	SEEK_CUR => Fcntl::SEEK_CUR(),
 	SEEK_SET => Fcntl::SEEK_SET(),
+	SEEK_CUR => Fcntl::SEEK_CUR(),
 	SEEK_END => Fcntl::SEEK_END(),
 };
 
