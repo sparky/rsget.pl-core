@@ -1,4 +1,4 @@
-package RSGet::SCGI_Client;
+package RSGet::SCGI_Connection;
 # This file is an integral part of rsget.pl downloader.
 #
 # Copyright (C) 2011	Przemysław Iskra <sparky@pld-linux.org>
