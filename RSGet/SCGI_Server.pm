@@ -19,7 +19,10 @@ package RSGet::SCGI_Server;
 use strict;
 use warnings;
 use RSGet::IO_Event;
-use RSGet::Common;
+use RSGet::HTTP_Server;
+
+our @ISA;
+@ISA = qw(RSGet::HTTP_Server);
 
 
 =head1 RSGet::SCGI_Server -- simple scgi server
@@ -31,78 +34,29 @@ This package implements non-blocking scgi server.
 If WHERE is a number creates scgi server on tcp port WHERE, otherwise
 creates scgi server on unix socket named WHERE.
 
+Inherited from HTTP_Server.
+
+=head2 $server->client( HANDLE );
+
+Create scgi connection associated with HANDLE.
+
 =cut
-sub create
-{
-	my $class = shift;
-	my $port = shift;
-
-	my $socket;
-	if ( $port =~ m/^\d+$/ ) {
-		require IO::Socket::INET;
-		$socket = IO::Socket::INET->new(
-			Listen => 1,
-			LocalPort => $port,
-			Proto => 'tcp',
-			Listen => 32,
-			Reuse => 1,
-			Blocking => 0,
-		);
-	} else {
-		if ( -e $port ) {
-			RSGet::Common::throw 'file "%s" exists and it is not a socket', $port
-				unless -S $port;
-			unlink $port;
-		}
-		require IO::Socket::UNIX;
-		$socket = IO::Socket::UNIX->new(
-			Type => IO::Socket::UNIX::SOCK_STREAM(),
-			Local => $port,
-			Listen => 1,
-			Blocking => 0,
-		);
-	}
-
-	my $self = \$socket;
-	bless $self, $class;
-
-	RSGet::IO_Event->add_read( $socket, $self, "_client" );
-
-	return $self;
-}
-
-
-# INTERNAL: accept new connection and create client
-sub _client
+sub client
 {
 	my $self = shift;
-	my $time = shift;
-
-	my $h = $$self;
-	my $cli = $h->accept();
-	return unless $cli;
+	my $handle = shift;
 
 	require RSGet::SCGI_Client;
-	RSGet::SCGI_Client->create( $cli );
+	RSGet::SCGI_Client->create( $handle );
 }
-
 
 =head2 $server->delete();
 
-Delete scgi server.
+Delete http server.
+
+Inherited from HTTP_Server.
 
 =cut
-sub delete
-{
-	my $self = shift;
-	RSGet::IO_Event->remove( $$self );
-}
-
-sub DESTROY
-{
-	my $self = shift;
-	$self->delete();
-}
 
 1;
 

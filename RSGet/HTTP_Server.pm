@@ -19,6 +19,7 @@ package RSGet::HTTP_Server;
 use strict;
 use warnings;
 use IO::Socket::INET;
+use RSGet::Common qw(throw);
 use RSGet::IO_Event;
 
 
@@ -36,14 +37,31 @@ sub create
 	my $class = shift;
 	my $port = shift;
 
-	my $socket = IO::Socket::INET->new(
-		Listen => 1,
-		LocalPort => $port,
-		Proto => 'tcp',
-		Listen => 32,
-		Reuse => 1,
-		Blocking => 0,
-	);
+	my $socket;
+	if ( $port =~ m/^\d+$/ ) {
+		require IO::Socket::INET;
+		$socket = IO::Socket::INET->new(
+			Listen => 1,
+			LocalPort => $port,
+			Proto => 'tcp',
+			Listen => 32,
+			Reuse => 1,
+			Blocking => 0,
+		);
+	} else {
+		if ( -e $port ) {
+			throw 'file "%s" exists and it is not a socket', $port
+				unless -S $port;
+			unlink $port;
+		}
+		require IO::Socket::UNIX;
+		$socket = IO::Socket::UNIX->new(
+			Type => IO::Socket::UNIX::SOCK_STREAM(),
+			Local => $port,
+			Listen => 1,
+			Blocking => 0,
+		);
+	}
 
 	my $self = \$socket;
 	bless $self, $class;
@@ -64,8 +82,22 @@ sub _client
 	my $cli = $h->accept();
 	return unless $cli;
 
+	return $self->client( $cli );
+}
+
+
+=head2 $server->client( HANDLE );
+
+Create http connection associated with HANDLE.
+
+=cut
+sub client
+{
+	my $self = shift;
+	my $handle = shift;
+
 	require RSGet::HTTP_Client;
-	RSGet::HTTP_Client->create( $cli );
+	RSGet::HTTP_Client->create( $handle );
 }
 
 
