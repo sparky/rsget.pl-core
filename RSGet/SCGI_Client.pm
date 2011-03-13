@@ -109,8 +109,6 @@ sub io_read
 			foreach my $key ( qw(CONTENT_LENGTH) ) {
 				$head_lc{ lc $key } = $head{ $key };
 			}
-			use Data::Dumper;
-			print Dumper( \%head_lc );
 
 			$self->{h_in} = \%head_lc;
 			$self->{method} = uc $head{REQUEST_METHOD};
