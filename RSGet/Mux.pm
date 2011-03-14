@@ -53,7 +53,7 @@ our $start_long;
 
 
 # Run all short functions.
-sub _run_short
+sub _run_short # {{{
 {
 	foreach my $fname ( sort keys %interval_short ) {
 		my $func = $interval_short{ $fname };
@@ -69,11 +69,11 @@ sub _run_short
 			warn "RSGet::Mux::_run_short: Function $fname died: $@\n";
 		}
 	}
-}
+} # }}}
 
 # Run one long function from @run_long list
 my @run_long;
-sub _run_long
+sub _run_long # {{{
 {
 	my $fname = shift @run_long;
 	# list may be empty already
@@ -94,14 +94,14 @@ sub _run_long
 
 	# success
 	return 1;
-}
+} # }}}
 
 
 =head2 RSGet::Mux::main_loop( )
 
 Main loop function, must be called after initialization.
 =cut
-sub main_loop
+sub main_loop # {{{
 {
 	my $count = long_count;
 	while (1) {
@@ -118,7 +118,7 @@ sub main_loop
 
 		_run_short();
 
-		# run one long job, and see whether we have got time to run more
+		# run one long job, and see whether there is enough time to run more
 		my $time_left;
 		my $job;
 		do {
@@ -129,7 +129,7 @@ sub main_loop
 
 		sleep $time_left if $time_left > 0;
 	}
-}
+} # }}}
 
 =head2 RSGet::Mux::add_short( name1 => CODE1, name2 => CODE2, ... )
 
@@ -139,21 +139,21 @@ Add name => CODE pairs to short interval list.
  	0early_func1 => sub { ... },
  	9late_func2 => \&function;
 =cut
-sub add_short
+sub add_short # {{{
 {
 	my %func = @_;
 	@interval_short{ keys %func } = values %func;
-}
+} # }}}
 
 =head2 RSGet::Mux::add_long( name1 => CODE1, name2 => CODE2, ... )
 
 Add name => CODE pairs to long interval list.
 =cut
-sub add_long
+sub add_long # {{{
 {
 	my %func = @_;
 	@interval_long{ keys %func } = values %func;
-}
+} # }}}
 
 =head2 RSGet::Mux::remove_short( "name1", "name2", ... )
 
@@ -161,20 +161,20 @@ Remove functions with specified names from short interval list.
 
  RSGet::Mux::remove_short "0early_func1", "9late_func2";
 =cut
-sub remove_short
+sub remove_short # {{{
 {
 	delete @interval_short{ @_ };
-}
+} # }}}
 
 =head2 RSGet::Mux::remove_long( "name1", "name2", ... )
 
 Remove functions with specified names from long interval list.
 
 =cut
-sub remove_long
+sub remove_long # {{{
 {
 	delete @interval_long{ @_ };
-}
+} # }}}
 
 1;
 
