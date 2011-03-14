@@ -24,17 +24,29 @@ use RSGet::HTTP_Connection;
 our @ISA;
 @ISA = qw(RSGet::HTTP_Connection);
 
+
+=head1 RSGet::SCGI_Connection -- simple scgi server connection
+
+This package implements client connection handling and processing.
+The connection never blocks.
+
+RSGet::SCGI_Connection inherits most of its methods from
+RSGet::HTTP_Connection.
+
+=cut
 use constant {
+	# first word to send to client
 	STATUS => 'Status:',
 };
 
-sub write_end
-{
-	my $self = shift;
-	return $self->close();
-}
 
-sub io_read
+=head2 $self->io_read(),
+
+Read data from client and process/decode it. Will be called from IO_Event
+every time there is some data to read.
+
+=cut
+sub io_read # {{{
 {
 	my $self = shift;
 	my $time = shift;
@@ -79,8 +91,22 @@ sub io_read
 	} else {
 		return $self->read_end();
 	}
-}
+} # }}}
 
+
+=head2 $self->write_end();
+
+End data writing. Called either from process (if it was able to send all the
+data at once) or from io_write (when it's done writing).
+
+Will close the connection (SCGI does not allow persistent connections).
+
+=cut
+sub write_end # {{{
+{
+	my $self = shift;
+	return $self->close();
+} # }}}
 
 1;
 
