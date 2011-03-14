@@ -87,8 +87,8 @@ sub read_start # {{{
 
 =head2 $self->io_read(),
 
-Read data from client. Will be called from IO_Event every time
-there is some data to read.
+Read data from client and process/decode it. Will be called from IO_Event
+every time there is some data to read.
 
 =cut
 sub io_read # {{{
@@ -152,7 +152,7 @@ sub io_read # {{{
 
 =head2 $self->read_error( $@ )
 
-Handle read error.
+Handle read error. Closes connection on unrecoverable errors
 
 =cut
 sub read_error # {{{
@@ -207,15 +207,13 @@ sub http_headers # {{{
 	my $self = shift;
 	my $h = $self->{h_out};
 
-	return join '',
-		map { $_ . "\r\n" } (
+	return join "\r\n",
 			@_, 
 			( map { 
 				( join '-', map ucfirst, split /[-_ ]+/, lc $_ )
 				. ': ' . $h->{ $_ }
 				} sort keys %$h ),
-			''
-		);
+			'', '';
 } # }}}
 
 
@@ -336,7 +334,7 @@ sub process # {{{
 
 =head2 $self->write_start();
 
-Start writing content to client. Called is request handles returned an iterator
+Start writing content to client. Called if request handles returned an iterator
 or process couldn't send all the data at once.
 
 =cut
@@ -408,6 +406,9 @@ sub io_write # {{{
 
 End data writing. Called either from process (if it was able to send all the
 data at once) or from io_write (when it's done writing).
+
+Will close the connection if requested, otherwise will prepare for receiving
+more data.
 
 =cut
 sub write_end # {{{
