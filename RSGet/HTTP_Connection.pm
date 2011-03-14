@@ -35,6 +35,9 @@ use constant {
 
 	# first word to send to
 	STATUS => 'HTTP/1.1',
+
+	DNAME => [qw(Sun Mon Tue Wed Thu Fri Sat)],
+	MNAME => [qw(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec)],
 };
 
 # list of allowed return codes, with default message
@@ -69,6 +72,7 @@ sub open # {{{
 	return $self;
 } # }}}
 
+
 =head2 $self->read_start()
 
 Start reading data.
@@ -84,6 +88,7 @@ sub read_start # {{{
 	# register io_read
 	RSGet::IO_Event->add_read( $self->{_io}, $self );
 } # }}}
+
 
 =head2 $self->io_read(),
 
@@ -197,6 +202,22 @@ sub method # {{{
 	return uc $self->{REQUEST_METHOD} eq uc shift;
 } # }}}
 
+
+
+=head2 my $date = $self->http_time( [TIME] )
+
+Format time as string suitable for http headers.
+
+=cut
+sub http_time # {{{
+{
+	my $self = shift;
+	my @t = gmtime( shift || time );
+	return sprintf '%s, %02d %s %04d %02d:%02d:%02d GMT',
+		DNAME->[ $t[6] ], $t[3], MNAME->[ $t[4] ], 1900+$t[5],
+		$t[2], $t[1], $t[0];
+} # }}}
+
 =head2 my $headers = $self->http_headers( PREAMBLE );
 
 Format HTTP output headers. PREAMBLE is the first line to be sent.
@@ -287,6 +308,8 @@ sub process # {{{
 		}
 	}
 	$self->{h_out}->{CONTENT_TYPE} ||= 'text/plain; charset=utf-8';
+	$self->{h_out}->{DATE} ||= $self->http_time();
+	$self->{h_out}->{SERVER} = 'rsget.pl built-in server';
 	$self->{h_out}->{CONNECTION} = 'Keep-Alive';
 
 	if ( $self->method( 'HEAD' ) ) {
