@@ -46,7 +46,7 @@ Read data from client and process/decode it. Will be called from IO_Event
 every time there is some data to read.
 
 =cut
-sub io_read # {{{
+sub io_read($;$) # {{{
 {
 	my $self = shift;
 	my $time = shift;
@@ -102,7 +102,7 @@ data at once) or from io_write (when it's done writing).
 Will close the connection (SCGI does not allow persistent connections).
 
 =cut
-sub write_end # {{{
+sub write_end($) # {{{
 {
 	my $self = shift;
 	return $self->close();

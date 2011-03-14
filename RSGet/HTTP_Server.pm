@@ -32,7 +32,7 @@ This package implements non-blocking http server.
 Create http server on tcp PORT.
 
 =cut
-sub create
+sub create($$)
 {
 	my $class = shift;
 	my $port = shift;
@@ -77,7 +77,7 @@ sub create
 
 
 # INTERNAL: accept new connection and create client
-sub _client
+sub _client($;$)
 {
 	my $self = shift;
 	my $time = shift;
@@ -95,7 +95,7 @@ sub _client
 Create http connection associated with HANDLE.
 
 =cut
-sub client
+sub client($$)
 {
 	my $self = shift;
 	my $handle = shift;
@@ -110,13 +110,13 @@ sub client
 Delete http server.
 
 =cut
-sub delete
+sub delete($)
 {
 	my $self = shift;
 	RSGet::IO_Event->remove( $$self );
 }
 
-sub DESTROY
+sub DESTROY($)
 {
 	my $self = shift;
 	$self->delete();

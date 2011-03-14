@@ -30,7 +30,7 @@ my @handlers = (
 	[ qr#/file/.*#, \&_send_file ],
 );
 
-sub get
+sub get($$)
 {
 	my $class = shift;
 	my $filename = shift;
@@ -48,7 +48,7 @@ sub get
 	return undef;
 }
 
-sub _request2hash
+sub _request2hash($)
 {
 	my $req = shift;
 
@@ -68,7 +68,7 @@ sub _request2hash
 	return \%post;
 }
 
-sub _send_file
+sub _send_file($;$)
 {
 	my $req = shift;
 	my $ct = shift || 'application/octet-stream';
@@ -105,7 +105,7 @@ sub _send_file
 	return _readfile( $file, $skip, $end + 1 );
 }
 
-sub _readfile
+sub _readfile($;$$)
 {
 	my $path = shift;
 	my $skip = shift || 0;

@@ -55,7 +55,7 @@ my %codes = ( # {{{
 Open new http connection associated with HANDLE.
 
 =cut
-sub open # {{{
+sub open($$) # {{{
 {
 	my $class = shift;
 	my $handle = shift;
@@ -78,7 +78,7 @@ sub open # {{{
 Start reading data.
 
 =cut
-sub read_start # {{{
+sub read_start($) # {{{
 {
 	my $self = shift;
 
@@ -96,7 +96,7 @@ Read data from client and process/decode it. Will be called from IO_Event
 every time there is some data to read.
 
 =cut
-sub io_read # {{{
+sub io_read($;$) # {{{
 {
 	my $self = shift;
 	my $time = shift;
@@ -160,7 +160,7 @@ sub io_read # {{{
 Handle read error. Closes connection on unrecoverable errors
 
 =cut
-sub read_error # {{{
+sub read_error($$) # {{{
 {
 	my $self = shift;
 	my $err = shift;
@@ -182,7 +182,7 @@ sub read_error # {{{
 Finish data reading. Start data processing.
 
 =cut
-sub read_end # {{{
+sub read_end($) # {{{
 {
 	my $self = shift;
 	RSGet::IO_Event->remove_read( $self->{_io} );
@@ -196,7 +196,7 @@ sub read_end # {{{
 Return true if request method is TYPE.
 
 =cut
-sub method # {{{
+sub method($$) # {{{
 {
 	my $self = shift;
 	return uc $self->{REQUEST_METHOD} eq uc shift;
@@ -209,7 +209,7 @@ sub method # {{{
 Format time as string suitable for http headers.
 
 =cut
-sub http_time # {{{
+sub http_time($;$) # {{{
 {
 	my $self = shift;
 	my @t = gmtime( shift || time );
@@ -223,7 +223,7 @@ sub http_time # {{{
 Format HTTP output headers. PREAMBLE is the first line to be sent.
 
 =cut
-sub http_headers # {{{
+sub http_headers($@) # {{{
 {
 	my $self = shift;
 	my $h = $self->{h_out};
@@ -243,7 +243,7 @@ sub http_headers # {{{
 Handle request. Dies if there are any problems.
 
 =cut
-sub handle # {{{
+sub handle($) # {{{
 {
 	my $self = shift;
 
@@ -288,7 +288,7 @@ Process request. Calls handle() and writes the response to client, if
 possible, otherwise writes the error code.
 
 =cut
-sub process # {{{
+sub process($) # {{{
 {
 	my $self = shift;
 
@@ -361,7 +361,7 @@ Start writing content to client. Called if request handles returned an iterator
 or process couldn't send all the data at once.
 
 =cut
-sub write_start # {{{
+sub write_start($) # {{{
 {
 	my $self = shift;
 
@@ -376,7 +376,7 @@ Write chunk of data to client. Will be called from IO_Event every time
 socket is able to accept new data.
 
 =cut
-sub io_write # {{{
+sub io_write($;$) # {{{
 {
 	my $self = shift;
 	my $time = shift;
@@ -434,7 +434,7 @@ Will close the connection if requested, otherwise will prepare for receiving
 more data.
 
 =cut
-sub write_end # {{{
+sub write_end($) # {{{
 {
 	my $self = shift;
 	RSGet::IO_Event->remove_write( $self->{_io} );
@@ -453,7 +453,7 @@ sub write_end # {{{
 Close the connection and remove event handlers.
 
 =cut
-sub close # {{{
+sub close($) # {{{
 {
 	my $self = shift;
 	RSGet::IO_Event->remove( $self->{_io} );

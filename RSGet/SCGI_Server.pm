@@ -41,7 +41,7 @@ Inherited from HTTP_Server.
 Create scgi connection associated with HANDLE.
 
 =cut
-sub client
+sub client($$)
 {
 	my $self = shift;
 	my $handle = shift;
