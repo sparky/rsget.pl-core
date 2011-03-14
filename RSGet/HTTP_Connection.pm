@@ -70,7 +70,7 @@ sub read_start # {{{
 sub read_end # {{{
 {
 	my $self = shift;
-	RSGet::IO_Event->remove_write( $self->{_io} );
+	RSGet::IO_Event->remove_read( $self->{_io} );
 
 	return $self->process();
 } # }}}
@@ -117,7 +117,6 @@ sub io_read # {{{
 		local $_;
 		if ( not defined $self->{REQUEST_METHOD} ) {
 			$_ = $io->readline();
-			warn "$_";
 			@$self{ qw(REQUEST_METHOD PATH_INFO SERVER_PROTOCOL) } =
 				split /\s+/, $_;
 
@@ -128,7 +127,6 @@ sub io_read # {{{
 			my $h = $self->{h_in} ||= {};
 			while ( ( $_ = $io->readline() ) ne $/ ) {
 				chomp;
-				warn "$_\n";
 				/^(\S+?):\s*(.*)$/
 					or throw 'malformed request';
 				$_ = uc $1;
