@@ -76,13 +76,14 @@ sub _send_file
 	my $file = $req->{PATH_INFO};
 	$file =~ s#^/file/##;
 
-	unless ( -r $file and -f $file ) {
+	my @stat = stat $file;
+	unless ( -r _ and -f _ ) {
 		throw '404: File "%s" not found', $file;
 	}
 
 
 	my $skip = 0;
-	my $size = -s $file;
+	my $size = $stat[ 7 ];
 	my $end = $size - 1;
 
 	my $h = $req->{h_in};
@@ -97,6 +98,7 @@ sub _send_file
 
 	$req->{h_out}->{CONTENT_LENGTH} = $size;
 	$req->{h_out}->{CONTENT_TYPE} = $ct;
+	$req->{h_out}->{Last_Modified} = $req->http_time( $stat[ 9 ] );
 
 	return undef
 		if $req->method( 'HEAD' );
