@@ -38,7 +38,7 @@ Add OBJECT with associated HANDLE to both call lists. If METHOD is not specified
 io_read() will be used for reading and io_write() for writing.
 
 =cut
-sub add # {{{
+sub add($$$;$) # {{{
 {
 	my ( $class, $handle, $object, $func ) = @_;
 	_add( 'read', $select_read, $handle, $object, $func || 'io_read' );
@@ -53,7 +53,7 @@ Add OBJECT with associated HANDLE to read call list. If METHOD is not specified
 io_read() will be used.
 
 =cut
-sub add_read # {{{
+sub add_read($$$;$) # {{{
 {
 	my ( $class, $handle, $object, $func ) = @_;
 	return _add( 'read', $select_read, $handle, $object, $func || 'io_read' );
@@ -66,7 +66,7 @@ Add OBJECT with associated HANDLE to write call list. If METHOD is not specified
 io_write() will be used.
 
 =cut
-sub add_write # {{{
+sub add_write($$$;$) # {{{
 {
 	my ( $class, $handle, $object, $func ) = @_;
 	return _add( 'write', $select_write, $handle, $object, $func || 'io_write' );
@@ -74,7 +74,7 @@ sub add_write # {{{
 
 
 # INTERNAL, actually does the job
-sub _add # {{{
+sub _add($$$$;$) # {{{
 {
 	my $type = shift;
 	my $select = shift;
@@ -104,7 +104,7 @@ sub _add # {{{
 Remove OBJECT associated with HANDLE from both call lists.
 
 =cut
-sub remove # {{{
+sub remove($$) # {{{
 {
 	my ( $class, $handle ) = @_;
 	_remove( 'read', $select_read, $handle );
@@ -116,7 +116,7 @@ sub remove # {{{
 Remove OBJECT associated with HANDLE from read call list.
 
 =cut
-sub remove_read # {{{
+sub remove_read($$) # {{{
 {
 	my ( $class, $handle ) = @_;
 	_remove( 'read', $select_read, $handle );
@@ -127,14 +127,14 @@ sub remove_read # {{{
 Remove OBJECT associated with HANDLE from write call list.
 
 =cut
-sub remove_write # {{{
+sub remove_write($$) # {{{
 {
 	my ( $class, $handle ) = @_;
 	_remove( 'write', $select_write, $handle );
 } # }}}
 
 # INTERNAL, actually does the job
-sub _remove # {{{
+sub _remove($$$) # {{{
 {
 	my $type = shift;
 	my $select = shift;
@@ -161,7 +161,7 @@ Those functions are called automatically from Mux.
 
 =cut
 
-sub _perform_read # {{{
+sub _perform_read() # {{{
 {
 	my @io = $select_read->can_read( 0 );
 	return 0 unless @io;
@@ -179,7 +179,7 @@ sub _perform_read # {{{
 } # }}}
 
 
-sub _perform_write # {{{
+sub _perform_write() # {{{
 {
 	my @io = $select_write->can_write( 0 );
 	return 0 unless @io;

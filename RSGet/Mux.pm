@@ -53,7 +53,7 @@ our $start_long;
 
 
 # Run all short functions.
-sub _run_short # {{{
+sub _run_short() # {{{
 {
 	foreach my $fname ( sort keys %interval_short ) {
 		my $func = $interval_short{ $fname };
@@ -73,7 +73,7 @@ sub _run_short # {{{
 
 # Run one long function from @run_long list
 my @run_long;
-sub _run_long # {{{
+sub _run_long() # {{{
 {
 	my $fname = shift @run_long;
 	# list may be empty already
@@ -101,7 +101,7 @@ sub _run_long # {{{
 
 Main loop function, must be called after initialization.
 =cut
-sub main_loop # {{{
+sub main_loop() # {{{
 {
 	my $count = long_count;
 	while (1) {
@@ -139,7 +139,7 @@ Add name => CODE pairs to short interval list.
  	0early_func1 => sub { ... },
  	9late_func2 => \&function;
 =cut
-sub add_short # {{{
+sub add_short(%) # {{{
 {
 	my %func = @_;
 	@interval_short{ keys %func } = values %func;
@@ -149,7 +149,7 @@ sub add_short # {{{
 
 Add name => CODE pairs to long interval list.
 =cut
-sub add_long # {{{
+sub add_long(%) # {{{
 {
 	my %func = @_;
 	@interval_long{ keys %func } = values %func;
@@ -161,7 +161,7 @@ Remove functions with specified names from short interval list.
 
  RSGet::Mux::remove_short "0early_func1", "9late_func2";
 =cut
-sub remove_short # {{{
+sub remove_short(@) # {{{
 {
 	delete @interval_short{ @_ };
 } # }}}
@@ -171,7 +171,7 @@ sub remove_short # {{{
 Remove functions with specified names from long interval list.
 
 =cut
-sub remove_long # {{{
+sub remove_long(@) # {{{
 {
 	delete @interval_long{ @_ };
 } # }}}

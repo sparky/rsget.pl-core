@@ -38,7 +38,7 @@ IO wrapper. Allows exact reads without blocking.
 Mark HANDLE as non-blocking and return a wrapper.
 
 =cut
-sub new # {{{
+sub new($$) # {{{
 {
 	my $class = shift;
 	my $handle = shift;
@@ -65,7 +65,7 @@ sub new # {{{
 Return file handle.
 
 =cut
-sub handle # {{{
+sub handle($) # {{{
 {
 	my $self = shift;
 	return $self->[ IO_HANDLE ];
@@ -81,7 +81,7 @@ If there aren't enough bytes and handle is still open - read will die with
 Subsequent reads will die with "RSGet::IO: handle closed" error.
 
 =cut
-sub read # {{{
+sub read($$) # {{{
 {
 	my $self = shift;
 	my $size = shift;
@@ -112,7 +112,7 @@ If there aren't enough data and handle is still open - readline will die with
 Subsequent reads will die with "RSGet::IO: handle closed" error.
 
 =cut
-sub readline # {{{
+sub readline($) # {{{
 {
 	my $self = shift;
 
@@ -130,7 +130,7 @@ sub readline # {{{
 } # }}}
 
 
-sub _read_end # {{{
+sub _read_end($) # {{{
 {
 	my $self = shift;
 	my $active = 1;
@@ -167,7 +167,7 @@ stores remaining data and dies with "RSGET::IO: busy" error. If handle is
 closed write() will die with "RSGet::IO: handle closed" error.
 
 =cut
-sub write # {{{
+sub write($;$) # {{{
 {
 	my $self = shift;
 	if ( defined $_[0] ) {
@@ -204,7 +204,7 @@ sub write # {{{
 } # }}}
 
 
-sub DESTROY # {{{
+sub DESTROY($) # {{{
 {
 	my $self = shift;
 	eval {
