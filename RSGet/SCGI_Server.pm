@@ -47,7 +47,7 @@ sub client
 	my $handle = shift;
 
 	require RSGet::SCGI_Connection;
-	RSGet::SCGI_Connection->create( $handle );
+	RSGet::SCGI_Connection->open( $handle );
 }
 
 =head2 $server->delete();
