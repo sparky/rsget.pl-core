@@ -23,19 +23,23 @@ use RSGet::IO;
 use RSGet::IO_Event;
 
 use constant {
-	MAX_POST_SIZE => 1 * 1024 * 1024, # 1 MB
+	# maximum post client is allowed to send to us
+	MAX_POST_SIZE => 1 * 1024 * 1024,
+
+	# first word to send to
+	STATUS => 'HTTP/1.1',
 };
 
-my %codes = (
-	200 => "OK",
-	206 => "Partial Content",
-	401 => "Authorization Required",
-	404 => "Not Found",
-	416 => "Requested Range Not Satisfiable",
-	500 => "Internal Server Error",
-);
+my %codes = ( # {{{
+	200 => 'OK',
+	206 => 'Partial Content',
+	401 => 'Authorization Required',
+	404 => 'Not Found',
+	416 => 'Requested Range Not Satisfiable',
+	500 => 'Internal Server Error',
+); # }}}
 
-sub create
+sub open # {{{
 {
 	my $class = shift;
 	my $handle = shift;
@@ -47,42 +51,61 @@ sub create
 
 	bless $self, $class;
 
-	$self->state( "read" );
+	$self->read_start();
 
 	return $self;
-}
+} # }}}
 
-sub state
+sub read_start # {{{
 {
 	my $self = shift;
-	my $write = shift eq "write";
 
-	my $h = $self->{_io}->handle();
-	RSGet::IO_Event->remove( $h );
-	if ( $write ) {
-		RSGet::IO_Event->add_write( $h, $self );
-	} else {
-		foreach ( keys %$self ) {
-			next if /^_/;
-			delete $self->{$_};
-		}
-		RSGet::IO_Event->add_read( $h, $self );
+	# delete all but permanent data
+	delete @$self{ grep !/^_/, keys %$self };
+
+	# register io_read
+	RSGet::IO_Event->add_read( $self->{_io}, $self );
+} # }}}
+
+sub read_end # {{{
+{
+	my $self = shift;
+	RSGet::IO_Event->remove_write( $self->{_io} );
+
+	return $self->process();
+} # }}}
+
+sub write_start # {{{
+{
+	my $self = shift;
+
+	# register io_write
+	RSGet::IO_Event->add_write( $self->{_io}, $self );
+} # }}}
+
+sub write_end # {{{
+{
+	my $self = shift;
+	RSGet::IO_Event->remove_write( $self->{_io} );
+
+	my $h = $self->{h_in};
+	if ( exists $h->{CONNECTION} and lc $h->{CONNECTION} ne 'keep-alive' ) {
+		return $self->close();
 	}
-}
 
-sub _lc_h
+	return $self->read_start();
+} # }}}
+
+sub close # {{{
 {
-	local $_ = lc shift;
-	tr/-/_/;
-	return $_;
-}
+	my $self = shift;
+	RSGet::IO_Event->remove( $self->{_io} );
 
-sub _ucfirst_h
-{
-	return join "-", map ucfirst, split /[-_ ]+/, lc shift;
-}
+	close $self->{_io}->handle();
+	delete $self->{_io};
+} # }}}
 
-sub io_read
+sub io_read # {{{
 {
 	my $self = shift;
 	my $time = shift;
@@ -92,171 +115,204 @@ sub io_read
 	eval {
 		local $/ = "\r\n";
 		local $_;
-		if ( not defined $self->{method} ) {
-			my @request = split /\s+/, $io->readline();
+		if ( not defined $self->{REQUEST_METHOD} ) {
+			$_ = $io->readline();
+			warn "$_";
+			@$self{ qw(REQUEST_METHOD PATH_INFO SERVER_PROTOCOL) } =
+				split /\s+/, $_;
 
-			$self->{method} = uc shift @request;
-			$self->{file} = shift @request;
+			$self->{QUERY_STRING} = $1
+				if $self->{PATH_INFO} =~ s/\?(.*)//;
 		}
 		if ( not defined $self->{h_in_done} ) {
 			my $h = $self->{h_in} ||= {};
 			while ( ( $_ = $io->readline() ) ne $/ ) {
 				chomp;
+				warn "$_\n";
 				/^(\S+?):\s*(.*)$/
-					or throw "malformed request";
-				$h->{ _lc_h( $1 ) } = $2;
+					or throw 'malformed request';
+				$_ = uc $1;
+				tr/-/_/;
+				$h->{ $_ } = $2;
 			}
 			$self->{h_in_done} = 1;
 		}
-		if ( $self->{method} eq "POST" ) {
-			$_ = $self->{h_in}->{content_length};
-			if ( defined $_ and /(\d+)/ ) {
-				my $len = 0 | $1;
-				throw "POST data too large"
+		if ( $self->method( 'POST' ) ) {
+			$_ = $self->{CONTENT_LENGTH} = $self->{h_in}->{CONTENT_LENGTH};
+			if ( defined $_ ) {
+				my $len = 0 | $_;
+				throw 'POST data too large (%d bytes)', $len
 					if $len > MAX_POST_SIZE;
 				$self->{post_data} = $io->read( $len );
-				throw "POST data incomplete"
-					if length $self->{post_data} != $len;
+				my $got = length $self->{post_data};
+				throw 'POST data incomplete (%d of %d bytes)', $got, $len
+					if $got != $len;
 			} else {
 				$self->{post_data} = $io->read( MAX_POST_SIZE + 1);
-				throw "POST data too large"
+				throw 'POST data too large'
 					if length $self->{post_data} > MAX_POST_SIZE;
 			}
 		}
 	};
+
 	if ( $@ ) {
-		if ( $@ eq "RSGet::IO: no data" ) {
-			# do nothing, wait for more data
-			return;
-		} else {
-			if ( $@ eq "RSGet::IO: read: handle closed" ) {
-				if ( $self->{h_in_done} ) {
-					$self->process( $time );
-				} else {
-					$self->delete();
-				}
-				return;
-			} else {
-				$self->delete();
-				die $@;
-			}
-		}
+		return $self->read_error( $@ );
 	} else {
-		$self->process( $time );
+		return $self->read_end();
 	}
+} # }}}
+
+sub read_error # {{{
+{
+	my $self = shift;
+	my $err = shift;
+
+	if ( $err eq 'RSGet::IO: no data' ) {
+		# do nothing, wait for more data
+		return;
+	}
+
+	$self->close();
+	return if $err eq 'RSGet::IO: read: handle closed';
+
+	die $err;
+} # }}}
+
+=head2 my $headers = $self->http_headers( PREAMBLE );
+
+Returns:
+
+	PREAMBLE \r\n
+	Header-1: value1 \r\n
+	Header-2: value2 \r\n
+	\r\n
+
+=cut
+sub http_headers # {{{
+{
+	my $self = shift;
+	my $h = $self->{h_out};
+
+	return join '',
+		map { $_ . "\r\n" } (
+			@_, 
+			( map { 
+				( join '-', map ucfirst, split /[-_ ]+/, lc $_ )
+				. ': ' . $h->{ $_ }
+				} sort keys %$h ),
+			''
+		);
+} # }}}
+
+sub method
+{
+	my $self = shift;
+	return uc $self->{REQUEST_METHOD} eq uc shift;
 }
 
-sub _post2hash
+sub handle # {{{
 {
 	my $self = shift;
 
-	my %post;
-	if ( $self->{method} eq "POST" ) {
-		%post =
-			grep { tr/+/ /; s/%(..)/chr hex $1/eg; 1 }
-			map { split /=/, $_, 2 }
-			split /&/, $self->{post_data};
-	} elsif ( $self->{file} =~ s/\?(.*)// ) {
-		%post =
-			grep { s/%(..)/chr hex $1/eg; 1 }
-			map { split /=/, $_, 2 }
-			split /[;&]+/, $1;
-	}
+	$self->{h_out} = {};
 
-	return \%post;
-}
-
-sub process
-{
-	my $self = shift;
-
-	$self->{post} = _post2hash( $self );
-	$self->{code} = 200;
-	$self->{h_out} = {
-		content_type => "text/xml; charset=utf-8",
-	};
-
-	my $data;
 
 	require RSGet::HTTP_Handler;
-	my $handler = RSGet::HTTP_Handler->get( $self->{file} );
+	my $handler = RSGet::HTTP_Handler->get( $self->{PATH_INFO} );
 
-	if ( $handler ) {
-		my @args = @$handler;
-		shift @args; # file match
-		my $func = shift @args;
-		eval {
-			$data = $func->( $self, @args );
-		};
-		if ( $@ ) {
-			$self->{h_out} = {
-				content_type => "text/plain; charset=utf-8",
-			};
-			if ( $@ =~ /^RSGet::HTTP_Handler: (\d{3}):\s*(.*)/ ) {
-				$self->{code} = $1;
-				( $self->{code_msg} = $2 ) =~ s/[^A-Za-z0-9 ]+//;
-				$data = "Server error: $@\n";
-			} else {
-				$self->{code} = 500;
-				$data = "Server error: $@\n";
-			}
-		}
-	} else {
-		$self->{code} = 404;
-		$data = "No handler for file '$self->{file}'\n";
-	}
+	throw '404: No handler for file "%s"', $self->{PATH_INFO}
+		unless $handler;
 
-	$self->{h_out}->{connection} = "Keep-Alive";
+	my @args = @$handler;
+	shift @args; # file match
+	my $func = shift @args;
 
-	$self->{code} = 500 if not exists $codes{ $self->{code} };
-	unless ( defined $data ) {
-		$self->{h_out} = {
-			content_type => "text/plain; charset=utf-8",
-		};
-		$data = $codes{ $self->{code} } . "\n"
-	}
+	my $data = $func->( $self, @args );
+
+	$self->{code} ||= 200;
+	throw '500: Handler returned invalid code %d', $self->{code}
+		unless exists $codes{ $self->{code} };
+
+	throw '500: $data not defined'
+		unless defined $data or $self->method( 'HEAD' );
+
 	if ( ref $data ) {
-		throw '$data must be a SCALAR or CODE ref, it is %s', ref $data
+		throw '500: $data must be a SCALAR or CODE ref, it is %s', ref $data
 			unless ref $data eq 'CODE';
-		throw 'CODE handler must set up content_length header'
-			unless exists $self->{h_out}->{content_length};
-		$self->{left} = $self->{h_out}->{content_length};
-	} else {
-		$self->{h_out}->{content_length} = length $data;
+		throw 'CODE handler must set up CONTENT_LENGTH header'
+			unless exists $self->{h_out}->{CONTENT_LENGTH};
+	} elsif ( defined $data ) {
+		$self->{h_out}->{CONTENT_LENGTH} = length $data;
 	}
 
-	$self->{code_msg} ||= $codes{ $self->{code} };
-	my $headers = "HTTP/1.1 $self->{code} $self->{code_msg}\r\n";
-	foreach my $hdr ( sort keys %{ $self->{h_out} } ) {
-		$headers .= _ucfirst_h( $hdr ) . ": " . $self->{h_out}->{ $hdr } . "\r\n";
+	return $data;
+} # }}}
+
+sub process # {{{
+{
+	my $self = shift;
+
+	my $data;
+	eval {
+		$data = $self->handle();
+	};
+	if ( $@ ) {
+		%{$self->{h_out}} = ();
+		$data = "Server error: $@\n";
+		if ( $@ =~ /: (\d{3}):\s+(.*)/ ) {
+			$self->{code} = 0 | $1;
+			( $self->{code_msg} = $2 ) =~ s#[^A-Za-z0-9/\. -]+#_#sg;
+		} else {
+			$self->{code} = 500;
+			delete $self->{code_msg};
+		}
 	}
-	$headers .= "\r\n";
+	$self->{h_out}->{CONTENT_TYPE} ||= 'text/plain; charset=utf-8';
+	$self->{h_out}->{CONNECTION} = 'Keep-Alive';
+
+	if ( $self->method( 'HEAD' ) ) {
+		$data = '';
+	}
+
+	my $headers = $self->http_headers(
+		join ( ' ',
+			$self->STATUS,
+			$self->{code},
+			$self->{code_msg} || $codes{ $self->{code} }
+		)
+	);
 
 
 	my $h = $self->{_io};
-	eval {
-		$h->write( $headers );
-	};
-	if ( ref $data ) {
-		$self->{iter} = $data;
-		$self->state( "write" );
-	} else {
+	{
+		local $@;
 		eval {
-			$h->write( $data );
+			$h->write( $headers );
 		};
-		if ( $@ ) {
-			if ( $@ eq "RSGet::IO: busy" ) {
-				$self->{iter} = sub { throw 'DONE' };
-				$self->state( "write" );
-			} elsif ( $@ eq "RSGet::IO: write: handle closed" ) {
-				$self->delete();
-			}
-		}
+		# don't care about $@
 	}
 
-}
+	if ( ref $data ) {
+		$self->{iter} = $data;
+		$self->{left} = $self->{h_out}->{CONTENT_LENGTH};
+		return $self->write_start();
+	}
 
-sub io_write
+	eval {
+		$h->write( $data );
+	};
+	if ( $@ ) {
+		if ( $@ eq 'RSGet::IO: busy' ) {
+			$self->{iter} = sub { throw 'DONE' };
+			return $self->write_start();
+		}
+		return $self->close();
+	} else {
+		return $self->write_end();
+	}
+} # }}}
+
+sub io_write # {{{
 {
 	my $self = shift;
 	my $time = shift;
@@ -287,35 +343,23 @@ sub io_write
 		if ( $self->{left} ) {
 			# size mismatch - close the handle
 			warn "size mismatch - not enough data sent (remaining $self->{left})\n";
-			$self->delete();
+			$self->close();
 			return;
 		}
-		$self->state( "read" );
+		$self->write_end();
 		return;
 	}
 
 	# there was some problem
-	$self->delete();
-	if ( $@ eq "RSGet::IO: write: handle closed" ) {
+	$self->close();
+	if ( $@ eq 'RSGet::IO: write: handle closed' ) {
 		# warn "$@\n";
 		return;
 	} else {
 		die $@;
 	}
-}
+} # }}}
 
-
-sub delete
-{
-	my $self = shift;
-	RSGet::IO_Event->remove( $self->{_io} );
-
-	my $h = $self->{_io};
-	delete $self->{_io};
-
-	$h = $h->handle();
-	close $h;
-}
 
 1;
 
