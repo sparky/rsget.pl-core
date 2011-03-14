@@ -116,12 +116,15 @@ sub io_read # {{{
 		local $/ = "\r\n";
 		local $_;
 		if ( not defined $self->{REQUEST_METHOD} ) {
-			$_ = $io->readline();
 			@$self{ qw(REQUEST_METHOD PATH_INFO SERVER_PROTOCOL) } =
-				split /\s+/, $_;
+				split /\s+/, $io->readline();
 
 			$self->{QUERY_STRING} = $1
 				if $self->{PATH_INFO} =~ s/\?(.*)//;
+
+			my $h = $self->{h_in} ||= {};
+			$h->{CONNECTION} = 'Close'
+				if $self->{SERVER_PROTOCOL} ne 'HTTP/1.1';
 		}
 		if ( not defined $self->{h_in_done} ) {
 			my $h = $self->{h_in} ||= {};
