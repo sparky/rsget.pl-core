@@ -90,9 +90,10 @@ sub _add # {{{
 	$handle = $handle->handle
 		if $handle->isa( 'RSGet::IO' );
 
-	$select->add( [ $handle, $object, $func ] );
+	RSGet::Mux::add_short( "io_$type" => \&{"_perform_$type"} )
+		unless $select->count;
 
-	RSGet::Mux::add_short( "_io_$type" => \&{"_perform_$type"} );
+	$select->add( [ $handle, $object, $func ] );
 
 	return 1;
 } # }}}
@@ -143,8 +144,11 @@ sub _remove # {{{
 		if $handle->isa( 'RSGet::IO' );
 
 	$select->remove( $handle );
-	RSGet::Mux::remove_short( "_io_$type" )
-		unless $select->handles();
+
+	RSGet::Mux::remove_short( "io_$type" )
+		unless $select->count;
+
+	return 1;
 } # }}}
 
 
