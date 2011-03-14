@@ -48,6 +48,8 @@ sub create
 			Reuse => 1,
 			Blocking => 0,
 		);
+		throw 'Cannot create INET socket: %s', $!
+			unless $socket;
 	} else {
 		if ( -e $port ) {
 			throw 'file "%s" exists and it is not a socket', $port
@@ -61,6 +63,8 @@ sub create
 			Listen => 1,
 			Blocking => 0,
 		);
+		throw 'Cannot create UNIX socket: %s', $!
+			unless $socket;
 	}
 
 	my $self = \$socket;
@@ -97,7 +101,7 @@ sub client
 	my $handle = shift;
 
 	require RSGet::HTTP_Connection;
-	RSGet::HTTP_Connection->create( $handle );
+	RSGet::HTTP_Connection->open( $handle );
 }
 
 
