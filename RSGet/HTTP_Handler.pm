@@ -48,12 +48,32 @@ sub get
 	return undef;
 }
 
+sub _request2hash
+{
+	my $req = shift;
+
+	my %post;
+	if ( $req->{REQUEST_METHOD} eq "POST" ) {
+		%post =
+			grep { tr/+/ /; s/%(..)/chr hex $1/eg; 1 }
+			map { split /=/, $_, 2 }
+			split /&/, $req->{post_data};
+	} elsif ( exists $req->{QUERY_STRING} ) {
+		%post =
+			grep { s/%(..)/chr hex $1/eg; 1 }
+			map { split /=/, $_, 2 }
+			split /[;&]+/, $req->{QUERY_STRING};
+	}
+
+	return \%post;
+}
+
 sub _send_file
 {
 	my $req = shift;
 	my $ct = shift || 'application/octet-stream';
 
-	my $file = $req->{file};
+	my $file = $req->{PATH_INFO};
 	$file =~ s#^/file/##;
 
 	unless ( -r $file and -f $file ) {
@@ -66,17 +86,20 @@ sub _send_file
 	my $end = $size - 1;
 
 	my $h = $req->{h_in};
-	if ( exists $h->{range} and $h->{range} =~ /bytes=(\d+)-(\d+)?/ ) {
-		$skip = 0+$1;
+	if ( exists $h->{RANGE} and $h->{RANGE} =~ /bytes=(\d+)-(\d+)?/ ) {
+		$skip = 0 | $1;
 		$end = $2 || $size - 1;
 		my $cr = sprintf "bytes %d-%d/%d", $skip, $end, $size;
 		$size = $end - $skip + 1;
-		$req->{h_out}->{content_range} = $cr;
+		$req->{h_out}->{CONTENT_RANGE} = $cr;
 		$req->{code} = 206; # partial content
 	}
 
-	$req->{h_out}->{content_length} = $size;
-	$req->{h_out}->{content_type} = $ct;
+	$req->{h_out}->{CONTENT_LENGTH} = $size;
+	$req->{h_out}->{CONTENT_TYPE} = $ct;
+
+	return undef
+		if $req->method( 'HEAD' );
 	return _readfile( $file, $skip, $end + 1 );
 }
 
