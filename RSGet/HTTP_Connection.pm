@@ -22,6 +22,13 @@ use RSGet::Common qw(throw);
 use RSGet::IO;
 use RSGet::IO_Event;
 
+=head1 RSGet::HTTP_Connection -- simple http server connection
+
+This package implements client connection handling and processing.
+It never blocks.
+
+=cut
+
 use constant {
 	# maximum post client is allowed to send to us
 	MAX_POST_SIZE => 1 * 1024 * 1024,
@@ -30,6 +37,7 @@ use constant {
 	STATUS => 'HTTP/1.1',
 };
 
+# list of allowed return codes, with default message
 my %codes = ( # {{{
 	200 => 'OK',
 	206 => 'Partial Content',
@@ -39,6 +47,11 @@ my %codes = ( # {{{
 	500 => 'Internal Server Error',
 ); # }}}
 
+=head2 my $conn = RSGet::HTTP_Connection->open( HANDLE )
+
+Open new http connection associated with HANDLE.
+
+=cut
 sub open # {{{
 {
 	my $class = shift;
@@ -56,6 +69,11 @@ sub open # {{{
 	return $self;
 } # }}}
 
+=head2 $self->read_start()
+
+Start reading data.
+
+=cut
 sub read_start # {{{
 {
 	my $self = shift;
@@ -67,44 +85,12 @@ sub read_start # {{{
 	RSGet::IO_Event->add_read( $self->{_io}, $self );
 } # }}}
 
-sub read_end # {{{
-{
-	my $self = shift;
-	RSGet::IO_Event->remove_read( $self->{_io} );
+=head2 $self->io_read(),
 
-	return $self->process();
-} # }}}
+Read data from client. Will be called from IO_Event every time
+there is some data to read.
 
-sub write_start # {{{
-{
-	my $self = shift;
-
-	# register io_write
-	RSGet::IO_Event->add_write( $self->{_io}, $self );
-} # }}}
-
-sub write_end # {{{
-{
-	my $self = shift;
-	RSGet::IO_Event->remove_write( $self->{_io} );
-
-	my $h = $self->{h_in};
-	if ( exists $h->{CONNECTION} and lc $h->{CONNECTION} ne 'keep-alive' ) {
-		return $self->close();
-	}
-
-	return $self->read_start();
-} # }}}
-
-sub close # {{{
-{
-	my $self = shift;
-	RSGet::IO_Event->remove( $self->{_io} );
-
-	close $self->{_io}->handle();
-	delete $self->{_io};
-} # }}}
-
+=cut
 sub io_read # {{{
 {
 	my $self = shift;
@@ -163,6 +149,12 @@ sub io_read # {{{
 	}
 } # }}}
 
+
+=head2 $self->read_error( $@ )
+
+Handle read error.
+
+=cut
 sub read_error # {{{
 {
 	my $self = shift;
@@ -179,14 +171,35 @@ sub read_error # {{{
 	die $err;
 } # }}}
 
+
+=head2 $self->read_end();
+
+Finish data reading. Start data processing.
+
+=cut
+sub read_end # {{{
+{
+	my $self = shift;
+	RSGet::IO_Event->remove_read( $self->{_io} );
+
+	return $self->process();
+} # }}}
+
+
+=head2 if ( $self->method( TYPE ) ) { }
+
+Return true if request method is TYPE.
+
+=cut
+sub method # {{{
+{
+	my $self = shift;
+	return uc $self->{REQUEST_METHOD} eq uc shift;
+} # }}}
+
 =head2 my $headers = $self->http_headers( PREAMBLE );
 
-Returns:
-
-	PREAMBLE \r\n
-	Header-1: value1 \r\n
-	Header-2: value2 \r\n
-	\r\n
+Format HTTP output headers. PREAMBLE is the first line to be sent.
 
 =cut
 sub http_headers # {{{
@@ -205,12 +218,12 @@ sub http_headers # {{{
 		);
 } # }}}
 
-sub method
-{
-	my $self = shift;
-	return uc $self->{REQUEST_METHOD} eq uc shift;
-}
 
+=head2 my $data = $self->handle();
+
+Handle request. Dies if there are any problems.
+
+=cut
 sub handle # {{{
 {
 	my $self = shift;
@@ -249,6 +262,13 @@ sub handle # {{{
 	return $data;
 } # }}}
 
+
+=head2 $self->process();
+
+Process request. Calls handle() and writes the response to client, if
+possible, otherwise writes the error code.
+
+=cut
 sub process # {{{
 {
 	my $self = shift;
@@ -313,6 +333,28 @@ sub process # {{{
 	}
 } # }}}
 
+
+=head2 $self->write_start();
+
+Start writing content to client. Called is request handles returned an iterator
+or process couldn't send all the data at once.
+
+=cut
+sub write_start # {{{
+{
+	my $self = shift;
+
+	# register io_write
+	RSGet::IO_Event->add_write( $self->{_io}, $self );
+} # }}}
+
+
+=head2 $self->io_write();
+
+Write chunk of data to client. Will be called from IO_Event every time
+socket is able to accept new data.
+
+=cut
 sub io_write # {{{
 {
 	my $self = shift;
@@ -359,6 +401,41 @@ sub io_write # {{{
 	} else {
 		die $@;
 	}
+} # }}}
+
+
+=head2 $self->write_end();
+
+End data writing. Called either from process (if it was able to send all the
+data at once) or from io_write (when it's done writing).
+
+=cut
+sub write_end # {{{
+{
+	my $self = shift;
+	RSGet::IO_Event->remove_write( $self->{_io} );
+
+	my $h = $self->{h_in};
+	if ( exists $h->{CONNECTION} and lc $h->{CONNECTION} ne 'keep-alive' ) {
+		return $self->close();
+	}
+
+	return $self->read_start();
+} # }}}
+
+
+=head2 $self->close();
+
+Close the connection and remove event handlers.
+
+=cut
+sub close # {{{
+{
+	my $self = shift;
+	RSGet::IO_Event->remove( $self->{_io} );
+
+	close $self->{_io}->handle();
+	delete $self->{_io};
 } # }}}
 
 
