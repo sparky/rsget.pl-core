@@ -1,7 +1,7 @@
 package RSGet::Cron;
 # This file is an integral part of rsget.pl downloader.
 #
-# Copyright (C) 2010	Przemysław Iskra <sparky@pld-linux.org>
+# Copyright (C) 2010-2011	Przemysław Iskra <sparky@pld-linux.org>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -18,7 +18,7 @@ package RSGet::Cron;
 
 use strict;
 use warnings;
-use RSGet::Mux;
+use RSGet::Interval;
 
 # registered cron jobs
 my @registered;
@@ -79,7 +79,7 @@ sub _execute($)
 Give cron a chance to run its jobs. Ideally would be run once every second.
 
 =cut
-RSGet::Mux::add_long X_cron => \&_tick;
+RSGet::Interval::add X_cron => \&_tick;
 sub _tick()
 {
 	my $now = time;
