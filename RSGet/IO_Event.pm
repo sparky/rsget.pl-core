@@ -20,9 +20,8 @@ package RSGet::IO_Event;
 use strict;
 use warnings;
 use IO::Select;
-use Time::HiRes ();
-use RSGet::Common;
-use RSGet::Mux;
+use Time::HiRes qw(time);
+use RSGet::Common qw(throw);
 
 my $select_read = IO::Select->new();
 my $select_write = IO::Select->new();
@@ -84,14 +83,11 @@ sub _add($$$$;$) # {{{
 
 	my $func = shift || 'io_data';
 
-	RSGet::Common::throw "object $object cannot $func"
+	throw 'object %s cannot %s', $object, $func
 		unless $object->can( $func );
 
 	$handle = $handle->handle
 		if $handle->isa( 'RSGet::IO' );
-
-	RSGet::Mux::add_short( "io_$type" => \&{"_perform_$type"} )
-		unless $select->count;
 
 	$select->add( [ $handle, $object, $func ] );
 
@@ -145,55 +141,52 @@ sub _remove($$$) # {{{
 
 	$select->remove( $handle );
 
-	RSGet::Mux::remove_short( "io_$type" )
-		unless $select->count;
-
 	return 1;
 } # }}}
 
 
-=head2 RSGet::IO_Event::_perform_read(); _perform_write();
+=head2 RSGet::IO_Event::perform( TIMEOUT );
 
-For each HANDLE in read list ready to read call appropriate
-OBJECT->METHOD( $time ). Afterwards do the same for write list.
+Perform io select on all registered handles, blocking for TIMEOUT
+seconds. Will call OBJECT->METHOD() for each active HANDLE.
 
-Those functions are called automatically from Mux.
+Process will repeat until TIMEOUT (fractional) seconds have passed.
 
 =cut
 
-sub _perform_read() # {{{
+sub _perform_eval($) # {{{
 {
-	my @io = $select_read->can_read( 0 );
+	my @io = @{ shift() };
 	return 0 unless @io;
 
-	my $time = Time::HiRes::time();
 	foreach my $io ( @io ) {
 		my ( $h, $obj, $func ) = @$io;
 		eval {
-			$obj->$func( $time );
+			$obj->$func();
 		};
 		warn $@ if $@;
 	}
 
-	return scalar @io;
+	return;
 } # }}}
 
-
-sub _perform_write() # {{{
+sub perform($) # {{{
 {
-	my @io = $select_write->can_write( 0 );
-	return 0 unless @io;
+	my $t_wait = shift;
+	my $t_end = $t_wait + time();
 
-	my $time = Time::HiRes::time();
-	foreach my $io ( @io ) {
-		my ( $h, $obj, $func ) = @$io;
-		eval {
-			$obj->$func( $time );
-		};
-		warn $@ if $@;
-	}
+	do {
+		my ($r, $w, $e) = IO::Select::select(
+			$select_read, $select_write, undef,
+			$t_wait );
+		_perform_eval( $r ) if $r and @$r;
+		_perform_eval( $w ) if $w and @$w;
+		_perform_eval( $e ) if $e and @$e;
 
-	return scalar @io;
+		$t_wait = $t_end - time;
+	} while ( $t_wait > 0 );
+
+	return;
 } # }}}
 
 1;
