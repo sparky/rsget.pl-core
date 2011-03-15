@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use RSGet::Cnt;
 use RSGet::HTTP_Server;
-use RSGet::Mux;
+use RSGet::Interval;
 
 $SIG{CHLD} = sub {
 	my $kid;
@@ -17,14 +17,13 @@ $SIG{CHLD} = sub {
 my $port = shift @ARGV || 8080;
 my $server = RSGet::HTTP_Server->create( $port );
 
-my @c = qw(\ | / -);
-my $i = 0;
+my @c = qw(. o 8 º ' º 8 o);
+my $i = -1;
 
-RSGet::Mux::add_short
-	_fly => sub {
-		print "\r" . $c[ $i = ( $i + 1 ) % 4 ];
-		STDOUT->flush();
+RSGet::Interval::add
+	fly => sub {
+		syswrite STDOUT, "\r" . $c[ $i = ( $i + 1 ) % scalar @c ];
 	};
-RSGet::Mux::main_loop();
+RSGet::Interval::main_loop();
 
 # vim: ts=4:sw=4
