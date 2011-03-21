@@ -1,4 +1,4 @@
-package RSGet::HTTP_Server;
+package RSGet::Comm::Server;
 # This file is an integral part of rsget.pl downloader.
 #
 # Copyright (C) 2011	Przemysław Iskra <sparky@pld-linux.org>
@@ -18,90 +18,106 @@ package RSGet::HTTP_Server;
 
 use strict;
 use warnings;
-use IO::Socket::INET;
 use RSGet::Common qw(throw);
 use RSGet::IO_Event;
 
 
-=head1 RSGet::HTTP_Server -- simple http server
+=head1 RSGet::Comm::Server -- simple connection listener
 
-This package implements non-blocking http server.
+This package implements non-blocking server.
 
-=head2 my $server = RSGet::HTTP_Server->create( PORT );
+=head2 my $server = RSGet::Comm::Server->create( %OPTIONS );
 
-Create http server on tcp PORT.
+Create server on tcp port or unix socket. Options are:
+
+	conn - class to call when new connection arrives (required)
+	port - TCP port to listen on
+	unix - UNIX socket file to listen on
+	perm - file permissions for unix socket
+	args - additional arguments to pass to conn->open()
 
 =cut
-sub create($$)
+sub create($%)
 {
 	my $class = shift;
-	my $port = shift;
+	my %opts = @_;
+	my $self = {};
 
-	my $socket;
-	if ( $port =~ m/^\d+$/ ) {
+	throw '"conn" option is missing'
+		unless defined $opts{conn};
+	$self->{conn} = RSGet::Common::ref_check( undef => $opts{conn}, '"conn" option' );
+	eval "require $self->{conn}";
+	throw 'Cannot use "%s" as connection class: %s', $self->{conn}, "$@"
+		if $@;
+
+	$self->{args} = RSGet::Common::ref_check( ARRAY => $opts{args}, '"args" option' )
+		if $opts{args};
+
+	if ( exists $opts{port} ) {
+		RSGet::Common::val_check( qr/\d+/ => $opts{port}, '"port" option' );
+
 		require IO::Socket::INET;
-		$socket = IO::Socket::INET->new(
+		$self->{socket} = IO::Socket::INET->new(
 			Listen => 1,
-			LocalPort => $port,
+			LocalPort => $opts{port},
 			Proto => 'tcp',
 			Listen => 32,
 			Reuse => 1,
 			Blocking => 0,
 		);
 		throw 'Cannot create INET socket: %s', $!
-			unless $socket;
-	} else {
-		if ( -e $port ) {
-			throw 'file "%s" exists and it is not a socket', $port
-				unless -S $port;
-			unlink $port;
+			unless $self->{socket};
+
+	} elsif ( exists $opts{unix} ) {
+		if ( -e $opts{unix} ) {
+			throw 'file "%s" exists and it is not a socket', $opts{unix}
+				unless -S $opts{unix};
+			unlink $opts{unix};
 		}
+
 		require IO::Socket::UNIX;
-		$socket = IO::Socket::UNIX->new(
+		$self->{socket} = IO::Socket::UNIX->new(
 			Type => IO::Socket::UNIX::SOCK_STREAM(),
-			Local => $port,
+			Local => $opts{unix},
 			Listen => 1,
 			Blocking => 0,
 		);
+
 		throw 'Cannot create UNIX socket: %s', $!
-			unless $socket;
+			unless $self->{socket};
+
+		$self->{unix} = $opts{unix};
+		chmod $opts{perm}, $opts{unix}
+			if exists $opts{perm};
+
+	} else {
+		throw 'Neither "port" nor "unix" specified';
 	}
 
-	my $self = \$socket;
 	bless $self, $class;
 
-	RSGet::IO_Event->add_read( $socket, $self, "_client" );
+	RSGet::IO_Event->add_read( $self->{socket}, $self );
 
 	return $self;
 }
 
 
-# INTERNAL: accept new connection and create client
-sub _client($;$)
+=head2 $server->io_read( HANDLE );
+
+Open new connection associated with HANDLE. Called automatically from IO_Event.
+
+=cut
+sub io_read($;$)
 {
 	my $self = shift;
 	my $time = shift;
 
-	my $h = $$self;
+	my $h = $self->{socket};
 	my $cli = $h->accept();
 	return unless $cli;
 
-	return $self->client( $cli );
-}
-
-
-=head2 $server->client( HANDLE );
-
-Create http connection associated with HANDLE.
-
-=cut
-sub client($$)
-{
-	my $self = shift;
-	my $handle = shift;
-
-	require RSGet::HTTP_Connection;
-	RSGet::HTTP_Connection->open( $handle );
+	my $conn = $self->{conn};
+	$conn->open( $cli, $self->{args} ? @{ $self->{args} } : () );
 }
 
 
@@ -113,7 +129,10 @@ Delete http server.
 sub delete($)
 {
 	my $self = shift;
-	RSGet::IO_Event->remove( $$self );
+	RSGet::IO_Event->remove( $self->{socket} );
+	unlink $self->{unix} if $self->{unix};
+
+	return;
 }
 
 sub DESTROY($)
