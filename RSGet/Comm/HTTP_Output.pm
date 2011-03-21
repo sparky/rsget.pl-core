@@ -181,8 +181,8 @@ sub handle($) # {{{
 	$self->{h_out} = {};
 
 
-	require RSGet::HTTP_Handler;
-	my $handler = RSGet::HTTP_Handler->get( $self->{PATH_INFO} );
+	require RSGet::Comm::Handler;
+	my $handler = RSGet::Comm::Handler->get( $self->{PATH_INFO} );
 
 	throw '404: No handler for file "%s"', $self->{PATH_INFO}
 		unless $handler;
