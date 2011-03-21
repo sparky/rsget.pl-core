@@ -1,4 +1,4 @@
-package RSGet::HTTP_Connection;
+package RSGet::Comm::HTTP_Output;
 # This file is an integral part of rsget.pl downloader.
 #
 # Copyright (C) 2011	Przemysław Iskra <sparky@pld-linux.org>
@@ -22,7 +22,7 @@ use RSGet::Common qw(throw);
 use RSGet::IO;
 use RSGet::IO_Event;
 
-=head1 RSGet::HTTP_Connection -- simple http server connection
+=head1 RSGet::Comm::HTTP_Output -- base for http output
 
 This package implements client connection handling and processing.
 It never blocks.
@@ -32,9 +32,6 @@ It never blocks.
 use constant {
 	# maximum post client is allowed to send to us
 	MAX_POST_SIZE => 1 * 1024 * 1024,
-
-	# first word to send to
-	STATUS => 'HTTP/1.1',
 
 	DNAME => [qw(Sun Mon Tue Wed Thu Fri Sat)],
 	MNAME => [qw(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec)],
@@ -50,9 +47,9 @@ my %codes = ( # {{{
 	500 => 'Internal Server Error',
 ); # }}}
 
-=head2 my $conn = RSGet::HTTP_Connection->open( HANDLE )
+=head2 my $conn = RSGet::Comm::SOMETHING->open( HANDLE )
 
-Open new http connection associated with HANDLE.
+Open new connection associated with HANDLE.
 
 =cut
 sub open($$) # {{{
@@ -87,71 +84,6 @@ sub read_start($) # {{{
 
 	# register io_read
 	RSGet::IO_Event->add_read( $self->{_io}, $self );
-} # }}}
-
-
-=head2 $self->io_read(),
-
-Read data from client and process/decode it. Will be called from IO_Event
-every time there is some data to read.
-
-=cut
-sub io_read($;$) # {{{
-{
-	my $self = shift;
-	my $time = shift;
-
-	my $io = $self->{_io};
-
-	eval {
-		local $/ = "\r\n";
-		local $_;
-		if ( not defined $self->{REQUEST_METHOD} ) {
-			@$self{ qw(REQUEST_METHOD PATH_INFO SERVER_PROTOCOL) } =
-				split /\s+/, $io->readline();
-
-			$self->{QUERY_STRING} = $1
-				if $self->{PATH_INFO} =~ s/\?(.*)//;
-
-			my $h = $self->{h_in} ||= {};
-			$h->{CONNECTION} = 'Close'
-				if $self->{SERVER_PROTOCOL} ne 'HTTP/1.1';
-		}
-		if ( not defined $self->{h_in_done} ) {
-			my $h = $self->{h_in} ||= {};
-			while ( ( $_ = $io->readline() ) ne $/ ) {
-				chomp;
-				/^(\S+?):\s*(.*)$/
-					or throw 'malformed request';
-				$_ = uc $1;
-				tr/-/_/;
-				$h->{ $_ } = $2;
-			}
-			$self->{h_in_done} = 1;
-		}
-		if ( $self->method( 'POST' ) ) {
-			$_ = $self->{CONTENT_LENGTH} = $self->{h_in}->{CONTENT_LENGTH};
-			if ( defined $_ ) {
-				my $len = 0 | $_;
-				throw 'POST data too large (%d bytes)', $len
-					if $len > MAX_POST_SIZE;
-				$self->{post_data} = $io->read( $len );
-				my $got = length $self->{post_data};
-				throw 'POST data incomplete (%d of %d bytes)', $got, $len
-					if $got != $len;
-			} else {
-				$self->{post_data} = $io->read( MAX_POST_SIZE + 1);
-				throw 'POST data too large'
-					if length $self->{post_data} > MAX_POST_SIZE;
-			}
-		}
-	};
-
-	if ( $@ ) {
-		return $self->read_error( $@ );
-	} else {
-		return $self->read_end();
-	}
 } # }}}
 
 
@@ -201,7 +133,6 @@ sub method($$) # {{{
 	my $self = shift;
 	return uc $self->{REQUEST_METHOD} eq uc shift;
 } # }}}
-
 
 
 =head2 my $date = $self->http_time( [TIME] )
