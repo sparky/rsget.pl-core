@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 use RSGet::Cnt;
-use RSGet::HTTP_Server;
+use RSGet::Comm::Server;
 use RSGet::Interval;
 
 $SIG{CHLD} = sub {
@@ -15,7 +15,10 @@ $SIG{CHLD} = sub {
 };
 
 my $port = shift @ARGV || 8080;
-my $server = RSGet::HTTP_Server->create( $port );
+my $server = RSGet::Comm::Server->create(
+	port => $port,
+	conn => "RSGet::Comm::HTTP"
+);
 
 my @c = qw(. o 8 º ' º 8 o);
 my $i = -1;

@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 use RSGet::Cnt;
-use RSGet::SCGI_Server;
+use RSGet::Comm::Server;
 use RSGet::Interval;
 
 $SIG{CHLD} = sub {
@@ -15,7 +15,10 @@ $SIG{CHLD} = sub {
 };
 
 my $port = shift @ARGV || 4040;
-my $server = RSGet::SCGI_Server->create( $port );
+my $server = RSGet::Comm::Server->create(
+	$port =~ m/^\d+$/ ? ( port => $port ) : ( unix => $port ),
+	conn => "RSGet::Comm::SCGI"
+);
 
 my @c = qw(\ | / -);
 my $i = 0;
