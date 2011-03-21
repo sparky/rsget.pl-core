@@ -19,10 +19,7 @@ package RSGet::SCGI_Connection;
 use strict;
 use warnings;
 use RSGet::Common qw(throw);
-use RSGet::HTTP_Connection;
-
-our @ISA;
-@ISA = qw(RSGet::HTTP_Connection);
+use base qw(RSGet::Comm::HTTP_Output);
 
 
 =head1 RSGet::SCGI_Connection -- simple scgi server connection
