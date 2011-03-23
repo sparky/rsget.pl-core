@@ -160,7 +160,7 @@ Usage:
 	my %opts = args {
 		some_arrayref => REQUIRED 'ARRAY',
 		some_scalarref => 'SCALAR',
-		scalar_not_ref => undef,
+		scalar_not_ref => 'string',
 		hashref => 'HASH',
 		subref => 'CODE',
 		handle => 'GLOB',
@@ -215,6 +215,7 @@ sub args($@)
 			}
 		} else {
 			$type = '' unless defined $type;
+			$type = '' if $type eq 'string';
 			if ( $type ne ref $value ) {
 				if ( ref $value ) {
 					push @error_fmt, 'argument "%s" should be a %sref, not a %sref';
