@@ -119,7 +119,7 @@ sub ref_check($$;$)
 	my $ref = ref $var;
 	unless ( $ref eq $type ) {
 		@_ = ( "$name should contain a '$type' ref, but it is '$ref'\n" );
-		goto \&RSGet::Common::confess;
+		goto \&throw;
 	}
 
 	return $var;
@@ -140,13 +140,117 @@ sub val_check($$;$)
 	my $ref = ref $var;
 	unless ( $ref eq "" ) {
 		@_ = ( "$name should be a scalar, but it is a ref to '$ref'\n" );
-		goto \&RSGet::Common::confess;
+		goto \&throw;
 	}
 
 	unless ( $var =~ m/^$match$/ ) {
 		@_ = ( "$name '$var' does not match pattern: $match\n" );
-		goto \&RSGet::Common::confess;
+		goto \&throw;
 	}
+}
+
+
+=head2 my %opts = args { name => REQUIRED 'ARRAY', bar => qr/\d+/ }, @_;
+
+Make sure all arguments are of correct type. REQUIRED marks argument that must
+be set. Arguments that are not on the list are not allowed.
+
+Usage:
+
+	my %opts = args {
+		some_arrayref => REQUIRED 'ARRAY',
+		some_scalarref => 'SCALAR',
+		scalar_not_ref => undef,
+		hashref => 'HASH',
+		subref => 'CODE',
+		handle => 'GLOB',
+		refref => 'REF',
+		regexp => 'Regexp',
+		number => REQUIRED qr/\d+/,
+		name => qr/\S+/,
+		}, @_;
+
+=cut
+sub args($@)
+{
+	my $defs = shift;
+
+	my @error_fmt;
+	my @error_data;
+
+	push @error_fmt, 'odd number of arguments'
+		if scalar @_ % 2;
+
+	my %opts;
+	while ( my ( $key, $value ) = splice @_, 0, 2 ) {
+
+		# add to output options
+		$opts{ $key } = $value;
+
+		# is it on our list ?
+		unless ( exists $defs->{ $key } ) {
+			push @error_fmt, 'argument "%s" is not allowed';
+			push @error_data, $key;
+			next;
+		}
+		my $type = $defs->{ $key };
+		if ( ref $type and ref $type eq 'REQUIRED' ) {
+			$type = $$type;
+		}
+		if ( ref $type ) {
+			if ( ref $type eq 'Regexp' ) {
+				if ( ref $value ) {
+					push @error_fmt, 'argument "%s" should be a scalar, but is %sref';
+					push @error_data, $key, ref $value;
+					next;
+				} else {
+					unless ( $value =~ m/^$type$/ ) {
+						push @error_fmt, 'argument "%s" should match /^%s$/, but is "%s"';
+						push @error_data, $key, $type, $value;
+						next;
+					}
+				}
+			} else {
+				throw 'cannot handle argument of type %s', ref $type;
+			}
+		} else {
+			$type = '' unless defined $type;
+			if ( $type ne ref $value ) {
+				if ( ref $value ) {
+					push @error_fmt, 'argument "%s" should be a %sref, not a %sref';
+					push @error_data, $key, $type, ref $value;
+				} else {
+					push @error_fmt, 'argument "%s" should be a %sref, not a scalar';
+					push @error_data, $key, $type;
+				}
+				next;
+			}
+		}
+	}
+	while ( my ( $key, $type ) = each %$defs ) {
+		my $required = 0;
+		if ( ref $type and ref $type eq 'REQUIRED' ) {
+			unless ( exists $opts{ $key } ) {
+				push @error_fmt, 'required argument "%s" is missing';
+				push @error_data, $key;
+				next;
+			}
+		}
+	}
+
+	if ( @error_fmt ) {
+		local $" = ', ';
+		@_ = ( "argument parsing failed: @error_fmt", @error_data );
+		goto \&throw;
+	}
+
+	return %opts;
+}
+
+sub REQUIRED($)
+{
+	my $self = \shift;
+	bless $self, 'REQUIRED';
 }
 
 
