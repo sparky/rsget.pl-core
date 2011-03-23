@@ -18,7 +18,7 @@ package RSGet::Comm::Server;
 
 use strict;
 use warnings;
-use RSGet::Common qw(throw);
+use RSGet::Common qw(throw args REQUIRED);
 use RSGet::IO_Event;
 
 
@@ -40,22 +40,23 @@ Create server on tcp port or unix socket. Options are:
 sub create($%)
 {
 	my $class = shift;
-	my %opts = @_;
+	my %opts = args {
+		conn => REQUIRED 'string',
+		port => qr/\d+/,
+		unix => 'string',
+		perm => qr/\d+/,
+		args => 'ARRAY',
+	}, @_;
 	my $self = {};
 
-	throw '"conn" option is missing'
-		unless defined $opts{conn};
-	$self->{conn} = RSGet::Common::ref_check( undef => $opts{conn}, '"conn" option' );
+	$self->{conn} = $opts{conn};
 	eval "require $self->{conn}";
-	throw 'Cannot use "%s" as connection class: %s', $self->{conn}, "$@"
+	throw 'cannot use "%s" as connection class: %s', $self->{conn}, "$@"
 		if $@;
-
-	$self->{args} = RSGet::Common::ref_check( ARRAY => $opts{args}, '"args" option' )
-		if $opts{args};
+	throw 'package %s is not a correct connection class', $self->{conn}
+		unless $self->{conn}->can( 'open' );
 
 	if ( exists $opts{port} ) {
-		RSGet::Common::val_check( qr/\d+/ => $opts{port}, '"port" option' );
-
 		require IO::Socket::INET;
 		$self->{socket} = IO::Socket::INET->new(
 			Listen => 1,
