@@ -21,8 +21,8 @@ use warnings;
 use RSGet::Common qw(throw);
 use RSGet::IO;
 use RSGet::IO_Event;
-use Storable;
-use Compress::Zlib qw(compress uncompress);
+use Storable ();
+use Compress::Raw::Zlib qw(Z_OK Z_STREAM_END);
 
 
 =head1 RSGet::Comm::PerlRPC -- simple RPC server with perl-encoded data
@@ -53,6 +53,7 @@ sub open($$) # {{{
 	my $self = {};
 	@$self{ map "_$_", keys %opts } = values %opts;
 
+	$self->{_compress_min} ||= 512;
 	$self->{_io} = RSGet::IO->new( $handle );
 
 	bless $self, $class;
@@ -97,6 +98,8 @@ sub io_read($;$) # {{{
 		local $_;
 		if ( not defined $self->{SIZE} ) {
 			$_ = $io->read( $self->SIZE_LENGTH );
+			throw 'no more data'
+				unless length $_ == $self->SIZE_LENGTH;
 
 			$self->{SIZE} = unpack 'N', $_;
 		}
@@ -104,7 +107,7 @@ sub io_read($;$) # {{{
 		throw 'data chunk too large'
 			if $self->{SIZE} > $self->MAX_SIZE;
 
-		$self->{DATA} = $io->read( $self->{SIZE} );
+		$self->{DATA} = \( $io->read( $self->{SIZE} ) );
 	};
 
 	if ( $@ ) {
@@ -161,7 +164,17 @@ sub handle($) # {{{
 {
 	my $self = shift;
 
-	return;
+	my $obj = $self->data2obj( $self->{DATA} );
+	throw 'data sent should be a HASHref, not "%s"', ref $obj
+		unless 'HASH' eq ref $obj;
+	throw '"func" not specified'
+		unless exists $obj->{func};
+
+	my $func = $obj->{func};
+	my $args = $obj->{args} || [];
+
+	require RSGet::Comm::RPC;
+	return RSGet::Comm::RPC->$func( @$args );
 } # }}}
 
 
@@ -185,14 +198,14 @@ sub process($) # {{{
 		};
 	}
 
-	my $data = $self->obj2data( $obj );
+	my $dataref = $self->obj2data( $obj );
 
 	my $h = $self->{_io};
 	eval {
-		$h->write( pack 'N', length $data );
+		$h->write( pack 'N', length $$dataref );
 	};
 	eval {
-		$h->write( $data );
+		$h->write( $$dataref );
 	};
 	if ( $@ ) {
 		if ( $@ eq 'RSGet::IO: busy' ) {
@@ -296,10 +309,8 @@ Deserialize data.
 sub data2obj # {{{
 {
 	my $self = shift;
-	my $dataref = shift;
-	$dataref = \$dataref
-		unless ref $dataref;
-	
+	my $dataref = ref $_[0] ? shift : \$_[0];
+
 	if ( 'c' eq substr $$dataref, 0, 1 ) {
 		my $cipher = $self->{_cipher}
 			or throw 'data encrypted but cipher not specified';
@@ -316,7 +327,12 @@ sub data2obj # {{{
 	}
 
 	if ( "x" eq substr $$dataref, 0, 1 ) {
-		my $data = uncompress( $dataref );
+		my $uncmp = Compress::Raw::Zlib::Inflate->new( -ConsumeInput => 0 );
+		my $data;
+		my $err = $uncmp->inflate( $dataref, $data );
+		throw 'bad compressed data'
+			unless $err == Z_STREAM_END;
+
 		$dataref = \$data;
 	}
 
@@ -335,24 +351,31 @@ sub obj2data # {{{
 	my $self = shift;
 	my $obj = shift;
 
-	my $data = Storable::nfreeze( $obj );
-	$data = compress( $data )
-		if $self->{_compress} and length $data > ( $self->{_compress_min} || 512 );
+	my $dataref = \Storable::nfreeze( $obj );
+	if ( $self->{_compress} and length $$dataref > $self->{_compress_min} ) {
+		my $out = '';
+		my $cmp = Compress::Raw::Zlib::Deflate->new( -AppendOutput => 1 );
+		throw 'cannot compress data'
+			unless $cmp->deflate( $dataref, $out ) == Z_OK;
+		throw 'cannot compress data'
+			unless $cmp->flush( $out ) == Z_OK;
+		$dataref = \$out;
+	}
 
     if ( my $cipher = $self->{_cipher} ) {
 		my $block_size = $cipher->blocksize;
-		if ( my $tail_size = ( length $data ) % $block_size ) {
-			$data .= "\0" x ( $block_size - $tail_size);
+		if ( my $tail_size = ( length $$dataref ) % $block_size ) {
+			$$dataref .= "\0" x ( $block_size - $tail_size);
 		}
 		# mark data as encrypted
 		my $encrypted = 'c';
-		for ( my $i = 0; $i < length $data; $i += $block_size ) {
-			$encrypted .= $cipher->encrypt( substr $data, $i, $block_size );
+		for ( my $i = 0; $i < length $$dataref; $i += $block_size ) {
+			$encrypted .= $cipher->encrypt( substr $$dataref, $i, $block_size );
 		}
-		$data = $encrypted;
+		$dataref = \$encrypted;
 	}
 
-	return $data;
+	return $dataref;
 }
 # }}}
 
