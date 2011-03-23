@@ -37,70 +37,67 @@ Create server on tcp port or unix socket. Options are:
 	args - additional arguments to pass to conn->open()
 
 =cut
-sub create($%)
+sub create($%) # {{{
 {
 	my $class = shift;
-	my %opts = args {
+	my %self = args {
 		conn => REQUIRED 'string',
 		port => qr/\d+/,
 		unix => 'string',
 		perm => qr/\d+/,
 		args => 'ARRAY',
 	}, @_;
-	my $self = {};
 
-	$self->{conn} = $opts{conn};
-	eval "require $self->{conn}";
-	throw 'cannot use "%s" as connection class: %s', $self->{conn}, "$@"
+	eval "require $self{conn}";
+	throw 'cannot use "%s" as connection class: %s', $self{conn}, "$@"
 		if $@;
-	throw 'package %s is not a correct connection class', $self->{conn}
-		unless $self->{conn}->can( 'open' );
+	throw 'package %s is not a correct connection class', $self{conn}
+		unless $self{conn}->can( 'open' );
 
-	if ( exists $opts{port} ) {
+	if ( exists $self{port} ) {
 		require IO::Socket::INET;
-		$self->{socket} = IO::Socket::INET->new(
-			Listen => 1,
-			LocalPort => $opts{port},
-			Proto => 'tcp',
+		$self{socket} = IO::Socket::INET->new(
 			Listen => 32,
+			LocalPort => $self{port},
+			Proto => 'tcp',
 			Reuse => 1,
 			Blocking => 0,
 		);
 		throw 'Cannot create INET socket: %s', $!
-			unless $self->{socket};
+			unless $self{socket};
 
-	} elsif ( exists $opts{unix} ) {
-		if ( -e $opts{unix} ) {
-			throw 'file "%s" exists and it is not a socket', $opts{unix}
-				unless -S $opts{unix};
-			unlink $opts{unix};
+	} elsif ( exists $self{unix} ) {
+		if ( -e $self{unix} ) {
+			throw 'file "%s" exists and it is not a socket', $self{unix}
+				unless -S $self{unix};
+			unlink $self{unix};
 		}
 
 		require IO::Socket::UNIX;
-		$self->{socket} = IO::Socket::UNIX->new(
+		$self{socket} = IO::Socket::UNIX->new(
 			Type => IO::Socket::UNIX::SOCK_STREAM(),
-			Local => $opts{unix},
+			Local => $self{unix},
 			Listen => 1,
 			Blocking => 0,
 		);
 
 		throw 'Cannot create UNIX socket: %s', $!
-			unless $self->{socket};
+			unless $self{socket};
 
-		$self->{unix} = $opts{unix};
-		chmod $opts{perm}, $opts{unix}
-			if exists $opts{perm};
+		chmod $self{perm}, $self{unix}
+			if exists $self{perm};
 
 	} else {
 		throw 'Neither "port" nor "unix" specified';
 	}
 
+	my $self = \%self;
 	bless $self, $class;
 
-	RSGet::IO_Event->add_read( $self->{socket}, $self );
+	RSGet::IO_Event->add_read( $self{socket}, $self );
 
 	return $self;
-}
+} # }}}
 
 
 =head2 $server->io_read( HANDLE );
@@ -108,7 +105,7 @@ sub create($%)
 Open new connection associated with HANDLE. Called automatically from IO_Event.
 
 =cut
-sub io_read($;$)
+sub io_read($;$) # {{{
 {
 	my $self = shift;
 	my $time = shift;
@@ -119,7 +116,7 @@ sub io_read($;$)
 
 	my $conn = $self->{conn};
 	$conn->open( $cli, $self->{args} ? @{ $self->{args} } : () );
-}
+} # }}}
 
 
 =head2 $server->delete();
