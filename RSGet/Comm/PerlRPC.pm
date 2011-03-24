@@ -20,7 +20,7 @@ use strict;
 use warnings;
 use RSGet::Common qw(throw);
 use RSGet::IO;
-use RSGet::IO_Event;
+use RSGet::IO_Event qw(IO_READ IO_WRITE IO_ANY);
 use Storable ();
 use Compress::Raw::Zlib qw(Z_OK Z_STREAM_END);
 
@@ -77,7 +77,7 @@ sub read_start($) # {{{
 	delete @$self{ grep !/^_/, keys %$self };
 
 	# register io_read
-	RSGet::IO_Event->add_read( $self->{_io}, $self );
+	RSGet::IO_Event->add( IO_READ, $self->{_io}, $self, 'io_read' );
 } # }}}
 
 
@@ -148,7 +148,7 @@ Finish data reading. Start data processing.
 sub read_end($) # {{{
 {
 	my $self = shift;
-	RSGet::IO_Event->remove_read( $self->{_io} );
+	RSGet::IO_Event->remove( IO_ANY, $self->{_io} );
 
 	return $self->process();
 } # }}}
@@ -193,6 +193,7 @@ sub process($) # {{{
 		$obj = $self->handle();
 	};
 	if ( $@ ) {
+		$self->{nocipher} = 1;
 		$obj = {
 			fatal => "$@"
 		};
@@ -229,7 +230,7 @@ sub write_start($) # {{{
 	my $self = shift;
 
 	# register io_write
-	RSGet::IO_Event->add_write( $self->{_io}, $self );
+	RSGet::IO_Event->add( IO_WRITE, $self->{_io}, $self, 'io_write' );
 } # }}}
 
 
@@ -280,7 +281,7 @@ more data.
 sub write_end($) # {{{
 {
 	my $self = shift;
-	RSGet::IO_Event->remove_write( $self->{_io} );
+	RSGet::IO_Event->remove( IO_ANY, $self->{_io} );
 
 	return $self->read_start();
 } # }}}
@@ -294,7 +295,7 @@ Close the connection and remove event handlers.
 sub close($) # {{{
 {
 	my $self = shift;
-	RSGet::IO_Event->remove( $self->{_io} );
+	RSGet::IO_Event->remove( IO_ANY, $self->{_io} );
 
 	close $self->{_io}->handle();
 	delete $self->{_io};
@@ -322,7 +323,7 @@ sub data2obj # {{{
 		$dataref = \$data;
 	} else {
 		if ( $self->{_cipher} ) {
-			throw 'received not-encrypted data';
+			warn "received not-encrypted data\n";
 		}
 	}
 
@@ -362,7 +363,7 @@ sub obj2data # {{{
 		$dataref = \$out;
 	}
 
-    if ( my $cipher = $self->{_cipher} ) {
+    if ( my $cipher = $self->{_cipher} and not $self->{nocipher} ) {
 		my $block_size = $cipher->blocksize;
 		if ( my $tail_size = ( length $$dataref ) % $block_size ) {
 			$$dataref .= "\0" x ( $block_size - $tail_size);
