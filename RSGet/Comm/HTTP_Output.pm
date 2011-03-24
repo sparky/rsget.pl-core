@@ -20,7 +20,7 @@ use strict;
 use warnings;
 use RSGet::Common qw(throw);
 use RSGet::IO;
-use RSGet::IO_Event;
+use RSGet::IO_Event qw(IO_READ IO_WRITE IO_ANY);
 
 =head1 RSGet::Comm::HTTP_Output -- base for http output
 
@@ -83,7 +83,7 @@ sub read_start($) # {{{
 	delete @$self{ grep !/^_/, keys %$self };
 
 	# register io_read
-	RSGet::IO_Event->add_read( $self->{_io}, $self );
+	RSGet::IO_Event->add( IO_READ, $self->{_io}, $self, 'io_read' );
 } # }}}
 
 
@@ -117,7 +117,7 @@ Finish data reading. Start data processing.
 sub read_end($) # {{{
 {
 	my $self = shift;
-	RSGet::IO_Event->remove_read( $self->{_io} );
+	RSGet::IO_Event->remove( IO_ANY, $self->{_io} );
 
 	return $self->process();
 } # }}}
@@ -297,7 +297,7 @@ sub write_start($) # {{{
 	my $self = shift;
 
 	# register io_write
-	RSGet::IO_Event->add_write( $self->{_io}, $self );
+	RSGet::IO_Event->add( IO_WRITE, $self->{_io}, $self, 'io_write' );
 } # }}}
 
 
@@ -368,7 +368,7 @@ more data.
 sub write_end($) # {{{
 {
 	my $self = shift;
-	RSGet::IO_Event->remove_write( $self->{_io} );
+	RSGet::IO_Event->remove( IO_ANY, $self->{_io} );
 
 	my $h = $self->{h_in};
 	if ( exists $h->{CONNECTION} and lc $h->{CONNECTION} ne 'keep-alive' ) {
@@ -387,7 +387,7 @@ Close the connection and remove event handlers.
 sub close($) # {{{
 {
 	my $self = shift;
-	RSGet::IO_Event->remove( $self->{_io} );
+	RSGet::IO_Event->remove( IO_ANY, $self->{_io} );
 
 	close $self->{_io}->handle();
 	delete $self->{_io};

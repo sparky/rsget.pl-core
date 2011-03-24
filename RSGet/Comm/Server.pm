@@ -19,7 +19,7 @@ package RSGet::Comm::Server;
 use strict;
 use warnings;
 use RSGet::Common qw(throw args REQUIRED);
-use RSGet::IO_Event;
+use RSGet::IO_Event qw(IO_READ IO_ANY);
 
 
 =head1 RSGet::Comm::Server -- simple connection listener
@@ -94,7 +94,7 @@ sub create($%) # {{{
 	my $self = \%self;
 	bless $self, $class;
 
-	RSGet::IO_Event->add_read( $self{socket}, $self );
+	RSGet::IO_Event->add( IO_READ, $self{socket}, $self, 'io_read' );
 
 	return $self;
 } # }}}
@@ -127,7 +127,7 @@ Delete http server.
 sub delete($)
 {
 	my $self = shift;
-	RSGet::IO_Event->remove( $self->{socket} );
+	RSGet::IO_Event->remove( IO_ANY, $self->{socket} );
 	unlink $self->{unix} if $self->{unix};
 
 	return;
