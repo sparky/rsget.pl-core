@@ -19,129 +19,111 @@ package RSGet::IO_Event;
 # use * {{{
 use strict;
 use warnings;
-use IO::Select;
+use Scalar::Util ();
 use Time::HiRes qw(time);
-use RSGet::Common qw(throw);
+use RSGet::Common qw(import throw);
 
-my $select_read = IO::Select->new();
-my $select_write = IO::Select->new();
+use constant {
+	IO_READ => 1,
+	IO_WRITE => 2,
+	IO_EXCEPT => 4,
+};
+use constant
+	IO_ANY => IO_READ | IO_WRITE | IO_EXCEPT;
+
+my @_vec = ('', '', '', '');
+use constant {
+	_VEC_READ => 0,
+	_VEC_WRITE => 1,
+	_VEC_EXCEPT => 2,
+	_VEC_ANY => 3,
+};
+
+my @_callbacks;
+use constant {
+	_CB_BITS => 0, # RWE
+	_CB_OBJECT => 1,
+	_CB_METHOD => 2,
+};
 # }}}
 
 =head1 package RSGet::IO_Event
 
 Automatically call methods on read and write events.
 
-=head2 RSGet::IO_Event->add( HANDLE, OBJECT, [METHOD] );
+=head2 RSGet::IO_Event->add( EVENT, HANDLE, OBJECT, METHOD );
 
-Add OBJECT with associated HANDLE to both call lists. If METHOD is not specified
-io_read() will be used for reading and io_write() for writing.
-
-=cut
-sub add($$$;$) # {{{
-{
-	my ( $class, $handle, $object, $func ) = @_;
-	_add( 'read', $select_read, $handle, $object, $func || 'io_read' );
-	_add( 'write', $select_write, $handle, $object, $func || 'io_write' );
-	return 1;
-} # }}}
-
-
-=head2 RSGet::IO_Event->add_read( HANDLE, OBJECT, [METHOD] );
-
-Add OBJECT with associated HANDLE to read call list. If METHOD is not specified
-io_read() will be used.
+Add OBJECT with associated HANDLE to io event call list. EVENT is a bitmask
+consisting of IO_READ | IO_WRITE | IO_EXCEPT.
 
 =cut
-sub add_read($$$;$) # {{{
+sub add($$$$$) # {{{
 {
-	my ( $class, $handle, $object, $func ) = @_;
-	return _add( 'read', $select_read, $handle, $object, $func || 'io_read' );
+	my ( $class, $event_bits, $handle, $object, $method ) = @_;
+
+	throw 'object %s has no method "%s"', $object, $method
+		unless $object->can( $method );
+
+	# fileno
+	my $fn = Scalar::Util::looks_like_number( $handle )
+		? $handle
+		: $handle->fileno();
+
+	# what should we listen for
+	my $bits = $_callbacks[ $fn ] ? $_callbacks[ $fn ]->[ _CB_BITS ] : 0;
+	$bits |= $event_bits;
+
+	# add to callbacks list
+	$_callbacks[ $fn ] = [ $bits, $object, $method ];
+
+	# update select vectors
+	my $select_bit = '';
+	vec ( $select_bit, $fn, 1 ) = 1;
+	$_vec[ _VEC_READ   ] |= $select_bit if $event_bits & IO_READ;
+	$_vec[ _VEC_WRITE  ] |= $select_bit if $event_bits & IO_WRITE;
+	$_vec[ _VEC_EXCEPT ] |= $select_bit if $event_bits & IO_EXCEPT;
+	$_vec[ _VEC_ANY ] = $_vec[ _VEC_READ ]
+		| $_vec[ _VEC_WRITE ] | $_vec[ _VEC_EXCEPT ];
+
+	return $bits;
 } # }}}
 
 
-=head2 RSGet::IO_Event->add_write( HANDLE, OBJECT, [METHOD] );
-
-Add OBJECT with associated HANDLE to write call list. If METHOD is not specified
-io_write() will be used.
-
-=cut
-sub add_write($$$;$) # {{{
-{
-	my ( $class, $handle, $object, $func ) = @_;
-	return _add( 'write', $select_write, $handle, $object, $func || 'io_write' );
-} # }}}
-
-
-# INTERNAL, actually does the job
-sub _add($$$$;$) # {{{
-{
-	my $type = shift;
-	my $select = shift;
-
-	my $handle = shift;
-	my $object = shift;
-
-	my $func = shift || 'io_data';
-
-	throw 'object %s cannot %s', $object, $func
-		unless $object->can( $func );
-
-	$handle = $handle->handle
-		if $handle->isa( 'RSGet::IO' );
-
-	$select->add( [ $handle, $object, $func ] );
-
-	return 1;
-} # }}}
-
-
-=head2 RSGet::IO_Event->remove( HANDLE );
+=head2 RSGet::IO_Event->remove( EVENT, HANDLE );
 
 Remove OBJECT associated with HANDLE from both call lists.
 
 =cut
-sub remove($$) # {{{
+sub remove($$$) # {{{
 {
-	my ( $class, $handle ) = @_;
-	_remove( 'read', $select_read, $handle );
-	_remove( 'write', $select_write, $handle );
-} # }}}
+	my ( $class, $event_bits, $handle ) = @_;
 
-=head2 RSGet::IO_Event->remove_read( HANDLE );
+	# fileno
+	my $fn = Scalar::Util::looks_like_number( $handle )
+		? $handle
+		: $handle->fileno();
 
-Remove OBJECT associated with HANDLE from read call list.
+	return 0 unless $_callbacks[ $fn ];
 
-=cut
-sub remove_read($$) # {{{
-{
-	my ( $class, $handle ) = @_;
-	_remove( 'read', $select_read, $handle );
-} # }}}
+	my $bits = 0;
+	if ( $event_bits == IO_ANY ) {
+		delete $_callbacks[ $fn ];
+	} else {
+		$bits = $_callbacks[ $fn ]->[ _CB_BITS ] &= ~$event_bits;
+		unless ( $bits ) {
+			delete $_callbacks[ $fn ];
+		}
+	}
 
-=head2 RSGet::IO_Event->remove_write( HANDLE );
+	my $select_bit = $_vec[ _VEC_ANY ];
+	vec ( $select_bit, $fn, 1 ) = 0;
+	$_vec[ _VEC_READ   ] &= $select_bit if $event_bits & IO_READ;
+	$_vec[ _VEC_WRITE  ] &= $select_bit if $event_bits & IO_WRITE;
+	$_vec[ _VEC_EXCEPT ] &= $select_bit if $event_bits & IO_EXCEPT;
+	$_vec[ _VEC_ANY ] = $_vec[ _VEC_READ ]
+		| $_vec[ _VEC_WRITE ] | $_vec[ _VEC_EXCEPT ];
 
-Remove OBJECT associated with HANDLE from write call list.
-
-=cut
-sub remove_write($$) # {{{
-{
-	my ( $class, $handle ) = @_;
-	_remove( 'write', $select_write, $handle );
-} # }}}
-
-# INTERNAL, actually does the job
-sub _remove($$$) # {{{
-{
-	my $type = shift;
-	my $select = shift;
-	my $handle = shift;
-
-	$handle = $handle->handle
-		if $handle->isa( 'RSGet::IO' );
-
-	$select->remove( $handle );
-
-	return 1;
+	return $bits;
 } # }}}
 
 
@@ -153,35 +135,40 @@ seconds. Will call OBJECT->METHOD() for each active HANDLE.
 Process will repeat until TIMEOUT (fractional) seconds have passed.
 
 =cut
-
-sub _perform_eval($) # {{{
-{
-	my @io = @{ shift() };
-	return 0 unless @io;
-
-	foreach my $io ( @io ) {
-		my ( $h, $obj, $func ) = @$io;
-		eval {
-			$obj->$func();
-		};
-		warn $@ if $@;
-	}
-
-	return;
-} # }}}
-
 sub perform($) # {{{
 {
 	my $t_wait = shift;
 	my $t_end = $t_wait + time();
 
 	do {
-		my ($r, $w, $e) = IO::Select::select(
-			$select_read, $select_write, undef,
-			$t_wait );
-		_perform_eval( $r ) if $r and @$r;
-		_perform_eval( $w ) if $w and @$w;
-		_perform_eval( $e ) if $e and @$e;
+		my ($r, $w, $e);
+
+		my $n = select
+			$r = $_vec[ _VEC_READ ],
+			$w = $_vec[ _VEC_WRITE ],
+			$e = $_vec[ _VEC_ANY ],
+			$t_wait;
+
+		# finish quickly if there were no events
+		return unless $n;
+
+		my $any = $r | $w | $e;
+		foreach my $fn ( 1..(scalar @_callbacks) ) {
+			next unless vec ( $any, $fn, 1 );
+			my $cb = $_callbacks[ $fn ]
+				or next;
+
+			my $bits = 0;
+			$bits |= IO_READ   if vec ( $r, $fn, 1 );
+			$bits |= IO_WRITE  if vec ( $w, $fn, 1 );
+			$bits |= IO_EXCEPT if vec ( $e, $fn, 1 );
+
+			eval {
+				my $func = $cb->[ _CB_METHOD ];
+				$cb->[ _CB_OBJECT ]->$func( $bits );
+			};
+			warn $@ if $@;
+		}
 
 		$t_wait = $t_end - time;
 	} while ( $t_wait > 0 );
