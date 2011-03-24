@@ -47,7 +47,7 @@ sub new($$) # {{{
 
 	my $self = [
 		$handle,	# IO_HANDLE
-		chr( 0 ),	# IO_VECTOR
+		'',			# IO_VECTOR
 		'',			# IO_BUFFERIN
 		'',			# IO_BUFFEROUT
 	];
@@ -167,10 +167,10 @@ stores remaining data and dies with "RSGET::IO: busy" error. If handle is
 closed write() will die with "RSGet::IO: handle closed" error.
 
 =cut
-sub write($;$) # {{{
+sub write($@) # {{{
 {
 	my $self = shift;
-	if ( defined $_[0] ) {
+	while ( @_ ) {
 		$self->[ IO_BUFFEROUT ] .= shift;
 	}
 
@@ -181,7 +181,6 @@ sub write($;$) # {{{
 
 	throw 'busy'
 		unless $nfound;
-
 
 	my $nwritten;
 	{
