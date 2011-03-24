@@ -82,6 +82,22 @@ sub handle($) # {{{
 } # }}}
 
 
+=head2 my $fn = $io->fileno();
+
+Return fileno of the handle.
+
+=cut
+sub fileno($) # {{{
+{
+	my $self = shift;
+	if ( wantarray ) {
+		return ( $self->[ IO_HANDLEIN ]->fileno(), $self->[ IO_HANDLEOUT ]->fileno() );
+	} else {
+		return $self->[ IO_HANDLEIN ]->fileno();
+	}
+} # }}}
+
+
 =head2 my $data = $input->read( BYTES );
 
 Read exactly BYTES from input and return it.
