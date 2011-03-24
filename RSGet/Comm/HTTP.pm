@@ -19,8 +19,6 @@ package RSGet::Comm::HTTP;
 use strict;
 use warnings;
 use RSGet::Common qw(throw);
-use RSGet::IO;
-use RSGet::IO_Event;
 use base qw(RSGet::Comm::HTTP_Output);
 
 =head1 RSGet::Comm::HTTP -- simple http server connection
