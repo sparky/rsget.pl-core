@@ -22,10 +22,12 @@ use warnings;
 use IO (); # HANDLE->blocking( 0 )
 use RSGet::Common qw(throw);
 use constant {
-	IO_HANDLE => 0,
-	IO_VECTOR => 1,
+	IO_HANDLEIN => 0,
+	IO_VECTORIN => 1,
 	IO_BUFFERIN => 2,
-	IO_BUFFEROUT => 3,
+	IO_HANDLEOUT => 3,
+	IO_VECTOROUT => 4,
+	IO_BUFFEROUT => 5,
 };
 # }}}
 
@@ -33,27 +35,31 @@ use constant {
 
 IO wrapper. Allows exact reads without blocking.
 
-=head2 my $io = RSGet::IO->new( HANDLE );
+=head2 my $io = RSGet::IO->new( HANDLEIO, [HANDLEOUT] );
 
 Mark HANDLE as non-blocking and return a wrapper.
 
 =cut
-sub new($$) # {{{
+sub new($$;$) # {{{
 {
 	my $class = shift;
-	my $handle = shift;
+	my $handlein = shift;
+	my $handleout = @_ ? shift : $handlein;
 
-	$handle->blocking( 0 );
+	$handlein->blocking( 0 );
+	$handleout->blocking( 0 );
 
 	my $self = [
-		$handle,	# IO_HANDLE
-		'',			# IO_VECTOR
+		$handlein,	# IO_HANDLEIN
+		'',			# IO_VECTORIN
 		'',			# IO_BUFFERIN
+		$handleout,	# IO_HANDLEOUT
+		'',			# IO_VECTOROUT
 		'',			# IO_BUFFEROUT
 	];
 
-	my $fn = fileno $handle;
-	vec( $self->[ IO_VECTOR ], $fn, 1 ) = 1;
+	vec( $self->[ IO_VECTORIN ], (fileno $handlein), 1 ) = 1;
+	vec( $self->[ IO_VECTOROUT ], (fileno $handleout), 1 ) = 1;
 
 	bless $self, $class;
 	return $self;
@@ -68,7 +74,11 @@ Return file handle.
 sub handle($) # {{{
 {
 	my $self = shift;
-	return $self->[ IO_HANDLE ];
+	if ( wantarray ) {
+		return ( $self->[ IO_HANDLEIN ], $self->[ IO_HANDLEOUT ] );
+	} else {
+		return $self->[ IO_HANDLEIN ];
+	}
 } # }}}
 
 
@@ -88,7 +98,7 @@ sub read($$) # {{{
 
 	my $missing = $size - length $self->[ IO_BUFFERIN ];
 	if ( $missing > 0 ) {
-		my $nread = sysread $self->[ IO_HANDLE ], my ( $buf ), $missing;
+		my $nread = sysread $self->[ IO_HANDLEIN ], my ( $buf ), $missing;
 
 		return _read_end( $self )
 			unless $nread;
@@ -118,7 +128,7 @@ sub readline($) # {{{
 
 	my $idx;
 	until ( ( $idx = index $self->[ IO_BUFFERIN ], $/ ) >= 0 ) {
-		my $nread = sysread $self->[ IO_HANDLE ], my $buf, 32;
+		my $nread = sysread $self->[ IO_HANDLEIN ], my $buf, 32;
 
 		return _read_end( $self )
 			unless $nread;
@@ -135,11 +145,11 @@ sub _read_end($) # {{{
 	my $self = shift;
 	my $active = 1;
 
-	my $r = $self->[ IO_VECTOR ];
+	my $r = $self->[ IO_VECTORIN ];
 	my $nfound = select $r, undef, undef, 0;
 
 	if ( $nfound > 0 ) {
-		my $nread = sysread $self->[ IO_HANDLE ], my $buf, 1;
+		my $nread = sysread $self->[ IO_HANDLEIN ], my $buf, 1;
 		if ( $nread ) {
 			$self->[ IO_BUFFERIN ] .= $buf;
 		} else {
@@ -176,7 +186,7 @@ sub write($@) # {{{
 
 	return 0 unless length $self->[ IO_BUFFEROUT ];
 
-	my $w = $self->[ IO_VECTOR ];
+	my $w = $self->[ IO_VECTOROUT ];
 	my $nfound = select undef, $w, undef, 0;
 
 	throw 'busy'
@@ -187,7 +197,7 @@ sub write($@) # {{{
 		# disable "syswrite() on closed filehandle" warning
 		no warnings 'closed';
 		local $SIG{PIPE} = 'IGNORE';
-		$nwritten = syswrite $self->[ IO_HANDLE ], $self->[ IO_BUFFEROUT ];
+		$nwritten = syswrite $self->[ IO_HANDLEOUT ], $self->[ IO_BUFFEROUT ];
 	}
 
 	throw 'write: handle closed'
