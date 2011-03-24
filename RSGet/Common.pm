@@ -32,7 +32,7 @@ explicitly.
 sub import
 {
 	my $callpkg = caller 0;
-	my $pkg = shift || "RSGet::Common";
+	my $pkg = shift || __PACKAGE__;
 
 	no strict 'refs';
 	foreach ( @_ ) {
@@ -96,7 +96,9 @@ Die generating an exception object, which will look like
 sub throw($@)
 {
 	require RSGet::Exception;
-	die RSGet::Exception->new( 1, @_ );
+	my $e = RSGet::Exception->new( 1, @_ );
+	warn "$e\n" if DEBUG;
+	die $e;
 }
 
 
