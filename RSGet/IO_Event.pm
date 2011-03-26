@@ -16,7 +16,7 @@ package RSGet::IO_Event;
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# use * {{{
+# use * and constants {{{
 use strict;
 use warnings;
 use Scalar::Util ();
@@ -56,6 +56,14 @@ Automatically call methods on read and write events.
 Add OBJECT with associated HANDLE to io event call list. EVENT is a bitmask
 consisting of IO_READ | IO_WRITE | IO_EXCEPT.
 
+On any io event that has been registered the method will be called as follows:
+
+	OBJECT->METHOD( EVENT, FILENO );
+
+Class name can be used instead of an object. EVENT is a bitmask of events
+that ocurred on the registered handle. FILENO is the file number used by the
+handle.
+
 =cut
 sub add($$$$$) # {{{
 {
@@ -91,7 +99,8 @@ sub add($$$$$) # {{{
 
 =head2 RSGet::IO_Event->remove( EVENT, HANDLE );
 
-Remove OBJECT associated with HANDLE from both call lists.
+Remove OBJECT associated with HANDLE from call list. EVENT will normally
+be IO_ANY, it removes all the events.
 
 =cut
 sub remove($$$) # {{{
@@ -165,7 +174,7 @@ sub perform($) # {{{
 
 			eval {
 				my $func = $cb->[ _CB_METHOD ];
-				$cb->[ _CB_OBJECT ]->$func( $bits );
+				$cb->[ _CB_OBJECT ]->$func( $bits, $fn );
 			};
 			warn $@ if $@;
 		}
